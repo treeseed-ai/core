@@ -1,0 +1,27 @@
+---
+import { getCollection } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ProfileList from '../../components/site/ProfileList.astro';
+
+const agents = await getCollection('agents');
+---
+
+<MainLayout title="Agents" description="Software contributors participating in the Karyon Treeseed." currentPath="/agents/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Agents"
+			title="Agent contributors with explicit public profiles"
+			description="Agents are part of the hub’s contributor model, not hidden infrastructure. These profiles describe what each agent is for, who operates it, and which lines of inquiry it supports."
+		/>
+		<ProfileList
+			items={agents.map((agent) => ({
+				href: `/agents/${agent.id}/`,
+				name: agent.data.name,
+				summary: agent.data.summary,
+				meta: `${agent.data.operator} · ${agent.data.runtimeStatus}`,
+				tags: agent.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

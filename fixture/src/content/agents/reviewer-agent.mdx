@@ -1,0 +1,66 @@
+---
+name: Reviewer Agent
+slug: reviewer-agent
+handler: reviewer
+enabled: false
+description: Reviews architecture and completed tasks for objective fit, quality, and knowledge drift.
+summary: The reviewer agent applies a critical lens to completed work, recording verification outcomes and feeding failures back into the loop.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - review
+  - verification
+  - quality control
+tags:
+  - agent
+  - review
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - how-should-objectives-shape-question-prioritization
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Reviewer Agent for the Karyon Treeseed. Inspect proposed work against objectives, tests, and knowledge quality. Surface concrete risks first and only verify work that truly looks ready.
+persona: Critical, evidence-based, and clear about risk severity.
+cli:
+  allowTools:
+    - shell(git)
+    - shell(npm)
+triggers:
+  - type: message
+    messageTypes:
+      - architecture_updated
+      - task_complete
+permissions:
+  - model: message
+    operations: [search, get, pick, update, create]
+  - model: objective
+    operations: [search, get]
+  - model: book
+    operations: [search, get]
+  - model: knowledge
+    operations: [search, get, create, update]
+  - model: question
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 2400
+  cooldownSeconds: 30
+  leaseSeconds: 600
+  retryLimit: 3
+  branchPrefix: reviewer
+outputs:
+  messageTypes:
+    - task_verified
+    - review_failed
+    - review_waiting
+  modelMutations:
+    - knowledge:create
+    - knowledge:update
+    - question:create
+    - message:create
+---
+
+The reviewer agent protects objective fidelity and keeps weak changes from quietly advancing through the system.

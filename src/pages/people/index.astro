@@ -1,0 +1,28 @@
+---
+import { getCollection } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ProfileList from '../../components/site/ProfileList.astro';
+
+const people = await getCollection('people');
+---
+
+<MainLayout title="People" description="Human contributors participating in the Karyon Treeseed." currentPath="/people/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="People"
+			title="Human contributors in the Treeseed"
+			description="People entries make human stewardship explicit. They show who is participating in the hub, what posture they hold, and which questions and objectives they are linked to."
+		/>
+		<ProfileList
+			items={people.map((person) => ({
+				href: `/people/${person.id}/`,
+				name: person.data.name,
+				summary: person.data.summary,
+				meta: `${person.data.role} · ${person.data.affiliation}`,
+				status: person.data.status,
+				tags: person.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

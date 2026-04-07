@@ -1,0 +1,83 @@
+---
+title: Architecture
+description: Editorial bridge into the Karyon architecture corpus, developer references, and operational docs.
+slug: architecture
+pageLayout: bridge
+status: live
+stage: founding
+audience:
+  - evaluators
+  - contributors
+  - researchers
+summary: "This page helps readers approach the architecture corpus with the right expectations: substantial, serious, and still not the same thing as full runtime validation."
+updated: 2026-04-03
+---
+
+import SectionIntro from '@treeseed/core/components/site/SectionIntro.astro';
+import PathCard from '@treeseed/core/components/site/PathCard.astro';
+import TrustCallout from '@treeseed/core/components/site/TrustCallout.astro';
+import ContentStatusLegend from '@treeseed/core/components/content/ContentStatusLegend.astro';
+
+<SectionIntro
+	eyebrow="Architecture"
+	title="The technical corpus is a real asset, and it still needs careful framing"
+	description="This page exists to help readers approach the architecture book and source-guided docs with the right expectations. Karyon has a substantial technical corpus already. It should be read as a mix of intended organism design, implementation rationale, and future-facing thought rather than as proof that every subsystem is already validated end to end."
+/>
+
+<div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+	<div class="space-y-4 text-lg leading-9 text-[color:var(--site-text-muted)]">
+		<p>
+			The book is one of the strongest things in this repository. It gives the project a
+			level of conceptual clarity that many early-stage systems never reach. It is also easy
+			to overread if you treat architectural intent as current runtime reality.
+		</p>
+		<p>
+			The safest way to use this section is to read the corpus in pairs: book alongside
+			status, design alongside source, theory alongside current subsystem boundaries.
+		</p>
+	</div>
+	<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+		<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-accent-strong)]">Best reading posture</p>
+		<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+			Read the corpus as a guide to the intended organism and the current implementation
+			direction, then use the repository and the{' '}
+			<a href="/status/" class="text-[color:var(--site-text)] underline decoration-[color:var(--site-accent)] underline-offset-4">
+				project status
+			</a>{' '}
+			page to check which parts are already concrete.
+		</p>
+	</div>
+</div>
+
+<div class="border-b border-[color:var(--site-border)]">
+	<PathCard href="/knowledge/architecture/" title="Architecture docs" meta="Book and thesis" description="Start with the architecture book if you want the fullest statement of the intended organism and the project’s conceptual structure." />
+	<PathCard href="/knowledge/developer/" title="Developer book" meta="Contributor references" description="Use the developer book to compare the architecture thesis with current implementation intent, contracts, and source-guided notes." />
+	<PathCard href="/knowledge/operations/" title="Operations book" meta="Operational constraints" description="Review the operations book for readiness concerns and practical constraints shaping how the organism is expected to run." />
+</div>
+
+<TrustCallout
+	title="Intent is not the same thing as runtime validation"
+	body="The architecture corpus is strongest when it is read together with the current repository and the project status page. That keeps the book from carrying more implementation certainty than the code can currently support."
+/>
+
+<div class="grid gap-6 md:grid-cols-2">
+	<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+		<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Good first entry points</h2>
+		<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+			If you are new to Karyon, start with the architecture overview and early chapters of the
+			book, then return to status before assuming the full organism is implemented exactly as
+			described.
+		</p>
+	</div>
+	<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+		<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Best next step from here</h2>
+		<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+			If your main question is “How much of this exists today?”, go to{' '}
+			<a href="/status/" class="text-[color:var(--site-text)] underline decoration-[color:var(--site-accent)] underline-offset-4">Project Status</a>.
+			{' '}If your main question is “Why pursue this architecture at all?”, go to{' '}
+			<a href="/vision/" class="text-[color:var(--site-text)] underline decoration-[color:var(--site-accent)] underline-offset-4">Vision</a>.
+		</p>
+	</div>
+</div>
+
+<ContentStatusLegend />

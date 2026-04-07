@@ -1,0 +1,32 @@
+---
+title: Developer
+description: Contributor-facing context and implementation notes.
+prev: false
+next: /knowledge/developer/nif-safety/
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+This book is the contributor-facing companion to the architecture corpus. It is intentionally small for now, because much of the underlying source material still lives in repository documents that have not yet been fully normalized into the public docs surface.
+
+Use this book as the current entry point into the implementation-facing contracts, subsystem boundaries, and regression gates that keep the organism aligned with its architecture.
+
+<CardGrid stagger>
+  <Card title="Core References" icon="seti:txt">
+    Start with the implementation contracts and subsystem boundaries. [Open NIF Safety](/knowledge/developer/nif-safety/)
+  </Card>
+
+  <Card title="Lifecycle References" icon="list-tree">
+    Follow the maturation and operational guidance for building inside the platform. [Open Operational Maturity](/knowledge/developer/operational-maturity/)
+  </Card>
+
+  <Card title="Conformance References" icon="warning">
+    Use the chapter gates as regression boundaries when changing behavior. [Open Chapter 1 Conformance](/knowledge/developer/chapter-1-conformance/)
+  </Card>
+</CardGrid>
+
+## What this book covers today
+
+- Core references for NIF safety, subsystem contracts, learning loops, monorepo execution, and lifecycle maturity.
+- Chapter-by-chapter conformance references that turn architecture claims into concrete regression boundaries.
+- Contributor-facing material that should be read alongside the architecture book and the repository source.

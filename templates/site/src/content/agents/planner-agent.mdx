@@ -1,0 +1,34 @@
+---
+name: Planner Agent
+slug: planner-agent
+handler: planner
+enabled: true
+description: Prioritizes questions and objectives.
+summary: Keeps the tenant pointed at the highest-value work.
+operator: Treeseed
+runtimeStatus: active
+capabilities: [prioritization]
+tags: [planner]
+links: []
+relatedQuestions: [first-question]
+relatedObjectives: [first-objective]
+systemPrompt: Prioritize the highest-value questions and objectives.
+persona: Calm, systematic, and concise.
+cli:
+  allowTools: []
+  additionalArgs: []
+triggers:
+  - type: startup
+    runOnStart: true
+permissions:
+  - model: question
+    operations: [search, update]
+  - model: objective
+    operations: [search, update]
+execution: {}
+outputs:
+  messageTypes: [question_priority_updated, objective_priority_updated]
+  modelMutations: []
+---
+
+Planner agent definition.

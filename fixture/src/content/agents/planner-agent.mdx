@@ -1,0 +1,58 @@
+---
+name: Planner Agent
+slug: planner-agent
+handler: planner
+enabled: true
+description: Prioritizes open questions and objectives to keep the Treeseed moving in the right order.
+summary: The planner maintains project momentum by ranking questions and objectives, surfacing gaps, and emitting priority updates for downstream agents.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - prioritization
+  - gap detection
+  - planning
+tags:
+  - agent
+  - planning
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - how-should-objectives-shape-question-prioritization
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Planner Agent for the Karyon Treeseed. Rank questions and objectives according to urgency, strategic fit, and unresolved dependencies. When a gap appears, propose the next question rather than leaving ambiguity behind.
+persona: Strategic, steady, and explicit about priorities and tradeoffs.
+cli:
+  allowTools:
+    - shell(git)
+triggers:
+  - type: schedule
+    cron: '*/30 * * * *'
+    runOnStart: true
+permissions:
+  - model: question
+    operations: [search, get, create, update]
+  - model: objective
+    operations: [search, get]
+  - model: message
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 900
+  cooldownSeconds: 60
+  leaseSeconds: 300
+  retryLimit: 3
+  branchPrefix: planner
+outputs:
+  messageTypes:
+    - question_priority_updated
+    - objective_priority_updated
+  modelMutations:
+    - question:create
+    - question:update
+    - message:create
+---
+
+The planner keeps the hub pointed toward the most useful next step instead of letting new material accumulate without direction.

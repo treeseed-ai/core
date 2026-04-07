@@ -1,0 +1,30 @@
+---
+import { getCollection, render } from 'astro:content';
+import ContentLayout from '../layouts/ContentLayout.astro';
+import BridgeLayout from '../layouts/BridgeLayout.astro';
+
+export async function getStaticPaths() {
+	const entries = await getCollection('pages');
+
+	return entries.map((entry) => ({
+		params: { slug: entry.data.slug },
+		props: { entry },
+	}));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const currentPath = Astro.url.pathname;
+---
+
+{
+	entry.data.pageLayout === 'bridge' ? (
+		<BridgeLayout entry={entry.data} currentPath={currentPath}>
+			<Content />
+		</BridgeLayout>
+	) : (
+		<ContentLayout entry={entry.data} currentPath={currentPath}>
+			<Content />
+		</ContentLayout>
+	)
+}

@@ -1,0 +1,28 @@
+---
+import { getCollection } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import BookList from '../../components/site/BookList.astro';
+
+const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<MainLayout title="Books" description="Queryable book metadata for the Karyon Treeseed." currentPath="/books/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Books"
+			title="Books as first-class treeseed records"
+			description="Books hold the longer-form accumulated knowledge of the platform. This index exposes them as queryable metadata entries instead of burying them inside navigation code."
+		/>
+		<BookList
+			items={books.map((book) => ({
+				href: `/books/${book.id}/`,
+				title: book.data.title,
+				summary: book.data.summary,
+				meta: book.data.sectionLabel,
+				landingPath: book.data.landingPath,
+				downloadHref: book.data.downloadHref,
+			}))}
+		/>
+	</div>
+</MainLayout>

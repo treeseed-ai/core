@@ -1,0 +1,30 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ChronicleList from '../../components/site/ChronicleList.astro';
+import { getPublishedObjectives, resolveContributorsForEntries } from '../../utils/hub-content';
+
+const objectives = await getPublishedObjectives();
+const contributors = await resolveContributorsForEntries(objectives);
+---
+
+<MainLayout title="Objectives" description="Strategic objectives guiding the Karyon Treeseed." currentPath="/objectives/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Objectives"
+			title="Public objectives for the evolving platform"
+			description="Objectives turn broad research ambition into legible lines of effort. They show what the platform is actively trying to build, validate, or make more coherent."
+		/>
+		<ChronicleList
+			items={objectives.map((objective) => ({
+				href: `/objectives/${objective.id}/`,
+				title: objective.data.title,
+				summary: objective.data.summary,
+				status: objective.data.status,
+				date: objective.data.date,
+				meta: contributors.get(objective.id)?.data.name,
+				tags: objective.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

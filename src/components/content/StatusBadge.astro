@@ -1,0 +1,11 @@
+---
+import type { ContentStatus } from '../../utils/content-status';
+import { CONTENT_STATUS_META } from '../../utils/content-status';
+
+const { status } = Astro.props as { status: ContentStatus };
+const meta = CONTENT_STATUS_META[status];
+---
+
+<span class:list={['inline-flex items-center rounded-sm border px-3 py-1 text-[0.72rem] font-bold uppercase tracking-[0.18em]', meta.tone]}>
+	{meta.label}
+</span>

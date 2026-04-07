@@ -1,0 +1,89 @@
+---
+title: Project Status
+description: Honest implementation status for Karyon as it exists today, including what is real, partial, and still ahead of the code.
+slug: status
+pageLayout: article
+status: live
+stage: founding
+audience:
+  - contributors
+  - evaluators
+summary: Karyon has meaningful runtime substance and a strong architecture thesis, but the organism is incomplete and parts of the story still outrun the code.
+updated: 2026-04-02
+---
+
+import ContentStatusLegend from '@treeseed/core/components/content/ContentStatusLegend.astro';
+
+This page exists to keep the public story grounded. Karyon already has real architecture work, real code, and real subsystem boundaries worth studying. It is also still an incomplete platform whose theory and book-level framing sometimes run ahead of current implementation reality. Both things need to stay visible at once if the project is going to earn trust.
+
+## Stage summary
+
+The shortest honest summary is this: Karyon looks like an excellent architecture prototype and a meaningful research-grade platform skeleton, but not yet a complete platform. The strongest parts of the project today are the conceptual architecture, the documentation corpus, the runtime scaffolding in the umbrella app, and the unusually explicit effort to enforce architectural intent through tests and contracts.
+
+The weakest parts are the gaps between the full organism described in the book and what is currently realized in the `app/` umbrella, especially around sensory breadth, operator-facing surfaces, and the mismatch between some public architectural language and the concrete app layout.
+
+## What is real now
+
+There is enough implementation here that Karyon should not be read as vaporware or pure theory. The codebase contains:
+
+- a real umbrella application structure with meaningful OTP supervision boundaries
+- substantial core runtime logic around cell lifecycle, differentiation, execution, and metabolism
+- a real memory boundary in Rhizome, including active and archival persistence patterns
+- a credible transport substrate in the nervous system app
+- a substantial architecture corpus and contributor-facing source material
+- conformance-oriented thinking that is much stronger than what most speculative architecture projects ever reach
+
+The project is strongest where architecture intent meets runtime mechanics most directly, especially in the `core` and `rhizome` areas of the umbrella.
+
+## What is partially implemented
+
+The project remains uneven. Some subsystems have real shape but are not yet as complete as the public framing might suggest.
+
+- `core` is the strongest subsystem and carries much of the organism’s actual runtime identity, but key actors are overloaded and not as sterile or decomposed as the architectural ideal suggests.
+- `rhizome` is substantive and valuable, but too much logic is centralized in `Rhizome.Memory`, which acts as façade, validator, projector, and persistence hub all at once.
+- `nervous_system` is credible infrastructure, but parts of its higher-level cognition story are still lighter than the surrounding architecture language implies.
+- `sensory` currently reads more like an ingestion prototype than the fuller Eyes, Ears, and Skin picture described in the docs.
+- `operator_environment` is a thin operator shell, not yet a rich control plane.
+
+The result is not a fake platform. It is a real but incomplete organism.
+
+## What the book currently describes ahead of the code
+
+The architecture book is one of the strongest assets in the repository, but it should not be mistaken for a line-by-line description of a validated production runtime. Some of the book and plan describe a more complete organism than the current umbrella layout exposes.
+
+One concrete example is the public emphasis on `sandbox` and `dashboard` concepts while the current umbrella app declares five apps and does not include those as peer applications in the same way the narrative might lead a reader to expect. That does not make the architecture direction invalid, but it does mean readers should distinguish carefully between intended structure and currently realized structure.
+
+This is the central trust challenge for the project: the grand architecture story is compelling, and parts of it are real, but not every named subsystem exists today in the shape the story implies.
+
+## How to evaluate current maturity
+
+The most useful evaluation lens is not “Is Karyon finished?” It plainly is not. The better questions are:
+
+- Is there a real architectural thesis here, or just stylized language?
+- Does the codebase contain meaningful substrate in support of that thesis?
+- Are the strongest and weakest subsystems named honestly?
+- Does the project make it possible to verify claims against the repository rather than asking readers to trust branding?
+
+On those questions, the answer is encouraging. The repo contains real substance and real self-critique. My working summary from the source analysis is still the fairest one: excellent architecture prototype, decent codebase, incomplete platform.
+
+## Where the biggest gaps are
+
+The biggest current gaps are not primarily cosmetic.
+
+- subsystem boundaries are not always as pure as the architecture claims
+- some central modules are overloaded and need decomposition
+- sensory breadth is much narrower than the public story
+- certain docs/runtime mismatches need to be named more clearly
+- more integrations still need hardening and validation before they should be spoken about as stable behavior
+
+That means the site should continue to distinguish between architecture intent, scaffolded runtime reality, and validated operating behavior.
+
+## How contributors can verify reality
+
+The repository should remain the source of truth when questions arise. Read the [architecture](/architecture/) page and book for the intended organism, then compare that against the code in `app/`, the developer references, and the current contracts and tests. When the framing and the runtime diverge, the code wins.
+
+The most useful feedback on this page is factual. If this summary overstates a subsystem, misses a meaningful implementation path, or understates recent hardening work, that is exactly the kind of correction that improves the public site. If you want the motivating thesis behind the project, go next to [vision](/vision/). If you want the open questions organizing the work, continue to [research direction](/research-direction/).
+
+<div class="mt-10">
+	<ContentStatusLegend />
+</div>

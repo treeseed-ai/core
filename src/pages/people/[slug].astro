@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from 'astro:content';
+import ProfileLayout from '../../layouts/ProfileLayout.astro';
+import { resolveReferences } from '../../utils/hub-content';
+
+export async function getStaticPaths() {
+	const people = await getCollection('people');
+	return people.map((person) => ({
+		params: { slug: person.id },
+		props: { person },
+	}));
+}
+
+const { person } = Astro.props;
+const { Content } = await render(person);
+const relatedQuestions = await resolveReferences(person.data.relatedQuestions);
+const relatedObjectives = await resolveReferences(person.data.relatedObjectives);
+---
+
+<ProfileLayout
+	entry={person.data}
+	currentPath="/people/"
+	metaLabel="Role"
+	metaValue={`${person.data.role} · ${person.data.affiliation}`}
+	relatedQuestions={relatedQuestions}
+	relatedObjectives={relatedObjectives}
+>
+	<Content />
+</ProfileLayout>

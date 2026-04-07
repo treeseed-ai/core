@@ -1,0 +1,24 @@
+---
+const { title, body, primaryHref, primaryLabel, secondaryHref, secondaryLabel } = Astro.props;
+---
+
+<section class="site-footer-cta px-0 py-0 text-[color:var(--site-text)]">
+	<div class="site-footer-cta__inner">
+		<div class="mx-auto flex max-w-4xl flex-col items-center gap-6">
+			<div class="max-w-3xl">
+				<h2 class="font-serif text-3xl font-bold md:text-4xl">{title}</h2>
+				<p class="mt-4 text-lg leading-9 text-[color:var(--site-text-muted)]">{body}</p>
+			</div>
+			<div class="flex flex-wrap justify-center gap-3">
+				<a href={primaryHref} class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">{
+					primaryLabel
+				}</a>
+				{secondaryHref && secondaryLabel && (
+					<a href={secondaryHref} class="border border-[color:var(--site-border-strong)] bg-[color:rgba(248,243,233,0.72)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+						{secondaryLabel}
+					</a>
+				)}
+			</div>
+		</div>
+	</div>
+</section>

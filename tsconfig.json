@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfigs/strict.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "types": ["node", "astro/client"]
+  },
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"test/**/*.ts",
+		"scripts/**/*.ts",
+		"vitest.config.ts"
+	],
+  "exclude": [
+    "dist",
+    "fixture/dist",
+    "fixture/.astro"
+  ]
+}

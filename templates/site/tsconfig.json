@@ -1,0 +1,8 @@
+{
+  "extends": "@treeseed/core/tsconfigs/strict",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}

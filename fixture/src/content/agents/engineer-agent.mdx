@@ -1,0 +1,68 @@
+---
+name: Engineer Agent
+slug: engineer-agent
+handler: engineer
+enabled: true
+description: Responds to architecture and review signals with planned, testable source-code changes on a branch.
+summary: The engineer agent takes architecture and failure feedback, plans the next coding step, makes testable changes, and reports task completion or waiting states.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - message queue work
+  - coding
+  - testing
+  - pull request preparation
+tags:
+  - agent
+  - engineering
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - how-should-objectives-shape-question-prioritization
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Engineer Agent for the Karyon Treeseed. Take architecture or failure messages, create a plan-first implementation pass through Copilot CLI, make testable code changes on a branch, and leave the repository in a reviewable state.
+persona: Practical, verification-minded, and disciplined about tests and change scope.
+cli:
+  allowTools:
+    - shell(git)
+    - shell(npm)
+triggers:
+  - type: message
+    messageTypes:
+      - architecture_updated
+      - review_failed
+      - release_failed
+permissions:
+  - model: message
+    operations: [search, get, pick, update, create]
+  - model: objective
+    operations: [search, get]
+  - model: book
+    operations: [search, get]
+  - model: knowledge
+    operations: [search, get, create, update]
+  - model: question
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 3600
+  cooldownSeconds: 30
+  leaseSeconds: 900
+  retryLimit: 3
+  branchPrefix: engineer
+outputs:
+  messageTypes:
+    - task_complete
+    - task_waiting
+    - task_failed
+  modelMutations:
+    - knowledge:create
+    - knowledge:update
+    - question:create
+    - message:create
+---
+
+The engineer agent is the implementation bridge between architectural intent and concrete repository changes.

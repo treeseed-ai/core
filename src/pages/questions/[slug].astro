@@ -1,0 +1,31 @@
+---
+import { getCollection, render } from 'astro:content';
+import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
+import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+
+export async function getStaticPaths() {
+	const questions = await getCollection('questions', ({ data }) => !data.draft);
+	return questions.map((question) => ({
+		params: { slug: question.id },
+		props: { question },
+	}));
+}
+
+const { question } = Astro.props;
+const { Content } = await render(question);
+const contributor = await resolveContributor(question.data.primaryContributor);
+const relatedObjectives = await resolveReferences(question.data.relatedObjectives);
+const relatedBooks = await resolveReferences(question.data.relatedBooks);
+---
+
+<AuthoredEntryLayout
+	entry={question.data}
+	currentPath="/questions/"
+	contributor={contributor}
+	metaLabel="Question type"
+	metaValue={question.data.questionType}
+	relatedObjectives={relatedObjectives}
+	relatedBooks={relatedBooks}
+>
+	<Content />
+</AuthoredEntryLayout>

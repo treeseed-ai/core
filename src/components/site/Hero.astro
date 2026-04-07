@@ -1,0 +1,18 @@
+<section class="relative overflow-hidden border-y border-[color:var(--site-border-strong)] py-12 md:py-18">
+	<div class="absolute inset-y-0 left-[68%] hidden w-px bg-[linear-gradient(180deg,transparent,var(--site-border-strong),transparent)] lg:block"></div>
+	<div class="grid gap-10 lg:grid-cols-[1.45fr_0.7fr] lg:items-start">
+		<div class="space-y-7 pr-0 lg:pr-10">
+			<slot name="eyebrow" />
+			<div class="space-y-4">
+				<slot name="title" />
+				<slot name="body" />
+			</div>
+			<div class="flex flex-wrap gap-4 pt-2">
+				<slot name="actions" />
+			</div>
+		</div>
+		<div class="border-l border-[color:var(--site-border)] pl-0 lg:pl-8">
+			<slot name="aside" />
+		</div>
+	</div>
+</section>

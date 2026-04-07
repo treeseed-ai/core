@@ -1,0 +1,30 @@
+---
+import StatusBadge from '../content/StatusBadge.astro';
+
+type ProfileItem = {
+	href: string;
+	name: string;
+	summary: string;
+	meta: string;
+	status?: 'live' | 'in progress' | 'exploratory' | 'planned' | 'speculative';
+	tags?: string[];
+};
+
+const { items } = Astro.props as { items: ProfileItem[] };
+---
+
+<div class="grid gap-6 md:grid-cols-2">
+	{items.map((item) => (
+		<a href={item.href} class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6 transition hover:border-[color:var(--site-border-strong)]">
+			<div class="flex flex-wrap items-center gap-3">
+				{item.status && <StatusBadge status={item.status} />}
+				<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">{item.meta}</p>
+			</div>
+			<h3 class="mt-4 text-2xl font-bold text-[color:var(--site-text)]">{item.name}</h3>
+			<p class="mt-3 text-base leading-8 text-[color:var(--site-text-muted)]">{item.summary}</p>
+			{item.tags && item.tags.length > 0 && (
+				<p class="mt-4 text-sm uppercase tracking-[0.14em] text-[color:var(--site-accent-strong)]">{item.tags.join(' / ')}</p>
+			)}
+		</a>
+	))}
+</div>

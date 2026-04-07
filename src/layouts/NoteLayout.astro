@@ -1,0 +1,26 @@
+---
+import MainLayout from './MainLayout.astro';
+import StatusBadge from '../components/content/StatusBadge.astro';
+
+const { note } = Astro.props;
+---
+
+<MainLayout title={note.title} description={note.description} currentPath="/notes/">
+	<article class="max-w-4xl space-y-8">
+		<div class="space-y-4 border-b border-[color:var(--site-border)] pb-8">
+			<div class="flex flex-wrap items-center gap-3">
+				<StatusBadge status={note.status} />
+				<p class="text-sm font-medium text-[color:var(--site-text-soft)]">{note.date.toISOString().slice(0, 10)}</p>
+				<p class="text-sm text-[color:var(--site-text-soft)]">{note.author}</p>
+			</div>
+			<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">{note.title}</h1>
+			<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{note.summary}</p>
+			{note.tags.length > 0 && (
+				<p class="text-sm uppercase tracking-[0.14em] text-[color:var(--site-accent-strong)]">{note.tags.join(' / ')}</p>
+			)}
+		</div>
+		<div class="prose-karyon">
+			<slot />
+		</div>
+	</article>
+</MainLayout>

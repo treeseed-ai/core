@@ -1,0 +1,87 @@
+---
+import MainLayout from './MainLayout.astro';
+import StatusBadge from '../components/content/StatusBadge.astro';
+import type { CollectionEntry } from 'astro:content';
+
+const {
+	entry,
+	currentPath,
+	contributor,
+	metaLabel,
+	metaValue,
+	relatedQuestions = [],
+	relatedObjectives = [],
+	relatedBooks = [],
+} = Astro.props as {
+	entry: {
+		title: string;
+		description: string;
+		summary: string;
+		status: 'live' | 'in progress' | 'exploratory' | 'planned' | 'speculative';
+		date: Date;
+		motivation: string;
+		tags: string[];
+	};
+	currentPath: string;
+	contributor: CollectionEntry<'people'> | CollectionEntry<'agents'> | undefined | null;
+	metaLabel?: string;
+	metaValue?: string;
+	relatedQuestions?: CollectionEntry<'questions'>[];
+	relatedObjectives?: CollectionEntry<'objectives'>[];
+	relatedBooks?: CollectionEntry<'books'>[];
+};
+---
+
+<MainLayout title={entry.title} description={entry.description} currentPath={currentPath}>
+	<article class="max-w-4xl space-y-8">
+		<div class="space-y-4 border-b border-[color:var(--site-border)] pb-8">
+			<div class="flex flex-wrap items-center gap-3">
+				<StatusBadge status={entry.status} />
+				<p class="text-sm font-medium text-[color:var(--site-text-soft)]">{entry.date.toISOString().slice(0, 10)}</p>
+				{contributor && <p class="text-sm text-[color:var(--site-text-soft)]">{contributor.data.name}</p>}
+				{metaLabel && metaValue && <p class="text-sm text-[color:var(--site-text-soft)]">{metaLabel}: {metaValue}</p>}
+			</div>
+			<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">{entry.title}</h1>
+			<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{entry.summary}</p>
+			<p class="max-w-3xl text-base leading-8 text-[color:var(--site-text-muted)]">{entry.motivation}</p>
+			{entry.tags.length > 0 && (
+				<p class="text-sm uppercase tracking-[0.14em] text-[color:var(--site-accent-strong)]">{entry.tags.join(' / ')}</p>
+			)}
+		</div>
+		<div class="prose-karyon">
+			<slot />
+		</div>
+		<div class="grid gap-6 border-t border-[color:var(--site-border)] pt-8 md:grid-cols-3">
+			{relatedQuestions.length > 0 && (
+				<div>
+					<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Related questions</p>
+					<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+						{relatedQuestions.map((question) => (
+							<li><a href={`/questions/${question.id}/`} class="hover:text-[color:var(--site-text)]">{question.data.title}</a></li>
+						))}
+					</ul>
+				</div>
+			)}
+			{relatedObjectives.length > 0 && (
+				<div>
+					<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Related objectives</p>
+					<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+						{relatedObjectives.map((objective) => (
+							<li><a href={`/objectives/${objective.id}/`} class="hover:text-[color:var(--site-text)]">{objective.data.title}</a></li>
+						))}
+					</ul>
+				</div>
+			)}
+			{relatedBooks.length > 0 && (
+				<div>
+					<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Related books</p>
+					<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+						{relatedBooks.map((book) => (
+							<li><a href={`/books/${book.id}/`} class="hover:text-[color:var(--site-text)]">{book.data.title}</a></li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
+	</article>
+</MainLayout>

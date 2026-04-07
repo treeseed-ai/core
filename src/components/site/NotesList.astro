@@ -1,0 +1,18 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import ChronicleList from './ChronicleList.astro';
+
+const { notes } = Astro.props as { notes: CollectionEntry<'notes'>[] };
+---
+
+<ChronicleList
+	items={notes.map((note) => ({
+		href: `/notes/${note.id}/`,
+		title: note.data.title,
+		summary: note.data.summary,
+		status: note.data.status,
+		date: note.data.date,
+		meta: note.data.author,
+		tags: note.data.tags,
+	}))}
+/>

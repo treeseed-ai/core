@@ -1,0 +1,81 @@
+---
+import MainLayout from './MainLayout.astro';
+import StatusBadge from '../components/content/StatusBadge.astro';
+import type { CollectionEntry } from 'astro:content';
+
+const {
+	entry,
+	currentPath,
+	metaLabel,
+	metaValue,
+	relatedQuestions = [],
+	relatedObjectives = [],
+} = Astro.props as {
+	entry: {
+		name: string;
+		description: string;
+		summary: string;
+		status?: 'live' | 'in progress' | 'exploratory' | 'planned' | 'speculative';
+		tags: string[];
+		links: { label: string; href: string }[];
+	};
+	currentPath: string;
+	metaLabel: string;
+	metaValue: string;
+	relatedQuestions?: CollectionEntry<'questions'>[];
+	relatedObjectives?: CollectionEntry<'objectives'>[];
+};
+---
+
+<MainLayout title={entry.name} description={entry.description} currentPath={currentPath}>
+	<article class="max-w-4xl space-y-8">
+		<div class="space-y-4 border-b border-[color:var(--site-border)] pb-8">
+			<div class="flex flex-wrap items-center gap-3">
+				{'status' in entry && entry.status && <StatusBadge status={entry.status} />}
+				<p class="text-sm font-medium text-[color:var(--site-text-soft)]">{metaLabel}: {metaValue}</p>
+			</div>
+			<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">{entry.name}</h1>
+			<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{entry.summary}</p>
+			{entry.tags.length > 0 && (
+				<p class="text-sm uppercase tracking-[0.14em] text-[color:var(--site-accent-strong)]">{entry.tags.join(' / ')}</p>
+			)}
+		</div>
+		<div class="grid gap-6 md:grid-cols-[1.3fr_0.7fr]">
+			<div class="prose-karyon">
+				<slot />
+			</div>
+			<div class="space-y-6">
+				{entry.links.length > 0 && (
+					<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-5">
+						<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Links</p>
+						<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+							{entry.links.map((link) => (
+								<li><a href={link.href} class="hover:text-[color:var(--site-text)]">{link.label}</a></li>
+							))}
+						</ul>
+					</div>
+				)}
+				{relatedQuestions.length > 0 && (
+					<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-5">
+						<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Questions</p>
+						<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+							{relatedQuestions.map((question) => (
+								<li><a href={`/questions/${question.id}/`} class="hover:text-[color:var(--site-text)]">{question.data.title}</a></li>
+							))}
+						</ul>
+					</div>
+				)}
+				{relatedObjectives.length > 0 && (
+					<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-5">
+						<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Objectives</p>
+						<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
+							{relatedObjectives.map((objective) => (
+								<li><a href={`/objectives/${objective.id}/`} class="hover:text-[color:var(--site-text)]">{objective.data.title}</a></li>
+							))}
+						</ul>
+					</div>
+				)}
+			</div>
+		</div>
+	</article>
+</MainLayout>

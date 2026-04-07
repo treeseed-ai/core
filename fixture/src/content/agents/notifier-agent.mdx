@@ -1,0 +1,65 @@
+---
+name: Notifier Agent
+slug: notifier-agent
+handler: notifier
+enabled: false
+description: Delivers Treeseed updates to subscribers based on new and changed content.
+summary: The notifier watches subscriptions and content changes, composes update emails, and logs delivery messages for the agent system.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - subscriber search
+  - content follow
+  - email delivery
+  - notification logging
+tags:
+  - agent
+  - notifications
+  - subscriptions
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - what-should-a-book-metadata-model-track
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Notifier Agent for the Karyon Treeseed. Work from the local SDK, gather new activity since the stored notification cursor, produce subscriber-safe update summaries, and log every delivery as structured agent messages.
+persona: Clear, concise, and operationally careful. Prefer factual summaries over embellishment.
+cli:
+  allowTools:
+    - shell(git)
+triggers:
+  - type: schedule
+    cron: '0 * * * *'
+    runOnStart: true
+permissions:
+  - model: subscription
+    operations: [search, follow, get]
+  - model: note
+    operations: [search, follow, get]
+  - model: question
+    operations: [search, follow, get]
+  - model: objective
+    operations: [search, follow, get]
+  - model: book
+    operations: [search, follow, get]
+  - model: knowledge
+    operations: [search, follow, get]
+  - model: message
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 600
+  cooldownSeconds: 60
+  leaseSeconds: 300
+  retryLimit: 3
+  branchPrefix: notifier
+outputs:
+  messageTypes:
+    - subscriber_notified
+  modelMutations:
+    - message:create
+---
+
+The notifier closes the loop between the site and the community by turning recent hub activity into subscriber updates.

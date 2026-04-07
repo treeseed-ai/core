@@ -1,0 +1,89 @@
+.prose-karyon {
+	color: var(--site-text);
+	font-size: 1.08rem;
+}
+
+.prose-karyon h1,
+.prose-karyon h2,
+.prose-karyon h3 {
+	color: var(--site-text);
+	line-height: 1.12;
+	font-weight: 700;
+}
+
+.prose-karyon h1 {
+	font-size: clamp(2.4rem, 5vw, 4.1rem);
+	margin-bottom: 1.2rem;
+	font-family: var(--font-serif);
+}
+
+.prose-karyon h2 {
+	font-size: clamp(1.85rem, 2.8vw, 2.5rem);
+	margin-top: 3.1rem;
+	margin-bottom: 1rem;
+}
+
+.prose-karyon h3 {
+	font-size: 1.32rem;
+	margin-top: 2rem;
+	margin-bottom: 0.7rem;
+}
+
+.prose-karyon p,
+.prose-karyon li {
+	color: var(--site-text-muted);
+	line-height: 1.85;
+}
+
+.prose-karyon p {
+	margin: 1rem 0 1.2rem;
+}
+
+.prose-karyon p + p {
+	margin-top: 1.35rem;
+}
+
+.prose-karyon a {
+	color: var(--site-accent-strong);
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+	font-weight: 600;
+}
+
+.prose-karyon strong {
+	color: var(--site-text);
+}
+
+.prose-karyon ul,
+.prose-karyon ol {
+	padding-left: 1.3rem;
+}
+
+.prose-karyon blockquote {
+	border-left: 4px solid var(--site-accent);
+	padding-left: 1rem;
+	color: var(--site-text-muted);
+}
+
+.prose-karyon code {
+	background: rgba(95, 141, 164, 0.12);
+	border: 1px solid rgba(95, 141, 164, 0.22);
+	border-radius: 0.5rem;
+	padding: 0.1rem 0.35rem;
+}
+
+.prose-karyon hr {
+	border-color: var(--site-border);
+	margin: 2.4rem 0;
+}
+
+.prose-karyon :where(table) {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.prose-karyon :where(th, td) {
+	border-bottom: 1px solid var(--site-border);
+	padding: 0.85rem 0.75rem;
+	text-align: left;
+}

@@ -1,0 +1,18 @@
+---
+import { CONTENT_STATUSES, CONTENT_STATUS_META } from '../../utils/content-status';
+---
+
+<section class="border-t border-[color:var(--site-border-strong)] pt-8">
+	<p class="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--site-accent-strong)]">Content status legend</p>
+	<div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+		{CONTENT_STATUSES.map((status) => {
+			const meta = CONTENT_STATUS_META[status];
+			return (
+				<div class:list={['border-l-4 bg-[color:var(--site-bg-soft)] px-4 py-4', meta.tone]}>
+					<p class="font-semibold">{meta.label}</p>
+					<p class="mt-2 text-sm leading-7 text-[color:var(--site-text-muted)]">{meta.description}</p>
+				</div>
+			);
+		})}
+	</div>
+</section>

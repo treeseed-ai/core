@@ -1,0 +1,19 @@
+id: karyon-docs
+siteConfigPath: ./src/config.yaml
+content:
+  pages: ./src/content/pages
+  notes: ./src/content/notes
+  questions: ./src/content/questions
+  objectives: ./src/content/objectives
+  people: ./src/content/people
+  agents: ./src/content/agents
+  books: ./src/content/books
+  docs: ./src/content/knowledge
+features:
+  docs: true
+  books: true
+  notes: true
+  questions: true
+  objectives: true
+  agents: true
+  forms: true

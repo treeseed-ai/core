@@ -1,0 +1,35 @@
+---
+title: Karyon Knowledge
+description: Karyon’s technical documentation, organized as separate books with shared search.
+prev: false
+next: false
+tableOfContents: false
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+This page is the library entrance to Karyon’s technical corpus. Instead of one continuous documentation tree, the knowledge base is organized as separate books that share one search index while keeping each reading experience scoped to its own table of contents.
+
+If you are trying to understand what is implemented today rather than what the organism is ultimately meant to become, pair this section with the [Project Status](/status/) page.
+
+## Available books
+
+Use this page the way you would use the notes index: scan the available books, choose the one that matches your question, and then move into that book’s own reading flow.
+
+<CardGrid stagger>
+  <Card title="Research" icon="open-book">
+    The searchable report library that grounds the architecture thesis. [Open research](/knowledge/research/)
+  </Card>
+
+  <Card title="Architecture" icon="open-book">
+    The main architecture book and deepest statement of the intended organism. [Open architecture](/knowledge/architecture/)
+  </Card>
+
+  <Card title="Developer" icon="seti:txt">
+    Contributor-facing references, implementation context, and source-guided notes. [Open developer](/knowledge/developer/)
+  </Card>
+
+  <Card title="Operations" icon="seti:yaml">
+    Operational framing, readiness notes, and practical constraints from the repository. [Open operations](/knowledge/operations/)
+  </Card>
+</CardGrid>

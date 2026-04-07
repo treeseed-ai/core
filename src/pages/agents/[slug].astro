@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from 'astro:content';
+import ProfileLayout from '../../layouts/ProfileLayout.astro';
+import { resolveReferences } from '../../utils/hub-content';
+
+export async function getStaticPaths() {
+	const agents = await getCollection('agents');
+	return agents.map((agent) => ({
+		params: { slug: agent.id },
+		props: { agent },
+	}));
+}
+
+const { agent } = Astro.props;
+const { Content } = await render(agent);
+const relatedQuestions = await resolveReferences(agent.data.relatedQuestions);
+const relatedObjectives = await resolveReferences(agent.data.relatedObjectives);
+---
+
+<ProfileLayout
+	entry={agent.data}
+	currentPath="/agents/"
+	metaLabel="Operator"
+	metaValue={`${agent.data.operator} · ${agent.data.runtimeStatus}`}
+	relatedQuestions={relatedQuestions}
+	relatedObjectives={relatedObjectives}
+>
+	<Content />
+</ProfileLayout>

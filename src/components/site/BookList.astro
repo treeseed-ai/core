@@ -1,0 +1,27 @@
+---
+type BookItem = {
+	href: string;
+	title: string;
+	summary: string;
+	meta: string;
+	landingPath: string;
+	downloadHref: string;
+};
+
+const { items } = Astro.props as { items: BookItem[] };
+---
+
+<div class="grid gap-6 md:grid-cols-2">
+	{items.map((item) => (
+		<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+			<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">{item.meta}</p>
+			<h3 class="mt-4 text-2xl font-bold text-[color:var(--site-text)]">{item.title}</h3>
+			<p class="mt-3 text-base leading-8 text-[color:var(--site-text-muted)]">{item.summary}</p>
+			<div class="mt-5 flex flex-wrap gap-3">
+				<a href={item.href} class="border border-[color:var(--site-border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">Book page</a>
+				<a href={item.landingPath} class="border border-[color:var(--site-border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">Open knowledge</a>
+				<a href={item.downloadHref} class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">Download</a>
+			</div>
+		</div>
+	))}
+</div>

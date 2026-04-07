@@ -1,0 +1,24 @@
+:root {
+	--site-bg: #f4ede0;
+	--site-bg-elevated: #ede4d2;
+	--site-bg-soft: #f8f3e9;
+	--site-panel: rgba(244, 237, 224, 0.86);
+	--site-panel-strong: #e7dcc8;
+	--site-border: rgba(88, 77, 61, 0.16);
+	--site-border-strong: rgba(104, 132, 98, 0.34);
+	--site-grid: rgba(132, 154, 132, 0.14);
+	--site-text: #2e261c;
+	--site-text-muted: #4d4638;
+	--site-text-soft: #6b665b;
+	--site-accent: #c7dbc4;
+	--site-accent-strong: #5f7c5f;
+	--site-accent-soft: #e9f0e5;
+	--site-blue: #86aac0;
+	--site-blue-strong: #456679;
+	--site-blue-soft: #e4eef3;
+	--site-warm: #d7b07b;
+	--site-warm-strong: #7c5a2d;
+	--site-shadow: 0 24px 56px rgba(75, 60, 32, 0.08);
+	--site-radius: 0.65rem;
+	--site-max: 76rem;
+}

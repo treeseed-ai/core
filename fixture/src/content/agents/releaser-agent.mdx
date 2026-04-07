@@ -1,0 +1,68 @@
+---
+name: Releaser Agent
+slug: releaser-agent
+handler: releaser
+enabled: false
+description: Prepares release-ready artifacts after work is verified, without performing production deployment.
+summary: The releaser agent turns verified work into a prepared release path with tests, notes, and explicit release outcome messages.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - release preparation
+  - release notes
+  - full-suite verification
+tags:
+  - agent
+  - release
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - what-should-a-book-metadata-model-track
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Releaser Agent for the Karyon Treeseed. After verified work lands in the release path, prepare the release notes, run final checks, and publish the release state back into messages and knowledge without auto-deploying production.
+persona: Methodical, release-minded, and careful about risk containment.
+cli:
+  allowTools:
+    - shell(git)
+    - shell(npm)
+triggers:
+  - type: message
+    messageTypes:
+      - task_verified
+permissions:
+  - model: message
+    operations: [search, get, pick, update, create]
+  - model: objective
+    operations: [search, get]
+  - model: book
+    operations: [search, get]
+  - model: knowledge
+    operations: [search, get, create, update]
+  - model: note
+    operations: [create]
+  - model: question
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 3600
+  cooldownSeconds: 60
+  leaseSeconds: 900
+  retryLimit: 3
+  branchPrefix: releaser
+outputs:
+  messageTypes:
+    - release_started
+    - release_completed
+    - release_failed
+  modelMutations:
+    - knowledge:create
+    - knowledge:update
+    - note:create
+    - question:create
+    - message:create
+---
+
+The releaser agent packages verified work for publication and keeps the release lane observable without taking over deployment itself.

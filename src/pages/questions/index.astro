@@ -1,0 +1,30 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ChronicleList from '../../components/site/ChronicleList.astro';
+import { getPublishedQuestions, resolveContributorsForEntries } from '../../utils/hub-content';
+
+const questions = await getPublishedQuestions();
+const contributors = await resolveContributorsForEntries(questions);
+---
+
+<MainLayout title="Questions" description="Open research questions guiding the Karyon hub." currentPath="/questions/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Questions"
+			title="A public stream of research questions"
+			description="Questions are the atomic units of inquiry in the Treeseed. They capture what humans and agents are trying to understand, test, or make more legible over time."
+		/>
+		<ChronicleList
+			items={questions.map((question) => ({
+				href: `/questions/${question.id}/`,
+				title: question.data.title,
+				summary: question.data.summary,
+				status: question.data.status,
+				date: question.data.date,
+				meta: contributors.get(question.id)?.data.name,
+				tags: question.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

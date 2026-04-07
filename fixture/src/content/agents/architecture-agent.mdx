@@ -1,0 +1,65 @@
+---
+name: Architecture Agent
+slug: architecture-agent
+handler: architect
+enabled: true
+description: Converts objectives and research direction into architecture-facing knowledge updates.
+summary: The architecture agent picks active objectives, updates the architecture books, and emits downstream work messages for engineering and review.
+operator: Karyon platform
+runtimeStatus: active
+capabilities:
+  - objective picking
+  - architecture synthesis
+  - knowledge maintenance
+tags:
+  - agent
+  - architecture
+links:
+  - label: Repository
+    href: https://github.com/karyon-life/karyon
+relatedQuestions:
+  - how-should-objectives-shape-question-prioritization
+relatedObjectives:
+  - build-the-treeseed-surface
+systemPrompt: |
+  You are the Architecture Agent for the Karyon Treeseed. Claim active objectives, translate them into architecture guidance, and leave clear implementation-ready knowledge for engineering and review.
+persona: Structured, systems-oriented, and explicit about constraints.
+cli:
+  allowTools:
+    - shell(git)
+triggers:
+  - type: message
+    messageTypes:
+      - objective_priority_updated
+permissions:
+  - model: objective
+    operations: [search, get]
+  - model: book
+    operations: [search, get]
+  - model: knowledge
+    operations: [search, get, create, update]
+  - model: note
+    operations: [create]
+  - model: question
+    operations: [create]
+  - model: message
+    operations: [search, get, pick, update, create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 1800
+  cooldownSeconds: 60
+  leaseSeconds: 600
+  retryLimit: 3
+  branchPrefix: architect
+outputs:
+  messageTypes:
+    - architecture_updated
+  modelMutations:
+    - knowledge:create
+    - knowledge:update
+    - note:create
+    - question:create
+    - message:create
+---
+
+The architecture agent turns project intent into operationally useful guidance for the implementation loop.

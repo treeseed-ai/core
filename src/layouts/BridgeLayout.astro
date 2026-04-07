@@ -1,0 +1,11 @@
+---
+import MainLayout from './MainLayout.astro';
+
+const { entry, currentPath } = Astro.props;
+---
+
+<MainLayout title={entry.title} description={entry.description} currentPath={currentPath}>
+	<div class="space-y-10">
+		<slot />
+	</div>
+</MainLayout>

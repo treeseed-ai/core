@@ -1,0 +1,292 @@
+---
+import { getCollection } from 'astro:content';
+import MainLayout from '../layouts/MainLayout.astro';
+import Hero from '../components/site/Hero.astro';
+import StageBanner from '../components/site/StageBanner.astro';
+import SectionIntro from '../components/site/SectionIntro.astro';
+import PathCard from '../components/site/PathCard.astro';
+import CTASection from '../components/site/CTASection.astro';
+import TrustCallout from '../components/site/TrustCallout.astro';
+import NotesList from '../components/site/NotesList.astro';
+import ChronicleList from '../components/site/ChronicleList.astro';
+import ProfileList from '../components/site/ProfileList.astro';
+import BookList from '../components/site/BookList.astro';
+import { getPublishedObjectives, getPublishedQuestions, resolveContributorsForEntries } from '../utils/hub-content';
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft))
+	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	.slice(0, 3);
+const questions = (await getPublishedQuestions()).slice(0, 2);
+const objectives = (await getPublishedObjectives()).slice(0, 2);
+const questionContributors = await resolveContributorsForEntries(questions);
+const objectiveContributors = await resolveContributorsForEntries(objectives);
+const people = (await getCollection('people')).slice(0, 2);
+const agents = (await getCollection('agents')).slice(0, 2);
+const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<MainLayout
+	title="Home"
+	description="Karyon is a founding-stage open research platform exploring biologically inspired intelligence, graph memory, and safe embodied systems."
+	currentPath="/"
+>
+	<div class="space-y-18">
+		<Hero>
+			<div slot="eyebrow">
+				<StageBanner />
+			</div>
+			<div slot="title">
+				<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-7xl">
+					A software laboratory for biologically inspired intelligence, still early enough to be honest.
+				</h1>
+			</div>
+			<div slot="body">
+				<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">
+					Karyon is an open research platform exploring whether intelligence can be modeled
+					more durably through distributed cells, graph memory, prediction error, supervision,
+					and strict execution boundaries than through a single stateless LLM loop. The theory
+					is ambitious. The runtime is partially real. This site is here to make both things
+					clear.
+				</p>
+			</div>
+			<div slot="actions">
+				<a href="/status/" class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">See what exists today</a>
+				<a href="/vision/" class="border border-[color:var(--site-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">Read the vision</a>
+			</div>
+			<div slot="aside" class="space-y-4">
+				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Right now</p>
+				<ul class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+					<li>A substantial architecture corpus and technical thesis.</li>
+					<li>Real umbrella runtime work in Elixir and Rust.</li>
+					<li>Clear evidence that some of the story still outruns the code.</li>
+					<li>A founding-stage invitation for careful collaborators, not spectators.</li>
+				</ul>
+			</div>
+		</Hero>
+
+		<section class="grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+			<div class="space-y-6">
+				<SectionIntro
+					eyebrow="What Karyon Is"
+					title="An open research platform, not a polished AI product"
+					description="Karyon is best understood as software used to investigate a deeper question: whether intelligence becomes more durable, inspectable, and adaptable when it is built as a bounded, memory-bearing organism instead of a centralized prompt surface."
+				/>
+				<div class="space-y-4 text-lg leading-9 text-[color:var(--site-text-muted)]">
+					<p>
+						The project treats AI architecture as a live research problem. It draws on biology,
+						psychology, distributed systems, and learning theory to ask how memory, adaptation,
+						and coordination should work if the goal is not merely better text generation but a
+						more grounded model of intelligence.
+					</p>
+					<p>
+						In that framing, LLMs are useful at the edges as sensors, interpreters, or motor
+						surfaces. They are not assumed to be the whole brain. The deeper architecture lives
+						in the cells, memory topology, prediction loops, supervision rules, and execution
+						membranes around them.
+					</p>
+				</div>
+			</div>
+			<TrustCallout
+				title="The site should stay smaller than the ambition."
+				body="Karyon is still in a founding stage. That means no inflated institutional language, no results theater, and no pretending that a compelling architecture book is the same thing as a fully validated runtime."
+			/>
+		</section>
+
+		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+			<SectionIntro
+				eyebrow="What Makes It Different"
+				title="The project keeps shifting the center of gravity away from the model"
+				description="The distinctive claim is not just that Karyon uses unusual metaphors. It is that cognition, memory, and action should be organized differently at the system level."
+			/>
+			<div class="grid gap-6 md:grid-cols-2">
+				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+					<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Architectural commitments</h2>
+					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--site-text-muted)]">
+						<li>Distributed cells instead of one monolithic reasoning loop.</li>
+						<li>Graph and temporal memory instead of context-window accumulation alone.</li>
+						<li>Prediction error and pruning instead of purely prompt-level steering.</li>
+						<li>Supervision, metabolism, and failure boundaries as first-class concerns.</li>
+					</ul>
+				</div>
+				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+					<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Execution posture</h2>
+					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--site-text-muted)]">
+						<li>Strict execution membranes rather than casual host mutation.</li>
+						<li>Embodiment and sandboxing treated as architecture, not afterthoughts.</li>
+						<li>Docs, contracts, and source inspection used to keep claims accountable.</li>
+						<li>Human learning treated as part of the motivation, not just automation throughput.</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+			<SectionIntro
+				eyebrow="What Exists Today"
+				title="Enough reality to inspect, not enough maturity to overstate"
+				description="The strongest assets right now are the architecture corpus, the seriousness of the systems thesis, and a runtime scaffold with meaningful substance in the core and memory layers."
+			/>
+			<div class="grid gap-6 lg:grid-cols-[1fr_1fr]">
+				<div class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+					<p>
+						Karyon already has a real umbrella app, real subsystem boundaries, real implementation
+						work in Elixir and Rust, and a large amount of source material that makes the intended
+						organism legible. The project should be taken seriously as an architecture prototype.
+					</p>
+					<p>
+						It should not yet be treated as a complete platform. Some parts of the book-level story
+						outrun the current runtime. Sensory breadth, operator-facing surfaces, and some
+						subsystem boundaries are still much earlier than the grander narrative suggests.
+					</p>
+				</div>
+				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+					<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-accent-strong)]">Best current shorthand</p>
+					<p class="mt-4 font-serif text-3xl text-[color:var(--site-text)]">
+						Excellent architecture prototype, incomplete platform.
+					</p>
+					<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+						If you want the evidence behind that judgment, the{' '}
+						<a href="/status/" class="text-[color:var(--site-text)] underline decoration-[color:var(--site-accent)] underline-offset-4">
+							Project Status
+						</a>{' '}
+						page is the right next step.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="grid gap-10 border-t border-[color:var(--site-border)] pt-10 lg:grid-cols-[1.2fr_0.8fr]">
+			<div class="space-y-6">
+				<SectionIntro
+					eyebrow="How To Read The Site"
+					title="Follow the path that matches the question you have"
+					description="Each public page has a single job: explain the thesis, ground it in implementation reality, define the active research direction, or make collaboration legible."
+				/>
+				<div class="border-b border-[color:var(--site-border)]">
+					<PathCard href="/vision/" title="Vision" meta="Why this project exists" description="Read the philosophical and scientific thesis behind modeling intelligence differently." />
+					<PathCard href="/status/" title="Project Status" meta="What is real right now" description="See where the runtime is substantial, where it is partial, and where the story still runs ahead of the code." />
+					<PathCard href="/research-direction/" title="Research Direction" meta="What questions organize the work" description="Follow the active inquiry tracks without mistaking them for finished results." />
+					<PathCard href="/architecture/" title="Architecture" meta="How to enter the technical corpus" description="Use the bridge page to approach the book, developer references, and operations material with the right expectations." />
+					<PathCard href="/contribute/" title="Contribute" meta="How careful help matters now" description="Find the most useful contribution lanes for a founding-stage, theory-rich project." />
+				</div>
+			</div>
+			<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Useful feedback</p>
+				<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+					The most helpful feedback right now is not generic encouragement. It is pressure-testing
+					the mission, correcting implementation framing, and helping identify where the
+					contributor path is clear or still too vague.
+				</p>
+			</div>
+		</section>
+
+		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+			<SectionIntro
+				eyebrow="Notes"
+				title="A public lab notebook instead of a polished announcement stream"
+				description="Notes are the easiest honest publishing format for a project whose architecture, implementation, and community are still taking shape in public."
+			/>
+			<NotesList notes={notes} />
+		</section>
+
+		<section class="space-y-8 border-t border-[color:var(--site-border)] pt-10">
+			<SectionIntro
+				eyebrow="Treeseed"
+				title="Questions, objectives, contributors, and books now form a connected public surface"
+				description="The site is starting to behave more like a living Treeseed: humans and agents can publish questions, anchor them to objectives, and connect that inquiry to books and contributor profiles."
+			/>
+			<div class="grid gap-10 lg:grid-cols-2">
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Questions"
+						title="Open inquiry"
+						description="Questions make the active lines of curiosity explicit instead of leaving them implied in notes or book chapters."
+					/>
+					<ChronicleList
+						items={questions.map((question) => ({
+							href: `/questions/${question.id}/`,
+							title: question.data.title,
+							summary: question.data.summary,
+							status: question.data.status,
+							date: question.data.date,
+							meta: questionContributors.get(question.id)?.data.name,
+							tags: question.data.tags,
+						}))}
+					/>
+				</div>
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Objectives"
+						title="Guided direction"
+						description="Objectives show where the platform is concentrating effort right now and how that effort relates to the broader research program."
+					/>
+					<ChronicleList
+						items={objectives.map((objective) => ({
+							href: `/objectives/${objective.id}/`,
+							title: objective.data.title,
+							summary: objective.data.summary,
+							status: objective.data.status,
+							date: objective.data.date,
+							meta: objectiveContributors.get(objective.id)?.data.name,
+							tags: objective.data.tags,
+						}))}
+					/>
+				</div>
+			</div>
+			<div class="grid gap-10 lg:grid-cols-2">
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Contributors"
+						title="People and agents are first-class participants"
+						description="The hub makes both human and agent contributors visible so authorship, stewardship, and inquiry relationships can stay inspectable over time."
+					/>
+					<ProfileList
+						items={[
+							...people.map((person) => ({
+								href: `/people/${person.id}/`,
+								name: person.data.name,
+								summary: person.data.summary,
+								meta: `${person.data.role} · ${person.data.affiliation}`,
+								status: person.data.status,
+								tags: person.data.tags,
+							})),
+							...agents.map((agent) => ({
+								href: `/agents/${agent.id}/`,
+								name: agent.data.name,
+								summary: agent.data.summary,
+								meta: `${agent.data.operator} · ${agent.data.runtimeStatus}`,
+								tags: agent.data.tags,
+							})),
+						]}
+					/>
+				</div>
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Books"
+						title="Books are now queryable hub entities"
+						description="Long-form books remain grounded in the knowledge library, and their metadata is becoming a real part of the hub’s shared knowledge structure."
+					/>
+					<BookList
+						items={books.map((book) => ({
+							href: `/books/${book.id}/`,
+							title: book.data.title,
+							summary: book.data.summary,
+							meta: book.data.sectionLabel,
+							landingPath: book.data.landingPath,
+							downloadHref: book.data.downloadHref,
+						}))}
+					/>
+				</div>
+			</div>
+		</section>
+
+		<CTASection
+			title="Follow the Treeseed from question to objective to book"
+			body="If you are new here, start with current questions and objectives, then use the books and contributor pages to understand how inquiry is being organized across the platform."
+			primaryHref="/questions/"
+			primaryLabel="Browse questions"
+			secondaryHref="/books/"
+			secondaryLabel="Explore books"
+		/>
+	</div>
+</MainLayout>

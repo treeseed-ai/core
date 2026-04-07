@@ -1,0 +1,29 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout
+	title="Page Not Found"
+	description="The requested Treeseed page could not be found."
+	currentPath="/404/"
+>
+	<section class="mx-auto max-w-3xl space-y-6 py-20">
+		<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-accent-strong)]">404</p>
+		<h1 class="font-serif text-5xl text-[color:var(--site-text)]">Page not found</h1>
+		<p class="text-lg leading-9 text-[color:var(--site-text-muted)]">
+			The page you requested is not available in this Treeseed. Try the homepage, the knowledge
+			library, or the current project status page instead.
+		</p>
+		<div class="flex flex-wrap gap-4">
+			<a href="/" class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+				Go home
+			</a>
+			<a href="/knowledge/" class="border border-[color:var(--site-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+				Open knowledge
+			</a>
+			<a href="/status/" class="border border-[color:var(--site-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+				View status
+			</a>
+		</div>
+	</section>
+</MainLayout>

@@ -1,0 +1,47 @@
+name: Deploy Treeseed Site
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    if: github.ref_name == 'staging' || github.ref_name == 'main'
+__WORKING_DIRECTORY_BLOCK__    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TREESEED_FORM_TOKEN_SECRET: ${{ secrets.TREESEED_FORM_TOKEN_SECRET }}
+      TREESEED_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TREESEED_PUBLIC_TURNSTILE_SITE_KEY }}
+      TREESEED_TURNSTILE_SECRET_KEY: ${{ secrets.TREESEED_TURNSTILE_SECRET_KEY }}
+      TREESEED_SMTP_HOST: ${{ secrets.TREESEED_SMTP_HOST }}
+      TREESEED_SMTP_PORT: ${{ secrets.TREESEED_SMTP_PORT }}
+      TREESEED_SMTP_USERNAME: ${{ secrets.TREESEED_SMTP_USERNAME }}
+      TREESEED_SMTP_PASSWORD: ${{ secrets.TREESEED_SMTP_PASSWORD }}
+      TREESEED_SMTP_FROM: ${{ secrets.TREESEED_SMTP_FROM }}
+      TREESEED_SMTP_REPLY_TO: ${{ secrets.TREESEED_SMTP_REPLY_TO }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: __CACHE_DEPENDENCY_PATH__
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check site
+        run: npm run check
+
+      - name: Deploy site
+        run: npm run deploy -- --environment ${{ github.ref_name == 'main' && 'prod' || 'staging' }}

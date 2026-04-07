@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import NotesList from '../../components/site/NotesList.astro';
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
+	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+---
+
+<MainLayout title="Notes" description="Public lab notebook entries from the founding stage of Karyon." currentPath="/notes/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Notes"
+			title="A public lab notebook for decisions, framing, and implementation reality"
+			description="This section is intentionally closer to a working log than a blog. It is where Karyon can publish field reports, framing updates, and architecture-side observations without pretending that every idea has settled into a polished program."
+		/>
+		<NotesList notes={notes} />
+	</div>
+</MainLayout>

@@ -1,0 +1,90 @@
+---
+title: Contribute
+description: Practical, founding-stage ways to help Karyon become clearer, stronger, and more real.
+slug: contribute
+pageLayout: article
+status: live
+stage: founding
+audience:
+  - developers
+  - technical writers
+  - researchers
+summary: The best contributions right now improve clarity, critique, implementation realism, and carefully scoped subsystem hardening.
+updated: 2026-04-02
+---
+
+import CTASection from '@treeseed/core/components/site/CTASection.astro';
+import { SITE } from '@treeseed/core/utils/seo';
+
+This page exists to turn interest into realistic action. Karyon is still early enough that broad declarations of support are less useful than precise, well-scoped help. The project benefits most from contributions that make its ideas clearer, its implementation more inspectable, and its public framing more honest.
+
+## Best ways to help right now
+
+The strongest contributions at this stage are the ones that reduce ambiguity and improve trust.
+
+- tighten docs where the public story outruns the current runtime
+- review implementation details against the architecture thesis
+- harden specific subsystem boundaries instead of proposing vague rewrites
+- improve contributor orientation and source-guided documentation
+- synthesize outside research that sharpens a concrete architectural question
+- add tests, contracts, or validation around paths that are currently partial
+
+This is a project where a small, well-argued contribution can matter more than a large speculative one.
+
+## Contribution tracks
+
+### Architecture critique
+
+Challenge the thesis on its own terms. Point out where the biological framing clarifies the system and where it risks becoming decorative or misleading. Help identify where the public explanation needs sharper boundaries or stronger falsifiability.
+
+### Implementation review
+
+Read the code against the stated architecture and call out mismatches. This includes overloaded modules, boundary leakage, subsystem naming drift, and places where runtime reality should be described more carefully.
+
+### Documentation and editorial help
+
+The site and docs need contributors who can make difficult ideas legible without flattening them. Editorial improvements, content structure, clearer transitions, and better “what exists versus what is intended” framing are all high-value work.
+
+### Research synthesis
+
+Karyon sits near multiple disciplines. Useful contributions can come from synthesizing psychology, biology, distributed systems, memory research, AI safety, or learning theory in ways that directly sharpen one of the project’s active questions.
+
+### Testing and conformance hardening
+
+One of the best ways to help is to make claims easier to verify. Strengthen tests, validate contracts, and tighten the feedback loops that reveal where architecture intent and actual behavior diverge.
+
+## How to get oriented first
+
+Start by reading the [project status](/status/) page and the [architecture](/architecture/) bridge so you have both the reality check and the conceptual map. After that, browse the [docs](/knowledge/), the repository, and any current issues or discussion threads that point to active work.
+
+If you are trying to decide where to enter, prefer one concrete question over a general desire to help. Karyon is easier to contribute to when the problem is narrow enough to inspect.
+
+## What not to do yet
+
+Avoid assuming the project needs more breadth before it needs more coherence.
+
+- do not add mature-sounding public structures that imply organizational scale
+- do not treat every architectural concept in the book as already implemented
+- do not broaden the public story faster than the runtime can support
+- do not default to replacing the thesis with a more conventional agent stack just because that path is more familiar
+
+The most useful work keeps the project intellectually honest while helping it become more concrete.
+
+## What a good first contribution looks like
+
+A good first contribution is small, source-linked, and easy to evaluate. It might tighten one page of public writing, clarify one subsystem boundary, improve one test path, or document one concrete mismatch between architectural intent and current code. The goal is not to perform mastery. The goal is to leave the project clearer and more trustworthy than you found it.
+
+## What feedback is most useful here
+
+The best feedback on this page is practical. Are the contribution lanes clear enough? Do they make the project feel accessible without pretending it is simpler than it is? If you are still deciding whether the project’s direction fits you, read the [community](/community/) page next. If you want the deepest technical material before contributing, go to the [knowledge base](/knowledge/).
+
+<div class="mt-10">
+	<CTASection
+		title="Start with small, legible improvements"
+		body="If you are new to the project, the best first contributions usually improve clarity, reduce drift between code and docs, or harden a concrete runtime boundary."
+		primaryHref={SITE.githubRepository}
+		primaryLabel="View the repo"
+		secondaryHref="/knowledge/"
+		secondaryLabel="Browse the knowledge base"
+	/>
+</div>

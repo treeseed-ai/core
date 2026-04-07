@@ -1,0 +1,153 @@
+{
+  "name": "@treeseed/core",
+  "version": "0.0.1",
+  "description": "Treeseed platform runtime package for Astro, Starlight, forms, books, plugins, and shared platform behavior.",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/treeseed-ai/core.git",
+    "directory": "."
+  },
+  "homepage": "https://treeseed.ai",
+  "bugs": {
+    "url": "https://github.com/treeseed-ai/core/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "README.md",
+    "dist",
+    "tsconfigs",
+    "templates",
+    "style",
+    "utils"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+	"scripts": {
+    "setup": "npm install",
+    "setup:ci": "npm ci",
+    "build:dist": "node ./scripts/run-ts.mjs ./scripts/build-dist.ts",
+    "prepare": "npm run build:dist",
+    "prepack": "npm run build:dist",
+    "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
+    "precheck": "npm run starlight:patch",
+		"check": "node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts check",
+		"prebuild": "npm run starlight:patch && node ./scripts/run-ts.mjs ./scripts/aggregate-book.ts",
+		"build": "TREESEED_LOCAL_DEV_MODE=cloudflare node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts build",
+		"preview": "node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts preview",
+		"test:unit": "vitest run --config ./vitest.config.ts",
+		"test": "npm run test:unit",
+		"test:smoke": "node ./scripts/run-ts.mjs ./scripts/test-smoke.ts",
+		"release:setup": "npm run setup:ci",
+		"release:check-tag": "node ./scripts/run-ts.mjs ./scripts/assert-release-tag-version.ts",
+		"release:verify": "node ./scripts/run-ts.mjs ./scripts/release-verify.ts",
+    "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
+  },
+  "dependencies": {
+    "@treeseed/sdk": "^0.0.1",
+    "@astrojs/check": "^0.9.8",
+    "@astrojs/cloudflare": "^12.6.13",
+    "@astrojs/sitemap": "3.7.0",
+    "@astrojs/starlight": "0.37.6",
+    "@tailwindcss/vite": "^4.1.4",
+    "astro": "^5.6.1",
+    "esbuild": "^0.25.10",
+    "katex": "^0.16.22",
+    "nodemailer": "^8.0.4",
+    "rehype-katex": "^7.0.1",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-mdx": "^3.1.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.9.3",
+    "unified": "^11.0.5",
+    "vitest": "^4.1.2",
+    "wrangler": "^4.80.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.11"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./site": {
+      "types": "./dist/site.d.ts",
+      "default": "./dist/site.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./deploy/config": {
+      "types": "./dist/deploy/config.d.ts",
+      "default": "./dist/deploy/config.js"
+    },
+    "./deploy/runtime": {
+      "default": "./dist/deploy/runtime.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "default": "./dist/content.js"
+    },
+    "./content-config": {
+      "types": "./dist/content-config.d.ts",
+      "default": "./dist/content-config.js"
+    },
+    "./tenant": "./dist/tenant/bridge.js",
+    "./tenant-config": {
+      "types": "./dist/tenant/config.d.ts",
+      "default": "./dist/tenant/config.js"
+    },
+    "./contracts": "./dist/contracts.js",
+    "./plugin-default": {
+      "types": "./dist/plugin-default.d.ts",
+      "default": "./dist/plugin-default.js"
+    },
+    "./plugins/plugin": {
+      "types": "./dist/plugins/plugin.d.ts",
+      "default": "./dist/plugins/plugin.js"
+    },
+    "./plugins/runtime": {
+      "types": "./dist/plugins/runtime.d.ts",
+      "default": "./dist/plugins/runtime.js"
+    },
+    "./environment": {
+      "types": "./dist/environment.d.ts",
+      "default": "./dist/environment.js"
+    },
+    "./site-resources": {
+      "types": "./dist/site-resources.d.ts",
+      "default": "./dist/site-resources.js"
+    },
+    "./types/agents": "./dist/types/agents.js",
+    "./types/cloudflare": "./dist/types/cloudflare.js",
+    "./agents/registry-helper": "./dist/agents/registry-helper.js",
+    "./utils/seo": "./dist/utils/seo.js",
+    "./utils/site-config-schema": "./dist/utils/site-config-schema.js",
+    "./utils/books-data": "./dist/utils/books-data.js",
+    "./utils/agents/runtime-types": "./dist/utils/agents/runtime-types.js",
+    "./utils/agents/contracts/messages": "./dist/utils/agents/contracts/messages.js",
+    "./utils/agents/contracts/run": "./dist/utils/agents/contracts/run.js",
+    "./components/site/CTASection.astro": "./dist/components/site/CTASection.astro",
+    "./components/site/SectionIntro.astro": "./dist/components/site/SectionIntro.astro",
+    "./components/site/PathCard.astro": "./dist/components/site/PathCard.astro",
+    "./components/site/TrustCallout.astro": "./dist/components/site/TrustCallout.astro",
+    "./components/content/ContentStatusLegend.astro": "./dist/components/content/ContentStatusLegend.astro",
+    "./components/starlight": {
+      "types": "./dist/components/starlight.d.ts",
+      "default": "./dist/components/starlight.js"
+    },
+    "./tsconfigs/strict": "./dist/tsconfigs/strict.json"
+  }
+}
