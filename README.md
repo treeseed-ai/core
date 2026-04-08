@@ -78,7 +78,7 @@ If this command passes, the package is in the same state expected by CI and the 
 ### Release commands
 
 ```bash
-npm run release:check-tag -- treeseed-core-v0.0.1
+npm run release:check-tag -- 0.0.1
 npm run release:publish
 ```
 
@@ -90,7 +90,7 @@ npm run release:publish
 This repo ships two package workflows:
 
 - [`ci.yml`](./.github/workflows/ci.yml): runs on push and pull request, installs with `npm ci`, then runs `npm run verify`
-- [`publish.yml`](./.github/workflows/publish.yml): runs on `workflow_dispatch` and on tags matching `treeseed-core-v*`; it installs with `npm ci`, validates the tag with `release:check-tag`, runs `npm run verify`, and publishes with `NPM_TOKEN`
+- [`publish.yml`](./.github/workflows/publish.yml): runs on `workflow_dispatch` and on plain semver tags like `0.1.0`; it installs with `npm ci`, validates the tag with `release:check-tag`, runs `npm run verify`, and publishes with `NPM_TOKEN`
 
 The deploy workflow template at [`templates/github/deploy.workflow.yml`](./templates/github/deploy.workflow.yml) is for downstream Treeseed site repositories, not for publishing this package.
 
@@ -139,7 +139,7 @@ Release flow for this repo:
 
 1. Update the package version in [`package.json`](./package.json).
 2. Run `npm run verify`.
-3. Create a matching tag: `treeseed-core-v<version>`.
+3. Create a matching tag: `<version>` such as `0.1.0`.
 4. Push the tag or run the publish workflow manually.
 
 The publish workflow expects the npm auth token in `NPM_TOKEN`.

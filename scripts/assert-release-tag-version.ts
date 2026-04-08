@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const expectedPrefix = 'treeseed-core-v';
 const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const packageJsonPath = resolve(packageRoot, 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 const packageVersion = packageJson.version;
+const legacyPrefix = 'treeseed-core-v';
 
 const tagName = process.argv[2] || process.env.GITHUB_REF_NAME;
 
@@ -15,12 +15,9 @@ if (!tagName) {
 	process.exit(1);
 }
 
-if (!tagName.startsWith(expectedPrefix)) {
-	console.error(`Release tag "${tagName}" must start with "${expectedPrefix}".`);
-	process.exit(1);
-}
-
-const taggedVersion = tagName.slice(expectedPrefix.length);
+const taggedVersion = tagName.startsWith(legacyPrefix)
+	? tagName.slice(legacyPrefix.length)
+	: tagName;
 
 if (taggedVersion !== packageVersion) {
 	console.error(
