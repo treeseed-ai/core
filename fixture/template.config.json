@@ -1,0 +1,15 @@
+{
+  "id": "treeseed-working-site",
+  "displayName": "TreeSeed Working Site",
+  "description": "Canonical shared TreeSeed working-site fixture for documentation, content-backed SDK tests, and full-tenant Core verification.",
+  "category": "fixture",
+  "tags": ["fixture", "shared", "sdk", "core", "tenant", "content", "agents"],
+  "templateApiVersion": 1,
+  "minCliVersion": "0.0.1",
+  "variables": [],
+  "postCreate": [],
+  "testing": {
+    "smokeCommand": "npm run verify",
+    "buildCommand": "npm run verify"
+  }
+}

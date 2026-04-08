@@ -1,108 +1,108 @@
 site:
   logo:
     src: /logo.png
-    alt: Karyon logo
-  name: Karyon
-  statement: Early-stage cellular AI architecture
-  siteUrl: https://karyon.life
-  githubRepository: https://github.com/karyon-life/karyon
-  discordLink: https://example.com/discord
+    alt: TreeSeed logo
+  name: TreeSeed
+  statement: Documentation-first platform workspace
+  siteUrl: https://treeseed.dev
+  githubRepository: https://github.com/treeseed-ai/fixtures
+  discordLink: https://example.com/treeseed-community
   headerMenu:
-    - label: Thinking
+    - label: Learn
       items:
+        - label: Vision
+          href: /vision/
+        - label: Status
+          href: /status/
         - label: Research Direction
           href: /research-direction/
+        - label: Architecture
+          href: /architecture/
+    - label: Work
+      items:
         - label: Questions
           href: /questions/
         - label: Objectives
           href: /objectives/
-        - label: Books
-          href: /books/
         - label: Notes
           href: /notes/
-    - label: Work
-      items:
-        - label: Architecture
-          href: /architecture/
-        - label: Knowledge
-          href: /knowledge/
         - label: Contribute
           href: /contribute/
-    - label: Resources
+    - label: Library
       items:
-        - label: Overview
+        - label: Books
           href: /books/
-        - label: Research
-          href: /knowledge/research/
-        - label: Architecture
-          href: /knowledge/architecture/
+        - label: Knowledge
+          href: /knowledge/
         - label: Developer
           href: /knowledge/developer/
         - label: Operations
           href: /knowledge/operations/
-    - label: About
+    - label: Team
       items:
-        - label: Vision
-          href: /vision/
-        - label: Project Status
-          href: /status/
-        - label: Community
-          href: /community/
         - label: People
           href: /people/
         - label: Agents
           href: /agents/
+        - label: Community
+          href: /community/
+        - label: Contact
+          href: /contact/
   footerMenu:
-    - label: Explore
+    - label: Start Here
       items:
         - label: Vision
           href: /vision/
-        - label: Project Status
+        - label: Status
           href: /status/
-        - label: Research Direction
-          href: /research-direction/
+        - label: Books
+          href: /books/
+        - label: Knowledge
+          href: /knowledge/
+    - label: Workflows
+      items:
         - label: Questions
           href: /questions/
         - label: Objectives
           href: /objectives/
-        - label: Community
-          href: /community/
-    - label: Build
-      items:
+        - label: Notes
+          href: /notes/
         - label: Contribute
           href: /contribute/
+    - label: Project
+      items:
+        - label: Repository
+          href: https://github.com/treeseed-ai/fixtures
+        - label: Community
+          href: /community/
         - label: Contact
           href: /contact/
-        - label: GitHub
-          href: https://github.com/karyon-life/karyon
-        - label: Discord
-          href: https://example.com/discord
   emailNotifications:
     contactRouting:
       default:
-        - contact@karyon.life
+        - hello@treeseed.dev
       question:
-        - contact@karyon.life
+        - hello@treeseed.dev
       feedback:
-        - contact@karyon.life
+        - hello@treeseed.dev
       collaboration:
-        - contact@karyon.life
+        - hello@treeseed.dev
       issue:
-        - contact@karyon.life
+        - hello@treeseed.dev
     subscribeRecipients:
-      - contact@karyon.life
-  summary: Karyon is an open research platform exploring new models of intelligence that could make learning, adaptation, and human agency more durable, inspectable, and safe.
-  projectStage: Founding stage
-  projectStageDetail: Framework-building, prototype-hardening, and documentation-first.
+      - hello@treeseed.dev
+  summary: TreeSeed is a documentation and management surface for working with questions, objectives, books, agents, and verification workflows in one small, inspectable site.
+  projectStage: Working fixture
+  projectStageDetail: Documentation-first, full-surface example, and regression test ground.
 models:
   pages:
     defaults:
       pageLayout: article
-      stage: founding
+      stage: working-fixture
       audience: []
   notes:
     defaults:
-      author: Karyon Founding Team
+      author: TreeSeed Maintainers
       draft: false
       tags: []
   questions:

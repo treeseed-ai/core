@@ -1,13 +1,13 @@
 id: treeseed-working-site
-siteConfigPath: ./src/fixture-site/config.yaml
+siteConfigPath: ./src/config.yaml
 content:
-  pages: ./src/fixture-site/content/pages
-  notes: ./src/fixture-site/content/notes
-  questions: ./src/fixture-site/content/questions
-  objectives: ./src/fixture-site/content/objectives
-  people: ./src/fixture-site/content/people
-  agents: ./src/fixture-site/content/agents
-  books: ./src/fixture-site/content/books
+  pages: ./src/content/pages
+  notes: ./src/content/notes
+  questions: ./src/content/questions
+  objectives: ./src/content/objectives
+  people: ./src/content/people
+  agents: ./src/content/agents
+  books: ./src/content/books
   docs: ./src/content/knowledge
 features:
   docs: true

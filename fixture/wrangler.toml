@@ -1,4 +1,4 @@
-name = "karyon-docs"
+name = "treeseed-working-site"
 compatibility_date = "2026-04-03"
 compatibility_flags = ["nodejs_compat"]
 main = "./.treeseed/generated/worker/index.js"
@@ -20,6 +20,6 @@ preview_id = "replace-with-session-kv-preview-id"
 
 [[d1_databases]]
 binding = "SITE_DATA_DB"
-database_name = "karyon-docs-site-data"
+database_name = "treeseed-working-site-data"
 database_id = "replace-with-site-data-db-id"
 preview_database_id = "replace-with-site-data-db-preview-id"

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "treeseed-working-site",
+  "displayName": "TreeSeed Working Site",
+  "description": "Canonical shared TreeSeed fixture used by sdk and core as both a content fixture and a full tenant fixture.",
+  "root": ".",
+  "siteConfigPath": "src/config.yaml",
+  "manifestPath": "src/manifest.yaml",
+  "contentRoot": "src/content",
+  "intendedConsumers": ["sdk", "core"],
+  "capabilities": ["content", "tenant"],
+  "scenarios": [],
+  "variants": []
+}

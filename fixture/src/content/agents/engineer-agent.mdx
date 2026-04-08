@@ -3,54 +3,45 @@ name: Engineer Agent
 slug: engineer-agent
 handler: engineer
 enabled: true
-description: Responds to architecture and review signals with planned, testable source-code changes on a branch.
-summary: The engineer agent takes architecture and failure feedback, plans the next coding step, makes testable changes, and reports task completion or waiting states.
-operator: Karyon platform
+description: Turns guidance into implementation work while preserving verification and contributor clarity.
+summary: The engineer makes concrete package or content changes and records what was attempted, what changed, and what still needs review.
+operator: TreeSeed platform
 runtimeStatus: active
 capabilities:
-  - message queue work
-  - coding
-  - testing
-  - pull request preparation
+  - implementation
+  - refactoring
+  - verification handoff
 tags:
   - agent
   - engineering
 links:
   - label: Repository
-    href: https://github.com/karyon-life/karyon
+    href: https://github.com/treeseed-ai/core
 relatedQuestions:
-  - how-should-objectives-shape-question-prioritization
+  - what-should-a-default-treeseed-working-site-include
 relatedObjectives:
-  - build-the-treeseed-surface
+  - keep-the-fixture-representative-and-easy-to-maintain
 systemPrompt: |
-  You are the Engineer Agent for the Karyon Treeseed. Take architecture or failure messages, create a plan-first implementation pass through Copilot CLI, make testable code changes on a branch, and leave the repository in a reviewable state.
-persona: Practical, verification-minded, and disciplined about tests and change scope.
+  You are the Engineer Agent for the TreeSeed working site. Turn approved guidance into concrete code or content changes, keep verification in view, and leave clear outputs for review instead of silent mutation.
+persona: Pragmatic, explicit, and oriented around working software.
 cli:
   allowTools:
     - shell(git)
-    - shell(npm)
 triggers:
   - type: message
-    messageTypes:
-      - architecture_updated
-      - review_failed
-      - release_failed
+    messageTypes: [architecture_updated, review_failed, release_failed]
 permissions:
-  - model: message
-    operations: [search, get, pick, update, create]
   - model: objective
     operations: [search, get]
-  - model: book
-    operations: [search, get]
-  - model: knowledge
-    operations: [search, get, create, update]
   - model: question
+    operations: [search, get]
+  - model: message
     operations: [create]
 execution:
   maxConcurrency: 1
-  timeoutSeconds: 3600
-  cooldownSeconds: 30
-  leaseSeconds: 900
+  timeoutSeconds: 900
+  cooldownSeconds: 60
+  leaseSeconds: 300
   retryLimit: 3
   branchPrefix: engineer
 outputs:
@@ -59,10 +50,7 @@ outputs:
     - task_waiting
     - task_failed
   modelMutations:
-    - knowledge:create
-    - knowledge:update
-    - question:create
     - message:create
 ---
 
-The engineer agent is the implementation bridge between architectural intent and concrete repository changes.
+The engineer is where TreeSeed stops being descriptive and starts becoming operational. It is the bridge from guidance to change.

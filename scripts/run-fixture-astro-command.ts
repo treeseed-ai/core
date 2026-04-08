@@ -11,7 +11,10 @@ if (!command) {
 const result = spawnSync('npx', ['astro', command, '--root', fixtureRoot, ...rest], {
 	cwd: packageRoot,
 	stdio: 'inherit',
-	env: process.env,
+	env: {
+		...process.env,
+		TREESEED_TENANT_ROOT: fixtureRoot,
+	},
 	shell: process.platform === 'win32',
 });
 
