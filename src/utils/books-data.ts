@@ -62,8 +62,8 @@ function parseFrontmatter(filePath: string) {
 function inferDocsLibraryDownload(book?: { slug?: string; title?: string }): DocsLibraryDownload {
 	const title = book?.title ? `${book.title} Library` : 'Knowledge Library';
 	return {
-		downloadFileName: 'karyon-knowledge.md',
-		downloadHref: '/books/karyon-knowledge.md',
+		downloadFileName: 'treeseed-knowledge.md',
+		downloadHref: '/books/treeseed-knowledge.md',
 		downloadTitle: title,
 	};
 }
@@ -107,9 +107,9 @@ export function buildTenantBookRuntime(
 const runtime = buildTenantBookRuntime(RUNTIME_TENANT, {
 	projectRoot: RUNTIME_PROJECT_ROOT,
 	docsLibraryDownload: {
-		downloadFileName: 'karyon-knowledge.md',
-		downloadHref: '/books/karyon-knowledge.md',
-		downloadTitle: 'Karyon Knowledge Library',
+		downloadFileName: 'treeseed-knowledge.md',
+		downloadHref: '/books/treeseed-knowledge.md',
+		downloadTitle: 'TreeSeed Knowledge Library',
 	},
 });
 

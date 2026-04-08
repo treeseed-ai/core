@@ -1,0 +1,128 @@
+site:
+  logo:
+    src: /logo.png
+    alt: TreeSeed logo
+  name: TreeSeed
+  statement: Documentation-first platform workspace
+  siteUrl: https://treeseed.dev
+  githubRepository: https://github.com/treeseed-ai/core
+  discordLink: https://example.com/treeseed-community
+  headerMenu:
+    - label: Learn
+      items:
+        - label: Vision
+          href: /vision/
+        - label: Status
+          href: /status/
+        - label: Research Direction
+          href: /research-direction/
+        - label: Architecture
+          href: /architecture/
+    - label: Work
+      items:
+        - label: Questions
+          href: /questions/
+        - label: Objectives
+          href: /objectives/
+        - label: Notes
+          href: /notes/
+        - label: Contribute
+          href: /contribute/
+    - label: Library
+      items:
+        - label: Books
+          href: /books/
+        - label: Knowledge
+          href: /knowledge/
+        - label: Developer
+          href: /knowledge/developer/
+        - label: Operations
+          href: /knowledge/operations/
+    - label: Team
+      items:
+        - label: People
+          href: /people/
+        - label: Agents
+          href: /agents/
+        - label: Community
+          href: /community/
+        - label: Contact
+          href: /contact/
+  footerMenu:
+    - label: Start Here
+      items:
+        - label: Vision
+          href: /vision/
+        - label: Status
+          href: /status/
+        - label: Books
+          href: /books/
+        - label: Knowledge
+          href: /knowledge/
+    - label: Workflows
+      items:
+        - label: Questions
+          href: /questions/
+        - label: Objectives
+          href: /objectives/
+        - label: Notes
+          href: /notes/
+        - label: Contribute
+          href: /contribute/
+    - label: Project
+      items:
+        - label: Repository
+          href: https://github.com/treeseed-ai/core
+        - label: Community
+          href: /community/
+        - label: Contact
+          href: /contact/
+  emailNotifications:
+    contactRouting:
+      default:
+        - hello@treeseed.dev
+      question:
+        - hello@treeseed.dev
+      feedback:
+        - hello@treeseed.dev
+      collaboration:
+        - hello@treeseed.dev
+      issue:
+        - hello@treeseed.dev
+    subscribeRecipients:
+      - hello@treeseed.dev
+  summary: TreeSeed is a documentation and management surface for working with questions, objectives, books, agents, and verification workflows in one small, inspectable site.
+  projectStage: Working fixture
+  projectStageDetail: Documentation-first, full-surface example, and regression test ground.
+models:
+  pages:
+    defaults:
+      pageLayout: article
+      stage: working-fixture
+      audience: []
+  notes:
+    defaults:
+      author: TreeSeed Maintainers
+      draft: false
+      tags: []
+  questions:
+    defaults:
+      draft: false
+      tags: []
+  objectives:
+    defaults:
+      draft: false
+      tags: []
+  people:
+    defaults:
+      status: live
+      tags: []
+  agents:
+    defaults:
+      tags: []
+  books:
+    defaults:
+      tags: []
+  docs:
+    defaults:
+      tags: []

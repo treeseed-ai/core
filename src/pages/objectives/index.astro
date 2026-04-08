@@ -8,12 +8,12 @@ const objectives = await getPublishedObjectives();
 const contributors = await resolveContributorsForEntries(objectives);
 ---
 
-<MainLayout title="Objectives" description="Strategic objectives guiding the Karyon Treeseed." currentPath="/objectives/">
+<MainLayout title="Objectives" description="Strategic objectives guiding the TreeSeed working site." currentPath="/objectives/">
 	<div class="space-y-10">
 		<SectionIntro
 			eyebrow="Objectives"
 			title="Public objectives for the evolving platform"
-			description="Objectives turn broad research ambition into legible lines of effort. They show what the platform is actively trying to build, validate, or make more coherent."
+			description="Objectives turn broad platform goals into legible lines of effort. They show what the site is actively trying to document, validate, or make easier to operate."
 		/>
 		<ChronicleList
 			items={objectives.map((objective) => ({

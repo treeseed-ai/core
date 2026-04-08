@@ -21,7 +21,7 @@ function resolveRedirectBase(requestUrl?: URL | string) {
 		}
 	}
 
-	return 'https://karyon.life';
+	return 'https://treeseed.dev';
 }
 
 export function buildRedirectTarget(

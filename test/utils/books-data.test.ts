@@ -20,7 +20,7 @@ describe('book metadata integration', () => {
 	});
 
 	it('resolves active book and download metadata from knowledge paths', () => {
-		expect(getBookForPath('/knowledge/research/learning/')).toMatchObject({ slug: 'research' });
+		expect(getBookForPath('/knowledge/research/inquiry/')).toMatchObject({ slug: 'research' });
 		expect(getDocsDownloadForPath('/knowledge/architecture/')).toMatchObject({
 			downloadFileName: 'architecture.md',
 		});

@@ -5,7 +5,7 @@ export async function GET(context: APIContext) {
 	const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
 		(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 	);
-	const origin = context.site?.origin ?? 'https://karyon.dev';
+	const origin = context.site?.origin ?? 'https://treeseed.dev';
 
 	const items = notes
 		.map(
@@ -23,9 +23,9 @@ export async function GET(context: APIContext) {
 	const xml = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0">
   <channel>
-    <title>Karyon Notes</title>
+    <title>TreeSeed Notes</title>
     <link>${origin}/notes/</link>
-    <description>Founding-stage notes from the Karyon project.</description>
+    <description>Working notes from the TreeSeed fixture site.</description>
     ${items}
   </channel>
 </rss>`;

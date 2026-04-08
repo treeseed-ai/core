@@ -7,7 +7,7 @@ import BookList from '../../components/site/BookList.astro';
 const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
 ---
 
-<MainLayout title="Books" description="Queryable book metadata for the Karyon Treeseed." currentPath="/books/">
+<MainLayout title="Books" description="Queryable book metadata for the TreeSeed working site." currentPath="/books/">
 	<div class="space-y-10">
 		<SectionIntro
 			eyebrow="Books"

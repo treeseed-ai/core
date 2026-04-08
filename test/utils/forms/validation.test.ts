@@ -7,7 +7,7 @@ describe('form payload validation', () => {
 		formData.set('formType', 'contact');
 		formData.set('name', 'Ada');
 		formData.set('email', 'Ada@Example.com');
-		formData.set('organization', 'Karyon');
+		formData.set('organization', 'TreeSeed');
 		formData.set('contactType', 'feedback');
 		formData.set('subject', 'Thoughtful feedback');
 		formData.set('message', 'This is a sufficiently detailed feedback message.');

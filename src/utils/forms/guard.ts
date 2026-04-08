@@ -4,13 +4,13 @@ import type { KvNamespaceLike } from '../../types/cloudflare';
 
 type CounterRecord = { count: number; expiresAt: number };
 
-const localNonceStore = (globalThis as { __karyonDocsNonceStore?: Map<string, number> }).__karyonDocsNonceStore
+const localNonceStore = (globalThis as { __treeseedFixtureNonceStore?: Map<string, number> }).__treeseedFixtureNonceStore
 	?? new Map<string, number>();
-const localRateStore = (globalThis as { __karyonDocsRateStore?: Map<string, CounterRecord> }).__karyonDocsRateStore
+const localRateStore = (globalThis as { __treeseedFixtureRateStore?: Map<string, CounterRecord> }).__treeseedFixtureRateStore
 	?? new Map<string, CounterRecord>();
 
-(globalThis as { __karyonDocsNonceStore?: Map<string, number> }).__karyonDocsNonceStore = localNonceStore;
-(globalThis as { __karyonDocsRateStore?: Map<string, CounterRecord> }).__karyonDocsRateStore = localRateStore;
+(globalThis as { __treeseedFixtureNonceStore?: Map<string, number> }).__treeseedFixtureNonceStore = localNonceStore;
+(globalThis as { __treeseedFixtureRateStore?: Map<string, CounterRecord> }).__treeseedFixtureRateStore = localRateStore;
 
 async function incrementCounter(kv: KvNamespaceLike, key: string, ttl: number) {
 	const currentValue = await kv.get(key);

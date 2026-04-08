@@ -13,10 +13,10 @@ interface LocalSubscriberRecord {
 }
 
 const localSubscribers =
-	(globalThis as { __karyonDocsSubscribers?: Map<string, LocalSubscriberRecord> }).__karyonDocsSubscribers
+	(globalThis as { __treeseedFixtureSubscribers?: Map<string, LocalSubscriberRecord> }).__treeseedFixtureSubscribers
 	?? new Map<string, LocalSubscriberRecord>();
 
-(globalThis as { __karyonDocsSubscribers?: Map<string, LocalSubscriberRecord> }).__karyonDocsSubscribers = localSubscribers;
+(globalThis as { __treeseedFixtureSubscribers?: Map<string, LocalSubscriberRecord> }).__treeseedFixtureSubscribers = localSubscribers;
 
 export async function upsertLocalSubscriber(input: SubscriberRecordInput) {
 	const now = new Date().toISOString();

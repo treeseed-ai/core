@@ -16,10 +16,10 @@ import { buildTenantThemeCss } from '../../src/utils/theme.ts';
 describe('site config parsing', () => {
 	it('loads grouped header and footer menus from config.yaml', () => {
 		expect(SITE_CONFIG.site.headerMenu.length).toBeGreaterThan(0);
-		expect(SITE_CONFIG.site.headerMenu[0].label).toBe('Thinking');
+		expect(SITE_CONFIG.site.headerMenu[0].label).toBe('Learn');
 		expect(SITE_CONFIG.site.headerMenu[0].items).toContainEqual({
-			label: 'Questions',
-			href: '/questions/',
+			label: 'Vision',
+			href: '/vision/',
 		});
 		expect(SITE_CONFIG.site.footerMenu.length).toBeGreaterThan(0);
 	});
@@ -95,9 +95,9 @@ models: {}
 	});
 
 	it('extracts email notification mappings from config.yaml', () => {
-		expect(SITE_CONFIG.site.emailNotifications.contactRouting.default).toEqual(['contact@karyon.life']);
-		expect(SITE_CONFIG.site.emailNotifications.contactRouting.issue).toEqual(['contact@karyon.life']);
-		expect(SITE_CONFIG.site.emailNotifications.subscribeRecipients).toEqual(['contact@karyon.life']);
+		expect(SITE_CONFIG.site.emailNotifications.contactRouting.default).toEqual(['hello@treeseed.dev']);
+		expect(SITE_CONFIG.site.emailNotifications.contactRouting.issue).toEqual(['hello@treeseed.dev']);
+		expect(SITE_CONFIG.site.emailNotifications.subscribeRecipients).toEqual(['hello@treeseed.dev']);
 	});
 
 	it('parses optional tenant theme palette overrides', () => {

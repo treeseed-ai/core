@@ -9,12 +9,12 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
 );
 ---
 
-<MainLayout title="Notes" description="Public lab notebook entries from the founding stage of Karyon." currentPath="/notes/">
+<MainLayout title="Notes" description="Public working notes from the TreeSeed fixture site." currentPath="/notes/">
 	<div class="space-y-10">
 		<SectionIntro
 			eyebrow="Notes"
 			title="A public lab notebook for decisions, framing, and implementation reality"
-			description="This section is intentionally closer to a working log than a blog. It is where Karyon can publish field reports, framing updates, and architecture-side observations without pretending that every idea has settled into a polished program."
+			description="This section is intentionally closer to a working log than a blog. It is where the fixture can publish implementation notes, documentation decisions, and platform observations without pretending every idea has already settled into a polished guide."
 		/>
 		<NotesList notes={notes} />
 	</div>

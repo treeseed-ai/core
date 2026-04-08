@@ -40,7 +40,10 @@ export const notifierHandler: AgentHandler<NotifierInputs, NotifierResult> = {
 
 		return {
 			subscriptions: subscriptions.payload as Array<{ email: string }>,
-			activityCount: activity.reduce((count, response) => count + response.payload.items.length, 0),
+			activityCount: activity.reduce(
+				(count: number, response: { payload: { items: unknown[] } }) => count + response.payload.items.length,
+				0,
+			),
 		};
 	},
 	async execute(context, inputs) {

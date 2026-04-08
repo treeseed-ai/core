@@ -7,12 +7,12 @@ import ProfileList from '../../components/site/ProfileList.astro';
 const agents = await getCollection('agents');
 ---
 
-<MainLayout title="Agents" description="Software contributors participating in the Karyon Treeseed." currentPath="/agents/">
+<MainLayout title="Agents" description="Software contributors participating in the TreeSeed working site." currentPath="/agents/">
 	<div class="space-y-10">
 		<SectionIntro
 			eyebrow="Agents"
 			title="Agent contributors with explicit public profiles"
-			description="Agents are part of the hub’s contributor model, not hidden infrastructure. These profiles describe what each agent is for, who operates it, and which lines of inquiry it supports."
+			description="Agents are part of the working site’s contributor model, not hidden infrastructure. These profiles describe what each agent is for, who operates it, and which questions or objectives it supports."
 		/>
 		<ProfileList
 			items={agents.map((agent) => ({

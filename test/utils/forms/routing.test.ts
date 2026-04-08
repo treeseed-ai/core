@@ -32,6 +32,6 @@ describe('contact routing resolution', () => {
 			'collaboration',
 		);
 
-		expect(recipients).toEqual(['contact@karyon.life']);
+		expect(recipients).toEqual(['hello@treeseed.dev']);
 	});
 });

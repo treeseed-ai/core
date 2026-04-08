@@ -1,0 +1,21 @@
+---
+title: Keep the fixture representative and easy to maintain
+description: Ensure the TreeSeed fixture stays broad enough to validate major package surfaces without becoming expensive to update.
+date: 2026-04-07
+status: in progress
+tags:
+  - fixture
+  - maintenance
+summary: The fixture should remain realistic enough to catch regressions and small enough to stay current when the package changes.
+draft: false
+timeHorizon: near-term
+motivation: TreeSeed needs a stable example tenant that helps contributors understand the platform and gives verification a meaningful target.
+primaryContributor: site-steward
+relatedQuestions:
+  - how-should-the-fixture-balance-realism-and-simplicity
+relatedBooks:
+  - developer
+  - operations
+---
+
+This objective keeps the fixture from drifting into either extreme. It should not become a thin mock site, and it should not become so large that maintainers stop trusting it as a living example.

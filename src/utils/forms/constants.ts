@@ -1,6 +1,6 @@
 import type { ContactType } from '../../types/forms';
 
-export const FORM_SESSION_COOKIE = 'karyon_form_session';
+export const FORM_SESSION_COOKIE = 'treeseed_form_session';
 export const FORM_TOKEN_TTL_MS = 30 * 60 * 1000;
 export const NONCE_TTL_SECONDS = 60 * 60;
 export const RATE_LIMIT_TTL_SECONDS = 10 * 60;

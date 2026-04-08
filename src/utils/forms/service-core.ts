@@ -67,7 +67,7 @@ function summarizeRequest(request: Request) {
 async function buildContactMessage(payload: ContactSubmission, remoteIp: string, request: Request) {
 	const ipHash = await hashValue(remoteIp || 'unknown');
 	return [
-		'Karyon contact form submission',
+		'TreeSeed contact form submission',
 		'',
 		`Name: ${payload.name}`,
 		`Email: ${payload.email}`,
@@ -100,7 +100,7 @@ async function sendContactEmail(
 	await formsProvider.sendEmail(
 		{
 			to: recipients,
-			subject: `[Karyon Contact] ${payload.subject}`,
+			subject: `[TreeSeed Contact] ${payload.subject}`,
 			text: await buildContactMessage(payload, remoteIp, request),
 			replyTo: payload.email,
 		},
@@ -157,9 +157,9 @@ async function handleSubscribe(
 
 		await formsProvider.sendEmail({
 			to: notifyRecipients,
-			subject: '[Karyon Updates] New subscriber',
+			subject: '[TreeSeed Updates] New subscriber',
 			text: [
-				'Karyon updates signup',
+				'TreeSeed updates signup',
 				'',
 				`Email: ${payload.email}`,
 				`Name: ${payload.name || 'n/a'}`,
@@ -191,11 +191,11 @@ async function handleSubscribe(
 
 	await formsProvider.sendEmail({
 		to: [payload.email],
-		subject: 'You are subscribed to Karyon updates',
+		subject: 'You are subscribed to TreeSeed updates',
 		text: [
-			'Thanks for subscribing to Karyon updates.',
+			'Thanks for subscribing to TreeSeed updates.',
 			'',
-			'We will use this address to send occasional product, research, and publication updates as that workflow comes online.',
+			'We will use this address to send occasional product, documentation, and workflow updates as the project evolves.',
 			'',
 			'You can reply to this email if you need anything in the meantime.',
 		].join('\n'),

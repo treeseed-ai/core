@@ -1,0 +1,21 @@
+---
+title: How should the fixture balance realism and simplicity?
+description: An open question about keeping the TreeSeed fixture representative without making it too heavy to maintain.
+date: 2026-04-07
+status: exploratory
+tags:
+  - fixture
+  - maintenance
+summary: The fixture should stay broad enough to catch real regressions but simple enough to remain a useful teaching surface.
+draft: false
+questionType: strategy
+motivation: TreeSeed needs a tenant that behaves like a real site while still staying easy for contributors to inspect and improve.
+primaryContributor: site-steward
+relatedObjectives:
+  - keep-the-fixture-representative-and-easy-to-maintain
+relatedBooks:
+  - research
+  - developer
+---
+
+Too little content and the fixture stops being a meaningful test ground. Too much content and it becomes expensive to update whenever package defaults evolve. The right balance is a practical one, not a theoretical one.

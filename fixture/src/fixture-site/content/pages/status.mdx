@@ -1,0 +1,33 @@
+---
+title: Status
+description: What the TreeSeed fixture demonstrates today and where it is intentionally limited.
+slug: status
+pageLayout: article
+status: live
+stage: working-fixture
+audience:
+  - contributors
+  - maintainers
+summary: The fixture is meant to be broad enough to catch regressions and small enough to stay maintainable.
+updated: 2026-04-07
+---
+
+The fixture is currently designed to prove that TreeSeed can support a full working site with:
+
+- content pages
+- notes
+- questions and objectives
+- people and agent profiles
+- books and searchable docs
+- contact and subscribe forms
+- package-level verification through build and smoke flows
+
+It is intentionally not a production tenant. The content is generic on purpose so it can double as documentation and stay useful even as the underlying package changes.
+
+The main success criteria for the fixture are:
+
+1. new contributors can understand how TreeSeed is supposed to be used
+2. shared page/layout changes render against a realistic content set
+3. the verification chain catches regressions in content loading, navigation, book exports, and forms behavior
+
+If a package change makes the fixture harder to understand or operate, that is usually a signal that the package itself needs clearer defaults.

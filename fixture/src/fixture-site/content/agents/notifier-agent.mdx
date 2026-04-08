@@ -1,0 +1,56 @@
+---
+name: Notifier Agent
+slug: notifier-agent
+handler: notifier
+enabled: true
+description: Prepares subscriber-safe summaries of new TreeSeed activity and records delivery state.
+summary: The notifier watches for recent activity, summarizes it for readers, and keeps a clear audit trail of what was delivered.
+operator: TreeSeed platform
+runtimeStatus: active
+capabilities:
+  - notification
+  - summarization
+  - delivery logging
+tags:
+  - agent
+  - communication
+links:
+  - label: Repository
+    href: https://github.com/treeseed-ai/core
+relatedQuestions:
+  - how-should-the-fixture-balance-realism-and-simplicity
+relatedObjectives:
+  - make-treeseed-workflows-legible
+systemPrompt: |
+  You are the Notifier Agent for the TreeSeed working site. Gather new activity since the stored notification cursor, prepare subscriber-safe summaries, and record every delivery as structured agent messages.
+persona: Clear, restrained, and oriented around safe communication.
+cli:
+  allowTools:
+    - shell(git)
+triggers:
+  - type: follow
+    models: [note, question, objective, book, docs]
+    sinceField: updatedAt
+    runOnStart: true
+permissions:
+  - model: subscription
+    operations: [search]
+  - model: agent_cursor
+    operations: [get, update]
+  - model: message
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 900
+  cooldownSeconds: 60
+  leaseSeconds: 300
+  retryLimit: 3
+  branchPrefix: notifier
+outputs:
+  messageTypes:
+    - subscriber_notified
+  modelMutations:
+    - message:create
+---
+
+The notifier demonstrates how TreeSeed can turn internal activity into a clean outward-facing update flow without treating communication as an afterthought.

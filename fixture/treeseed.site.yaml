@@ -1,10 +1,10 @@
-name: Karyon
-slug: karyon-docs
-siteUrl: https://karyon.life
-contactEmail: contact@karyon.life
+name: TreeSeed Working Site
+slug: treeseed-working-site
+siteUrl: https://treeseed.dev
+contactEmail: hello@treeseed.dev
 cloudflare:
   accountId: fixture-cloudflare-account-id
-  workerName: karyon-docs
+  workerName: treeseed-working-site
 plugins:
   - package: '@treeseed/core/plugin-default'
 providers:

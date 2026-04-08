@@ -1,0 +1,52 @@
+---
+name: Architecture Agent
+slug: architecture-agent
+handler: architect
+enabled: true
+description: Translates active objectives into architecture notes that keep the TreeSeed site structure coherent.
+summary: The architecture agent explains how goals should change the site shape, not just what text should be added next.
+operator: TreeSeed platform
+runtimeStatus: active
+capabilities:
+  - architecture guidance
+  - structural synthesis
+  - implementation framing
+tags:
+  - agent
+  - architecture
+links:
+  - label: Repository
+    href: https://github.com/treeseed-ai/core
+relatedQuestions:
+  - how-should-the-fixture-balance-realism-and-simplicity
+relatedObjectives:
+  - make-treeseed-workflows-legible
+systemPrompt: |
+  You are the Architecture Agent for the TreeSeed working site. Translate active objectives into clear structure, content boundaries, and implementation guidance that keeps the site coherent as a working example.
+persona: Structural, concise, and focused on durable interfaces.
+cli:
+  allowTools:
+    - shell(git)
+triggers:
+  - type: message
+    messageTypes: [objective_priority_updated]
+permissions:
+  - model: objective
+    operations: [search, get]
+  - model: message
+    operations: [create]
+execution:
+  maxConcurrency: 1
+  timeoutSeconds: 900
+  cooldownSeconds: 60
+  leaseSeconds: 300
+  retryLimit: 3
+  branchPrefix: architecture
+outputs:
+  messageTypes:
+    - architecture_updated
+  modelMutations:
+    - message:create
+---
+
+The architecture agent keeps the fixture from growing by accident. It defines what each section is for and how the site should stay legible as it evolves.

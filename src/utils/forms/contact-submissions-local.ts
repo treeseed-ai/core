@@ -14,10 +14,10 @@ interface LocalContactSubmissionRecord {
 }
 
 const localContactSubmissions =
-	(globalThis as { __karyonDocsContactSubmissions?: LocalContactSubmissionRecord[] }).__karyonDocsContactSubmissions
+	(globalThis as { __treeseedFixtureContactSubmissions?: LocalContactSubmissionRecord[] }).__treeseedFixtureContactSubmissions
 	?? [];
 
-(globalThis as { __karyonDocsContactSubmissions?: LocalContactSubmissionRecord[] }).__karyonDocsContactSubmissions =
+(globalThis as { __treeseedFixtureContactSubmissions?: LocalContactSubmissionRecord[] }).__treeseedFixtureContactSubmissions =
 	localContactSubmissions;
 
 export async function createLocalContactSubmission(input: ContactRecordInput) {

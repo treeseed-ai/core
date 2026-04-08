@@ -103,7 +103,7 @@ function buildBookMarkdown(book) {
 		return stripMdxOnlySyntax(stripFrontmatter(rawContent));
 	});
 
-	return `# ${book.downloadTitle}\n\n> This document is auto-generated from the Karyon knowledge source.\n\n${sections.join('\n\n---\n\n')}\n`;
+	return `# ${book.downloadTitle}\n\n> This document is auto-generated from the TreeSeed knowledge source.\n\n${sections.join('\n\n---\n\n')}\n`;
 }
 
 function ensureOutputDir() {
@@ -117,7 +117,7 @@ function writeBookOutput(fileName, content) {
 }
 
 function main() {
-	console.log('Generating contextual Karyon knowledge exports...');
+	console.log('Generating TreeSeed knowledge exports...');
 	ensureOutputDir();
 
 	const bookOutputs = BOOKS.map((book) => {
@@ -127,7 +127,7 @@ function main() {
 		return { book, content };
 	});
 
-	const compositeContent = `# ${TREESEED_LIBRARY_DOWNLOAD.downloadTitle}\n\n> This document is auto-generated from the Karyon knowledge source.\n\n${bookOutputs
+	const compositeContent = `# ${TREESEED_LIBRARY_DOWNLOAD.downloadTitle}\n\n> This document is auto-generated from the TreeSeed knowledge source.\n\n${bookOutputs
 		.map(({ content }) => content.trim())
 		.join('\n\n---\n\n')}\n`;
 
