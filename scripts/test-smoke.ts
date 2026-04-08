@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -61,6 +61,16 @@ function mirrorDependencies(tempRoot: string) {
 }
 
 function pack(root: string, fallbackName: string) {
+	const bundledTarball = readdirSync(root, { withFileTypes: true })
+		.filter((entry) => entry.isFile() && entry.name.endsWith('.tgz'))
+		.map((entry) => resolve(root, entry.name))
+		.sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
+		.at(-1);
+
+	if (bundledTarball && !existsSync(resolve(root, 'scripts', 'run-ts.mjs'))) {
+		return bundledTarball;
+	}
+
 	const output = run('npm', ['pack', '--silent', '--ignore-scripts'], root, true);
 	const filename = output
 		.split('\n')
