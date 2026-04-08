@@ -60,7 +60,7 @@ function mirrorDependencies(tempRoot: string) {
 	}
 }
 
-function pack(root: string, fallbackName: string) {
+function pack(root: string, outputRoot: string, fallbackName: string) {
 	const bundledTarball = readdirSync(root, { withFileTypes: true })
 		.filter((entry) => entry.isFile() && entry.name.endsWith('.tgz'))
 		.map((entry) => resolve(root, entry.name))
@@ -71,13 +71,19 @@ function pack(root: string, fallbackName: string) {
 		return bundledTarball;
 	}
 
-	const output = run('npm', ['pack', '--silent', '--ignore-scripts'], root, true);
+	mkdirSync(outputRoot, { recursive: true });
+	const output = run('npm', ['pack', '--silent', '--ignore-scripts', '--pack-destination', outputRoot], root, true);
 	const filename = output
 		.split('\n')
 		.map((line) => line.trim())
 		.filter(Boolean)
 		.at(-1) ?? fallbackName;
-	return resolve(root, filename);
+	return resolve(outputRoot, filename);
+}
+
+function installPackageDirectory(tempRoot: string, packageRoot: string, folderName: string) {
+	mkdirSync(resolve(tempRoot, 'node_modules', '@treeseed'), { recursive: true });
+	run('cp', ['-R', packageRoot, resolve(tempRoot, 'node_modules', '@treeseed', folderName)]);
 }
 
 function installPackagedPackage(extractRoot: string, tempRoot: string, packageName: string, folderName: string) {
@@ -88,15 +94,21 @@ function installPackagedPackage(extractRoot: string, tempRoot: string, packageNa
 }
 
 const stageRoot = mkdtempSync(join(tmpdir(), 'treeseed-core-smoke-'));
+const packRoot = resolve(stageRoot, 'pack');
 const extractRoot = resolve(stageRoot, 'extract');
 const installRoot = resolve(stageRoot, 'install');
 
 try {
+	mkdirSync(packRoot, { recursive: true });
 	mkdirSync(extractRoot, { recursive: true });
-	const sdkTarball = pack(sdkPackageRoot, 'treeseed-sdk.tgz');
-	const coreTarball = pack(packageRoot, 'treeseed-core.tgz');
+	const coreTarball = pack(packageRoot, packRoot, 'treeseed-core.tgz');
 
-	installPackagedPackage(extractRoot, installRoot, sdkTarball, 'sdk');
+	if (existsSync(resolve(sdkPackageRoot, 'scripts', 'run-ts.mjs'))) {
+		const sdkTarball = pack(sdkPackageRoot, packRoot, 'treeseed-sdk.tgz');
+		installPackagedPackage(extractRoot, installRoot, sdkTarball, 'sdk');
+	} else {
+		installPackageDirectory(installRoot, sdkPackageRoot, 'sdk');
+	}
 	installPackagedPackage(extractRoot, installRoot, coreTarball, 'core');
 	mirrorDependencies(installRoot);
 	writeFileSync(resolve(installRoot, 'package.json'), `${JSON.stringify({ name: 'treeseed-core-smoke', private: true, type: 'module' }, null, 2)}\n`, 'utf8');
