@@ -45,7 +45,6 @@
 		"verify": "npm run release:verify",
 		"test:smoke": "node ./scripts/run-ts.mjs ./scripts/test-smoke.ts",
 		"fixtures:resolve": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts resolve",
-		"fixtures:sync": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts sync",
 		"fixtures:check": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts check",
 		"release:setup": "npm run setup:ci",
 		"release:check-tag": "node ./scripts/run-ts.mjs ./scripts/assert-release-tag-version.ts",

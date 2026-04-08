@@ -1,8 +1,0 @@
-public/books/*.md
-public/__treeseed/*.json
-.dev.vars
-.wrangler/
-dist/
-.astro/
-coverage/
-*.log

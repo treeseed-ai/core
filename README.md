@@ -32,11 +32,10 @@ npm ci
 - `scripts/`: build, release, and verification scripts
 - `test/`: unit tests run by Vitest
 - `.fixtures/treeseed-fixtures/`: pinned shared fixtures submodule
-- `fixture/`: synchronized local mirror of the canonical working-site fixture used for `check`, `build`, and smoke verification
 - `.github/workflows/`: CI and publish workflows for this package repo
 - `templates/github/deploy.workflow.yml`: downstream tenant deploy workflow template
 
-The canonical fixture source lives in `treeseed-fixtures`. `core/fixture` is the checked-in local mirror that package scripts build against.
+The package builds directly against the canonical working-site fixture in `treeseed-fixtures`.
 
 ## Commands
 
@@ -53,18 +52,12 @@ npm run test:smoke
 
 What they do:
 
-- `fixtures:check`: verifies that `core/fixture` matches the pinned shared fixture when the submodule is initialized
+- `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
 - `build:dist`: builds the publishable `dist/` package output
 - `test:unit`: runs package unit tests with Vitest
 - `check`: runs `astro check` against the internal fixture app
 - `build`: builds the internal fixture app in production-like mode
 - `test:smoke`: runs the packed-install smoke test
-
-To refresh the local mirror from the shared fixture:
-
-```bash
-npm run fixtures:sync
-```
 
 ### Full verification
 

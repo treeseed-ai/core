@@ -12,8 +12,6 @@
 		"vitest.config.ts"
 	],
   "exclude": [
-    "dist",
-    "fixture/dist",
-    "fixture/.astro"
+    "dist"
   ]
 }

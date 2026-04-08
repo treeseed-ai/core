@@ -14,7 +14,7 @@ function resolvePackageRoot() {
 }
 
 const packageRoot = resolvePackageRoot();
-const packageFixtureRoot = resolve(packageRoot, 'fixture');
+const packageFixtureRoot = resolve(packageRoot, '.fixtures', 'treeseed-fixtures', 'sites', 'working-site');
 const explicitTenantRoot = process.env.TREESEED_TENANT_ROOT
 	? resolve(process.env.TREESEED_TENANT_ROOT)
 	: null;
@@ -30,7 +30,11 @@ function collectTenantRootCandidates(start: string) {
 	let current = resolve(start);
 
 	while (true) {
-		candidates.push(current, resolve(current, 'fixture'));
+		candidates.push(
+			current,
+			resolve(current, '.fixtures', 'treeseed-fixtures', 'sites', 'working-site'),
+			resolve(current, 'fixture'),
+		);
 		const parent = resolve(current, '..');
 		if (parent === current) {
 			break;
