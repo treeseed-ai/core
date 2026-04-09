@@ -1,4 +1,7 @@
 import { parse as parseYaml } from 'yaml';
+import { normalizeAliasedRecord } from '@treeseed/sdk/field-aliases';
+
+/** @typedef {import('@treeseed/sdk/field-aliases').TreeseedFieldAliasRegistry} TreeseedFieldAliasRegistry */
 
 function isRecord(value) {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -163,12 +166,45 @@ function parseTheme(value, path) {
 	};
 }
 
+/** @type {TreeseedFieldAliasRegistry} */
+const siteFieldAliases = {
+	siteUrl: { key: 'siteUrl', aliases: ['site_url'] },
+	githubRepository: { key: 'githubRepository', aliases: ['github_repository'] },
+	discordLink: { key: 'discordLink', aliases: ['discord_link'] },
+	headerMenu: { key: 'headerMenu', aliases: ['header_menu'] },
+	footerMenu: { key: 'footerMenu', aliases: ['footer_menu'] },
+	emailNotifications: { key: 'emailNotifications', aliases: ['email_notifications'] },
+	projectStage: { key: 'projectStage', aliases: ['project_stage'] },
+	projectStageDetail: { key: 'projectStageDetail', aliases: ['project_stage_detail'] },
+};
+
+/** @type {TreeseedFieldAliasRegistry} */
+const pageDefaultsFieldAliases = {
+	pageLayout: { key: 'pageLayout', aliases: ['page_layout'] },
+};
+
+/** @type {TreeseedFieldAliasRegistry} */
+const agentDefaultsFieldAliases = {
+	runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
+};
+
+/** @type {TreeseedFieldAliasRegistry} */
+const formsFieldAliases = {
+	apiBaseUrl: { key: 'apiBaseUrl', aliases: ['api_base_url'] },
+};
+
+/** @type {TreeseedFieldAliasRegistry} */
+const emailNotificationFieldAliases = {
+	contactRouting: { key: 'contactRouting', aliases: ['contact_routing'] },
+	subscribeRecipients: { key: 'subscribeRecipients', aliases: ['subscribe_recipients'] },
+};
+
 /**
  * @param {string} source
  */
 export function parseSiteConfig(source) {
 	const parsed = expectRecord(parseYaml(source), 'config');
-	const site = expectRecord(parsed.site, 'site');
+	const site = normalizeAliasedRecord(siteFieldAliases, expectRecord(parsed.site, 'site'));
 	const models = expectRecord(parsed.models ?? {}, 'models');
 	const pageModel = expectRecord(models.pages ?? {}, 'models.pages');
 	const noteModel = expectRecord(models.notes ?? {}, 'models.notes');
@@ -178,17 +214,20 @@ export function parseSiteConfig(source) {
 	const agentModel = expectRecord(models.agents ?? {}, 'models.agents');
 	const bookModel = expectRecord(models.books ?? {}, 'models.books');
 	const docsModel = expectRecord(models.docs ?? {}, 'models.docs');
-	const pageDefaults = expectRecord(pageModel.defaults ?? {}, 'models.pages.defaults');
+	const pageDefaults = normalizeAliasedRecord(pageDefaultsFieldAliases, expectRecord(pageModel.defaults ?? {}, 'models.pages.defaults'));
 	const noteDefaults = expectRecord(noteModel.defaults ?? {}, 'models.notes.defaults');
 	const questionDefaults = expectRecord(questionModel.defaults ?? {}, 'models.questions.defaults');
 	const objectiveDefaults = expectRecord(objectiveModel.defaults ?? {}, 'models.objectives.defaults');
 	const peopleDefaults = expectRecord(peopleModel.defaults ?? {}, 'models.people.defaults');
-	const agentDefaults = expectRecord(agentModel.defaults ?? {}, 'models.agents.defaults');
+	const agentDefaults = normalizeAliasedRecord(agentDefaultsFieldAliases, expectRecord(agentModel.defaults ?? {}, 'models.agents.defaults'));
 	const bookDefaults = expectRecord(bookModel.defaults ?? {}, 'models.books.defaults');
 	const docsDefaults = expectRecord(docsModel.defaults ?? {}, 'models.docs.defaults');
 	const logo = expectRecord(site.logo, 'site.logo');
-	const forms = expectRecord(site.forms ?? {}, 'site.forms');
-	const emailNotifications = expectRecord(site.emailNotifications, 'site.emailNotifications');
+	const forms = normalizeAliasedRecord(formsFieldAliases, expectRecord(site.forms ?? {}, 'site.forms'));
+	const emailNotifications = normalizeAliasedRecord(
+		emailNotificationFieldAliases,
+		expectRecord(site.emailNotifications, 'site.emailNotifications'),
+	);
 
 	return {
 		site: {

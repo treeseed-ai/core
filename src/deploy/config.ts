@@ -1,16 +1,28 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { parse as parseYaml } from 'yaml';
 import type {
 	TreeseedDeployConfig,
 	TreeseedPluginReference,
 	TreeseedProviderSelections,
 } from '../contracts';
+import { normalizeAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { resolveTreeseedTenantRoot } from '../tenant/config';
 import {
 	TREESEED_DEFAULT_PLUGIN_REFERENCES,
 	TREESEED_DEFAULT_PROVIDER_SELECTIONS,
 } from '../plugins/constants';
+
+const deployConfigFieldAliases: TreeseedFieldAliasRegistry = {
+	siteUrl: { key: 'siteUrl', aliases: ['site_url'] },
+	contactEmail: { key: 'contactEmail', aliases: ['contact_email'] },
+};
+
+const cloudflareFieldAliases: TreeseedFieldAliasRegistry = {
+	accountId: { key: 'accountId', aliases: ['account_id'] },
+	workerName: { key: 'workerName', aliases: ['worker_name'] },
+};
 
 function expectString(value: unknown, label: string) {
 	if (typeof value !== 'string' || !value.trim()) {
@@ -120,8 +132,14 @@ function parseProviderSelections(value: unknown): TreeseedProviderSelections {
 }
 
 function parseDeployConfig(raw: string): TreeseedDeployConfig {
-	const parsed = (parseYaml(raw) ?? {}) as Record<string, unknown>;
-	const cloudflare = optionalRecord(parsed.cloudflare, 'cloudflare') ?? {};
+	const parsed = normalizeAliasedRecord(
+		deployConfigFieldAliases,
+		(parseYaml(raw) ?? {}) as Record<string, unknown>,
+	) as Record<string, unknown>;
+	const cloudflare = normalizeAliasedRecord(
+		cloudflareFieldAliases,
+		(optionalRecord(parsed.cloudflare, 'cloudflare') ?? {}) as Record<string, unknown>,
+	);
 	const smtp = optionalRecord(parsed.smtp, 'smtp') ?? {};
 	const turnstile = optionalRecord(parsed.turnstile, 'turnstile') ?? {};
 	optionalBoolean(turnstile.enabled, 'turnstile.enabled');

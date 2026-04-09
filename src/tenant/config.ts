@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { parse as parseYaml } from 'yaml';
 import type { TreeseedTenantConfig } from '../contracts';
+import { normalizeAliasedRecord } from '@treeseed/sdk/field-aliases';
 
 function resolvePackageRoot() {
 	const moduleUrl = typeof import.meta?.url === 'string' ? import.meta.url : null;
@@ -18,6 +20,27 @@ const packageFixtureRoot = resolve(packageRoot, '.fixtures', 'treeseed-fixtures'
 const explicitTenantRoot = process.env.TREESEED_TENANT_ROOT
 	? resolve(process.env.TREESEED_TENANT_ROOT)
 	: null;
+
+const manifestFieldAliases: TreeseedFieldAliasRegistry = {
+	siteConfigPath: { key: 'siteConfigPath', aliases: ['site_config_path'] },
+};
+
+const manifestContentFieldAliases: TreeseedFieldAliasRegistry = {
+	pages: { key: 'pages', aliases: ['page_root', 'pages_root'] },
+	notes: { key: 'notes', aliases: ['notes_root'] },
+	questions: { key: 'questions', aliases: ['questions_root'] },
+	objectives: { key: 'objectives', aliases: ['objectives_root'] },
+	people: { key: 'people', aliases: ['people_root'] },
+	agents: { key: 'agents', aliases: ['agents_root'] },
+	books: { key: 'books', aliases: ['books_root'] },
+	docs: { key: 'docs', aliases: ['knowledge', 'knowledge_root', 'docs_root'] },
+};
+
+const manifestOverrideFieldAliases: TreeseedFieldAliasRegistry = {
+	pagesRoot: { key: 'pagesRoot', aliases: ['pages_root'] },
+	stylesRoot: { key: 'stylesRoot', aliases: ['styles_root'] },
+	componentsRoot: { key: 'componentsRoot', aliases: ['components_root'] },
+};
 
 function pathWithin(parent: string, candidate: string) {
 	const normalizedParent = resolve(parent);
@@ -104,21 +127,34 @@ export function defineTreeseedTenant<T>(tenantConfig: T): T {
 export function loadTreeseedManifest(manifestPath = './src/manifest.yaml'): TreeseedTenantConfig {
 	const resolvedManifestPath = resolveTenantPath(manifestPath);
 	const tenantRoot = resolve(dirname(resolvedManifestPath), '..');
-	const parsed = parseYaml(readFileSync(resolvedManifestPath, 'utf8')) as TreeseedTenantConfig;
+	const parsed = normalizeAliasedRecord(
+		manifestFieldAliases,
+		parseYaml(readFileSync(resolvedManifestPath, 'utf8')) as Record<string, unknown>,
+	) as unknown as TreeseedTenantConfig;
+	const content = normalizeAliasedRecord(
+		manifestContentFieldAliases,
+		(parsed.content ?? {}) as Record<string, unknown>,
+	) as unknown as TreeseedTenantConfig['content'];
+	const overrides = parsed.overrides
+		? normalizeAliasedRecord(
+			manifestOverrideFieldAliases,
+			parsed.overrides as Record<string, unknown>,
+		) as TreeseedTenantConfig['overrides']
+		: undefined;
 	const tenantConfig = defineTreeseedTenant({
 		...parsed,
 		siteConfigPath: resolve(tenantRoot, parsed.siteConfigPath),
 		content: Object.fromEntries(
-			Object.entries(parsed.content ?? {}).map(([collectionName, rootPath]) => [
+			Object.entries(content ?? {}).map(([collectionName, rootPath]) => [
 				collectionName,
 				resolve(tenantRoot, String(rootPath)),
 			]),
 		) as unknown as TreeseedTenantConfig['content'],
-		overrides: parsed.overrides
+		overrides: overrides
 			? {
-					pagesRoot: parsed.overrides.pagesRoot ? resolve(tenantRoot, parsed.overrides.pagesRoot) : undefined,
-					stylesRoot: parsed.overrides.stylesRoot ? resolve(tenantRoot, parsed.overrides.stylesRoot) : undefined,
-					componentsRoot: parsed.overrides.componentsRoot ? resolve(tenantRoot, parsed.overrides.componentsRoot) : undefined,
+					pagesRoot: overrides.pagesRoot ? resolve(tenantRoot, overrides.pagesRoot) : undefined,
+					stylesRoot: overrides.stylesRoot ? resolve(tenantRoot, overrides.stylesRoot) : undefined,
+					componentsRoot: overrides.componentsRoot ? resolve(tenantRoot, overrides.componentsRoot) : undefined,
 			  } satisfies NonNullable<TreeseedTenantConfig['overrides']>
 			: undefined,
 	}) as TreeseedTenantConfig;

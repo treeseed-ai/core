@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import {
 	applyAgentModelDefaults,
 	applyBookModelDefaults,
@@ -12,6 +15,7 @@ import {
 } from '../../src/utils/site-config';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
 import { buildTenantThemeCss } from '../../src/utils/theme.ts';
+import { loadTreeseedManifest } from '../../src/tenant/config.ts';
 
 describe('site config parsing', () => {
 	it('loads grouped header and footer menus from config.yaml', () => {
@@ -191,5 +195,85 @@ models: {}
 		expect(css).toContain('--site-accent-soft: #eef4e8;');
 		expect(css).toContain('--site-blue-strong: #35586d;');
 		expect(css).not.toContain('--site-text:');
+	});
+
+	it('accepts aliased snake_case site config keys', () => {
+		const parsed = parseSiteConfig(`
+site:
+  logo:
+    src: /logo.png
+    alt: Example logo
+  name: Example
+  statement: Example statement
+  site_url: https://example.com
+  github_repository: https://github.com/example/repo
+  discord_link: https://discord.gg/example
+  header_menu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  footer_menu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  email_notifications:
+    contact_routing:
+      default:
+        - hello@example.com
+    subscribe_recipients:
+      - hello@example.com
+  summary: Example summary
+  project_stage: Founding
+  project_stage_detail: Still early
+models:
+  pages:
+    defaults:
+      page_layout: bridge
+`);
+
+		expect(parsed.site.siteUrl).toBe('https://example.com');
+		expect(parsed.site.githubRepository).toBe('https://github.com/example/repo');
+		expect(parsed.site.projectStage).toBe('Founding');
+		expect(parsed.models.pages.defaults.pageLayout).toBe('bridge');
+	});
+
+	it('accepts aliased tenant manifest keys', () => {
+		const tenantRoot = mkdtempSync(join(tmpdir(), 'treeseed-core-tenant-'));
+		mkdirSync(resolve(tenantRoot, 'src'), { recursive: true });
+		writeFileSync(
+			resolve(tenantRoot, 'src', 'manifest.yaml'),
+			`id: tenant
+site_config_path: ./src/config.yaml
+content:
+  page_root: ./src/content/pages
+  notes_root: ./src/content/notes
+  questions_root: ./src/content/questions
+  objectives_root: ./src/content/objectives
+  people_root: ./src/content/people
+  agents_root: ./src/content/agents
+  books_root: ./src/content/books
+  knowledge_root: ./src/content/knowledge
+features:
+  docs: true
+`,
+			'utf8',
+		);
+
+		const previousRoot = process.env.TREESEED_TENANT_ROOT;
+		process.env.TREESEED_TENANT_ROOT = tenantRoot;
+		try {
+			const manifest = loadTreeseedManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
+			expect(manifest.siteConfigPath).toBe(resolve(tenantRoot, 'src', 'config.yaml'));
+			expect(manifest.content.pages).toBe(resolve(tenantRoot, 'src', 'content', 'pages'));
+			expect(manifest.content.docs).toBe(resolve(tenantRoot, 'src', 'content', 'knowledge'));
+		} finally {
+			if (previousRoot === undefined) {
+				delete process.env.TREESEED_TENANT_ROOT;
+			} else {
+				process.env.TREESEED_TENANT_ROOT = previousRoot;
+			}
+		}
 	});
 });

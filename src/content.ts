@@ -1,6 +1,7 @@
 import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
+import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import type { TreeseedTenantConfig } from './contracts';
 import { AGENT_CLI_ALLOW_TOOLS } from './types/agents';
 import { loadTreeseedPluginRuntime } from './plugins/runtime';
@@ -15,6 +16,7 @@ import {
 	PEOPLE_MODEL_DEFAULTS,
 	QUESTION_MODEL_DEFAULTS,
 } from './utils/site-config';
+import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
@@ -94,6 +96,39 @@ function resolveDocsCollectionProvider(
 }
 
 export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { docsLoader, docsSchema }: DocsDependencies) {
+	const pageFieldAliases: TreeseedFieldAliasRegistry = {
+		pageLayout: { key: 'pageLayout', aliases: ['page_layout'] },
+		seoTitle: { key: 'seoTitle', aliases: ['seo_title'] },
+		seoDescription: { key: 'seoDescription', aliases: ['seo_description'] },
+	};
+	const questionFieldAliases: TreeseedFieldAliasRegistry = {
+		questionType: { key: 'questionType', aliases: ['question_type'] },
+		primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
+		relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },
+		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+	};
+	const objectiveFieldAliases: TreeseedFieldAliasRegistry = {
+		timeHorizon: { key: 'timeHorizon', aliases: ['time_horizon'] },
+		primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
+		relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
+		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+	};
+	const agentFieldAliases: TreeseedFieldAliasRegistry = {
+		runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
+		systemPrompt: { key: 'systemPrompt', aliases: ['system_prompt'] },
+		triggerPolicy: { key: 'triggerPolicy', aliases: ['trigger_policy'] },
+	};
+	const bookFieldAliases: TreeseedFieldAliasRegistry = {
+		sectionLabel: { key: 'sectionLabel', aliases: ['section_label'] },
+		basePath: { key: 'basePath', aliases: ['base_path'] },
+		landingPath: { key: 'landingPath', aliases: ['landing_path'] },
+		outlinePath: { key: 'outlinePath', aliases: ['outline_path'] },
+		downloadFileName: { key: 'downloadFileName', aliases: ['download_file_name'] },
+		downloadHref: { key: 'downloadHref', aliases: ['download_href'] },
+		downloadTitle: { key: 'downloadTitle', aliases: ['download_title'] },
+		exportRoots: { key: 'exportRoots', aliases: ['export_roots'] },
+		sidebarItems: { key: 'sidebarItems', aliases: ['sidebar_items'] },
+	};
 	const contributorReference = z.union([reference('people'), reference('agents')]);
 	const sidebarItemSchema: z.ZodTypeAny = z.lazy(() =>
 		z.object({
@@ -104,7 +139,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		}),
 	);
 
-	const pageSchema = z.object({
+	const pageSchema = z.preprocess((value) => preprocessAliasedRecord(pageFieldAliases, value), z.object({
 		title: z.string(),
 		description: z.string(),
 		slug: z.string(),
@@ -116,7 +151,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		updated: z.coerce.date(),
 		seoTitle: z.string().optional(),
 		seoDescription: z.string().optional(),
-	});
+	}));
 
 	const noteSchema = z.object({
 		title: z.string(),
@@ -130,7 +165,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		canonicalRoute: z.string().optional(),
 	});
 
-	const questionSchema = z.object({
+	const questionSchema = z.preprocess((value) => preprocessAliasedRecord(questionFieldAliases, value), z.object({
 		title: z.string(),
 		description: z.string(),
 		date: z.coerce.date(),
@@ -143,9 +178,9 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		primaryContributor: contributorReference,
 		relatedObjectives: z.array(reference('objectives')).default([]),
 		relatedBooks: z.array(reference('books')).default([]),
-	});
+	}));
 
-	const objectiveSchema = z.object({
+	const objectiveSchema = z.preprocess((value) => preprocessAliasedRecord(objectiveFieldAliases, value), z.object({
 		title: z.string(),
 		description: z.string(),
 		date: z.coerce.date(),
@@ -158,7 +193,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		primaryContributor: contributorReference,
 		relatedQuestions: z.array(reference('questions')).default([]),
 		relatedBooks: z.array(reference('books')).default([]),
-	});
+	}));
 
 	const profileLinkSchema = z.object({ label: z.string(), href: z.string() });
 	const agentCliSchema = z.object({
@@ -208,7 +243,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		relatedObjectives: z.array(reference('objectives')).default([]),
 	});
 
-	const agentSchema = z.object({
+	const agentSchema = z.preprocess((value) => preprocessAliasedRecord(agentFieldAliases, value), z.object({
 		name: z.string(),
 		slug: z.string(),
 		handler: z.string(),
@@ -230,9 +265,9 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		permissions: z.array(agentPermissionSchema).min(1),
 		execution: agentExecutionSchema.default({}),
 		outputs: agentOutputSchema.default({}),
-	});
+	}));
 
-	const bookSchema = z.object({
+	const bookSchema = z.preprocess((value) => preprocessAliasedRecord(bookFieldAliases, value), z.object({
 		order: z.number().int().nonnegative(),
 		slug: z.string(),
 		title: z.string(),
@@ -248,7 +283,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		exportRoots: z.array(z.string()).min(1).optional(),
 		sidebarItems: z.array(sidebarItemSchema).min(1),
 		tags: z.array(z.string()).default(BOOK_MODEL_DEFAULTS.tags ?? []),
-	});
+	}));
 
 	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
 
