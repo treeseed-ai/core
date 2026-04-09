@@ -44,6 +44,17 @@ describe('Treeseed environment registry', () => {
 		expect(suggested.TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE).toBe('true');
 	});
 
+	it('includes token-first auth entries in the shared registry', () => {
+		const registry = resolveTreeseedEnvironmentRegistry({
+			deployConfig: baseDeployConfig,
+			plugins: [],
+		});
+
+		expect(registry.entries.find((entry) => entry.id === 'GH_TOKEN')?.targets).toContain('railway-secret');
+		expect(registry.entries.find((entry) => entry.id === 'CLOUDFLARE_API_TOKEN')?.scopes).toContain('local');
+		expect(registry.entries.find((entry) => entry.id === 'RAILWAY_API_TOKEN')?.requirement).toBe('conditional');
+	});
+
 	it('applies plugin registry overlays after core defaults', () => {
 		const registry = resolveTreeseedEnvironmentRegistry({
 			deployConfig: baseDeployConfig,
@@ -117,5 +128,46 @@ describe('Treeseed environment registry', () => {
 
 		expect(result.missing.some((entry) => entry.id === 'TREESEED_PUBLIC_TURNSTILE_SITE_KEY')).toBe(false);
 		expect(result.missing.some((entry) => entry.id === 'TREESEED_TURNSTILE_SECRET_KEY')).toBe(false);
+	});
+
+	it('requires Railway API token only when Railway-managed services are enabled', () => {
+		const enabled = validateTreeseedEnvironmentValues({
+			values: {
+				GH_TOKEN: 'ghp_123',
+				CLOUDFLARE_API_TOKEN: 'cf_123',
+				TREESEED_FORM_TOKEN_SECRET: 'secret_123',
+			},
+			scope: 'local',
+			purpose: 'config',
+			deployConfig: {
+				...baseDeployConfig,
+				services: {
+					manager: {
+						enabled: true,
+						provider: 'railway',
+					},
+				},
+			},
+			plugins: [],
+		});
+
+		expect(enabled.missing.some((entry) => entry.id === 'RAILWAY_API_TOKEN')).toBe(true);
+
+		const disabled = validateTreeseedEnvironmentValues({
+			values: {
+				GH_TOKEN: 'ghp_123',
+				CLOUDFLARE_API_TOKEN: 'cf_123',
+				TREESEED_FORM_TOKEN_SECRET: 'secret_123',
+			},
+			scope: 'local',
+			purpose: 'config',
+			deployConfig: {
+				...baseDeployConfig,
+				services: {},
+			},
+			plugins: [],
+		});
+
+		expect(disabled.missing.some((entry) => entry.id === 'RAILWAY_API_TOKEN')).toBe(false);
 	});
 });

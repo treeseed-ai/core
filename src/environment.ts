@@ -17,6 +17,7 @@ export const TREESEED_ENVIRONMENT_TARGETS = [
 	'github-variable',
 	'cloudflare-secret',
 	'cloudflare-var',
+	'railway-secret',
 	'config-file',
 ] as const;
 export const TREESEED_ENVIRONMENT_PURPOSES = ['dev', 'save', 'deploy', 'destroy', 'config'] as const;
@@ -159,6 +160,12 @@ function smtpEnabled(context: TreeseedEnvironmentContext) {
 	return context.deployConfig.smtp?.enabled === true;
 }
 
+function railwayManagedEnabled(context: TreeseedEnvironmentContext) {
+	return Object.values(context.deployConfig.services ?? {}).some((service) =>
+		service && service.enabled !== false && (service.provider ?? 'railway') === 'railway',
+	);
+}
+
 function generatedSecret(bytes = 24) {
 	return randomBytes(bytes).toString('hex');
 }
@@ -173,6 +180,7 @@ const PREDICATES: NamedPredicateMap = {
 	turnstileNonLocal: (context, scope) => turnstileEnabled(context) && scope !== 'local',
 	smtpEnabled: (context) => smtpEnabled(context),
 	smtpNonLocal: (context, scope) => smtpEnabled(context) && scope !== 'local',
+	railwayManagedEnabled: (context) => railwayManagedEnabled(context),
 };
 
 function deepMerge(left: unknown, right: unknown): unknown {
