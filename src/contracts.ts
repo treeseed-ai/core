@@ -103,6 +103,36 @@ export interface TreeseedPluginReference {
 	config?: Record<string, unknown>;
 }
 
+export interface TreeseedManagedServiceEnvironmentConfig {
+	baseUrl?: string;
+	domain?: string;
+	railwayEnvironment?: string;
+}
+
+export interface TreeseedManagedServiceRailwayConfig {
+	projectId?: string;
+	projectName?: string;
+	serviceId?: string;
+	serviceName?: string;
+	rootDir?: string;
+	buildCommand?: string;
+	startCommand?: string;
+}
+
+export interface TreeseedManagedServiceConfig {
+	enabled?: boolean;
+	provider?: string;
+	rootDir?: string;
+	publicBaseUrl?: string;
+	railway?: TreeseedManagedServiceRailwayConfig;
+	environments?: Partial<Record<'local' | 'staging' | 'prod', TreeseedManagedServiceEnvironmentConfig>>;
+}
+
+export interface TreeseedManagedServicesConfig {
+	api?: TreeseedManagedServiceConfig;
+	agents?: TreeseedManagedServiceConfig;
+}
+
 export interface TreeseedProviderSelections {
 	forms: string;
 	agents: {
@@ -131,6 +161,7 @@ export interface TreeseedDeployConfig {
 	};
 	plugins: TreeseedPluginReference[];
 	providers: TreeseedProviderSelections;
+	services?: TreeseedManagedServicesConfig;
 	smtp?: {
 		enabled?: boolean;
 	};

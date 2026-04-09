@@ -4,6 +4,8 @@ import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { parse as parseYaml } from 'yaml';
 import type {
 	TreeseedDeployConfig,
+	TreeseedManagedServiceConfig,
+	TreeseedManagedServicesConfig,
 	TreeseedPluginReference,
 	TreeseedProviderSelections,
 } from '../contracts';
@@ -131,6 +133,58 @@ function parseProviderSelections(value: unknown): TreeseedProviderSelections {
 	};
 }
 
+function parseServiceEnvironmentConfig(
+	value: unknown,
+	label: string,
+) {
+	const record = optionalRecord(value, label) ?? {};
+	return {
+		baseUrl: optionalString(record.baseUrl),
+		domain: optionalString(record.domain),
+		railwayEnvironment: optionalString(record.railwayEnvironment),
+	};
+}
+
+function parseManagedServiceConfig(value: unknown, label: string): TreeseedManagedServiceConfig | undefined {
+	const record = optionalRecord(value, label);
+	if (!record) {
+		return undefined;
+	}
+	const railway = optionalRecord(record.railway, `${label}.railway`) ?? {};
+	const environments = optionalRecord(record.environments, `${label}.environments`) ?? {};
+	return {
+		enabled: record.enabled === undefined ? undefined : optionalBoolean(record.enabled, `${label}.enabled`),
+		provider: optionalString(record.provider),
+		rootDir: optionalString(record.rootDir),
+		publicBaseUrl: optionalString(record.publicBaseUrl),
+		railway: {
+			projectId: optionalString(railway.projectId),
+			projectName: optionalString(railway.projectName),
+			serviceId: optionalString(railway.serviceId),
+			serviceName: optionalString(railway.serviceName),
+			rootDir: optionalString(railway.rootDir),
+			buildCommand: optionalString(railway.buildCommand),
+			startCommand: optionalString(railway.startCommand),
+		},
+		environments: {
+			local: parseServiceEnvironmentConfig(environments.local, `${label}.environments.local`),
+			staging: parseServiceEnvironmentConfig(environments.staging, `${label}.environments.staging`),
+			prod: parseServiceEnvironmentConfig(environments.prod, `${label}.environments.prod`),
+		},
+	};
+}
+
+function parseManagedServicesConfig(value: unknown): TreeseedManagedServicesConfig | undefined {
+	const record = optionalRecord(value, 'services');
+	if (!record) {
+		return undefined;
+	}
+	return {
+		api: parseManagedServiceConfig(record.api, 'services.api'),
+		agents: parseManagedServiceConfig(record.agents, 'services.agents'),
+	};
+}
+
 function parseDeployConfig(raw: string): TreeseedDeployConfig {
 	const parsed = normalizeAliasedRecord(
 		deployConfigFieldAliases,
@@ -158,6 +212,7 @@ function parseDeployConfig(raw: string): TreeseedDeployConfig {
 		},
 		plugins: parsePluginReferences(parsed.plugins),
 		providers: parseProviderSelections(parsed.providers),
+		services: parseManagedServicesConfig(parsed.services),
 		smtp: {
 			enabled: optionalBoolean(smtp.enabled, 'smtp.enabled'),
 		},
