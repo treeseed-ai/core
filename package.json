@@ -32,7 +32,6 @@
     "setup": "npm install",
     "setup:ci": "npm ci",
     "build:dist": "node ./scripts/run-ts.mjs ./scripts/build-dist.ts",
-    "prepare": "npm run build:dist",
     "prepack": "npm run build:dist",
     "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
