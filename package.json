@@ -28,6 +28,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "bin": {
+    "treeseed-workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js"
+  },
 	"scripts": {
     "setup": "npm install",
     "setup:ci": "npm ci",
@@ -128,6 +131,7 @@
       "types": "./dist/environment.d.ts",
       "default": "./dist/environment.js"
     },
+    "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
     "./site-resources": {
       "types": "./dist/site-resources.d.ts",
       "default": "./dist/site-resources.js"
