@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { packageRoot } from './package-tools.ts';
@@ -135,7 +135,16 @@ export function runTreeseedWorkspaceBootstrap({ root = process.cwd() } = {}) {
 	return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href) {
+function isDirectEntrypoint() {
+	if (!process.argv[1]) {
+		return false;
+	}
+	const invokedPath = realpathSync(resolve(process.argv[1]));
+	const modulePath = realpathSync(fileURLToPath(import.meta.url));
+	return modulePath === invokedPath || invokedPath.endsWith('/scripts/workspace-bootstrap.ts');
+}
+
+if (isDirectEntrypoint()) {
 	try {
 		process.exitCode = runTreeseedWorkspaceBootstrap();
 	} catch (error) {
