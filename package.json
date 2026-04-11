@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Treeseed platform runtime package for Astro, Starlight, forms, books, plugins, and shared platform behavior.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -54,7 +54,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.1.1",
+    "@treeseed/sdk": "^0.2.0",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
