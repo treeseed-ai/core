@@ -79,6 +79,7 @@ export function loadTreeseedPlugins(config: TreeseedDeployConfig = loadTreeseedD
 function collectProvidedIds(plugins: LoadedPluginEntry[]) {
 	const provided = {
 		forms: new Set<string>(),
+		operations: new Set<string>(),
 		agents: {
 			execution: new Set<string>(),
 			mutation: new Set<string>(),
@@ -97,6 +98,7 @@ function collectProvidedIds(plugins: LoadedPluginEntry[]) {
 
 	for (const { plugin } of plugins) {
 		for (const id of plugin.provides?.forms ?? []) provided.forms.add(id);
+		for (const id of plugin.provides?.operations ?? []) provided.operations.add(id);
 		for (const id of plugin.provides?.agents?.execution ?? []) provided.agents.execution.add(id);
 		for (const id of plugin.provides?.agents?.mutation ?? []) provided.agents.mutation.add(id);
 		for (const id of plugin.provides?.agents?.repository ?? []) provided.agents.repository.add(id);
@@ -127,6 +129,7 @@ export function loadTreeseedPluginRuntime(config: TreeseedDeployConfig = loadTre
 	const providers = config.providers;
 
 	assertSelectedProvider(provided.forms, 'forms', providers.forms);
+	assertSelectedProvider(provided.operations, 'operations', providers.operations);
 	assertSelectedProvider(provided.agents.execution, 'agents.execution', providers.agents.execution);
 	assertSelectedProvider(provided.agents.mutation, 'agents.mutation', providers.agents.mutation);
 	assertSelectedProvider(provided.agents.repository, 'agents.repository', providers.agents.repository);

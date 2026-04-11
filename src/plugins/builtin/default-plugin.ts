@@ -4,6 +4,7 @@ export default defineTreeseedPlugin({
 	id: 'treeseed-core-default',
 	provides: {
 		forms: ['store_only', 'notify_admin', 'full_email'],
+		operations: ['default'],
 		agents: {
 			execution: ['stub', 'manual', 'copilot'],
 			mutation: ['local_branch'],

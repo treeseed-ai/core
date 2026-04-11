@@ -57,6 +57,10 @@ export function getTreeseedFormsProvider() {
 	return getTreeseedDeployConfig().providers?.forms ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.forms;
 }
 
+export function getTreeseedOperationsProvider() {
+	return getTreeseedDeployConfig().providers?.operations ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.operations;
+}
+
 export function getTreeseedAgentProviderSelections() {
 	return getTreeseedDeployConfig().providers?.agents ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.agents;
 }

@@ -135,6 +135,7 @@ export interface TreeseedManagedServicesConfig {
 
 export interface TreeseedProviderSelections {
 	forms: string;
+	operations: string;
 	agents: {
 		execution: string;
 		mutation: string;

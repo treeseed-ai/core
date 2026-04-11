@@ -37,7 +37,10 @@ export type TreeseedPluginEnvironmentContext = {
 
 export interface TreeseedPlugin {
 	id?: string;
-	provides?: Record<string, any>;
+	provides?: Record<string, any> & {
+		operations?: string[];
+	};
+	operationProviders?: Record<string, unknown>;
 	siteProviders?: Record<
 		string,
 		TreeseedSiteExtensionContribution | ((context: TreeseedPluginSiteContext) => TreeseedSiteExtensionContribution)

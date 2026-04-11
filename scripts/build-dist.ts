@@ -426,7 +426,7 @@ async function main() {
 			continue;
 		}
 
-		if (COPY_EXTENSIONS.has(extension) || filePath.endsWith('.d.ts')) {
+		if (COPY_EXTENSIONS.has(extension)) {
 			copyAsset(filePath, srcRoot, distRoot);
 		}
 	}
@@ -458,11 +458,21 @@ async function main() {
 		resolve(distRoot, 'config.js'),
 		"import starlight from './vendor/starlight/index.js';\nimport { createTreeseedSite } from './site.js';\nimport { loadTreeseedManifest } from './tenant/config.js';\n\nexport function createTreeseedTenantSite(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedSite(tenant, { starlight });\n}"
 	);
+	writeCompatibilityEntrypoint(
+		resolve(distRoot, 'config.d.ts'),
+		"export declare function createTreeseedTenantSite(manifestPath?: string): import('astro').AstroUserConfig<never, never, never>;"
+	);
 
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.js'),
 		"import { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createTreeseedCollections } from './content.js';\nimport { loadTreeseedManifest } from './tenant/config.js';\n\nexport function createTreeseedTenantCollections(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedCollections(tenant, { docsLoader, docsSchema });\n}"
 	);
+	writeCompatibilityEntrypoint(
+		resolve(distRoot, 'content-config.d.ts'),
+		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tbooks: any;\n\tdocs: any;\n};"
+	);
+	rmSync(resolve(distRoot, 'config.d.js'), { force: true });
+	rmSync(resolve(distRoot, 'content-config.d.js'), { force: true });
 
 	writeCompatibilityEntrypoint(
 		resolve(vendoredStarlightRoot, 'utils', 'routing.js'),

@@ -26,6 +26,8 @@ const cloudflareFieldAliases: TreeseedFieldAliasRegistry = {
 	workerName: { key: 'workerName', aliases: ['worker_name'] },
 };
 
+const CLOUDFLARE_ACCOUNT_ID_PLACEHOLDER = 'replace-with-cloudflare-account-id';
+
 function expectString(value: unknown, label: string) {
 	if (typeof value !== 'string' || !value.trim()) {
 		throw new Error(`Invalid deploy config: expected ${label} to be a non-empty string.`);
@@ -40,6 +42,11 @@ function optionalString(value: unknown) {
 	}
 
 	return value.trim();
+}
+
+function optionalCloudflareAccountId(value: unknown) {
+	const accountId = optionalString(value);
+	return accountId === CLOUDFLARE_ACCOUNT_ID_PLACEHOLDER ? undefined : accountId;
 }
 
 function optionalBoolean(value: unknown, label: string) {
@@ -96,6 +103,7 @@ function parseProviderSelections(value: unknown): TreeseedProviderSelections {
 
 	return {
 		forms: expectString(record.forms ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.forms, 'providers.forms'),
+		operations: expectString(record.operations ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.operations, 'providers.operations'),
 		agents: {
 			execution: expectString(
 				agentProviders.execution ?? TREESEED_DEFAULT_PROVIDER_SELECTIONS.agents.execution,
@@ -205,9 +213,9 @@ function parseDeployConfig(raw: string): TreeseedDeployConfig {
 		contactEmail: expectString(parsed.contactEmail, 'contactEmail'),
 		cloudflare: {
 			accountId:
-				optionalString(cloudflare.accountId)
-				?? optionalString(process.env.CLOUDFLARE_ACCOUNT_ID)
-				?? 'replace-with-cloudflare-account-id',
+				optionalCloudflareAccountId(cloudflare.accountId)
+				?? optionalCloudflareAccountId(process.env.CLOUDFLARE_ACCOUNT_ID)
+				?? CLOUDFLARE_ACCOUNT_ID_PLACEHOLDER,
 			workerName: optionalString(cloudflare.workerName),
 		},
 		plugins: parsePluginReferences(parsed.plugins),

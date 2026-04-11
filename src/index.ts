@@ -12,6 +12,7 @@ export {
 	getTreeseedDeployProvider,
 	getTreeseedDocsProvider,
 	getTreeseedFormsProvider,
+	getTreeseedOperationsProvider,
 	getTreeseedSiteProvider,
 	isTreeseedSmtpEnabled,
 	isTreeseedTurnstileEnabled,
