@@ -30,6 +30,15 @@ function packageState(root, entry) {
 
 export function detectTreeseedBootstrapMode(startRoot = process.cwd()) {
 	const root = resolve(startRoot);
+	const forcedMode = process.env.TREESEED_BOOTSTRAP_MODE;
+	if (forcedMode === 'workspace' || forcedMode === 'registry') {
+		const packages = requiredPackages.map((entry) => packageState(root, entry));
+		return {
+			mode: forcedMode,
+			packages,
+			missing: packages.filter((entry) => !entry.present),
+		};
+	}
 	const packages = requiredPackages.map((entry) => packageState(root, entry));
 	const present = packages.filter((entry) => entry.present);
 	const partial = present.length > 0 && present.length < packages.length;
@@ -75,13 +84,20 @@ function resolvePackageBinary(packageName, binName = packageName, root = process
 }
 
 function runStarlightPatchFromRegistry(root) {
+	const corePackageJsonPath = require.resolve('@treeseed/core/package.json', { paths: [root, packageRoot] });
+	const coreRoot = dirname(corePackageJsonPath);
+	const patchScriptPath = resolve(coreRoot, 'dist', 'scripts', 'patch-starlight-content-path.js');
+	if (existsSync(patchScriptPath)) {
+		run(process.execPath, [patchScriptPath], { cwd: root });
+		return;
+	}
 	const treeseedBin = resolvePackageBinary('@treeseed/cli', 'treeseed', root);
 	run(process.execPath, [treeseedBin, 'starlight:patch'], { cwd: root });
 }
 
 function runStarlightPatchFromWorkspace(root, packages) {
-	const cliPackage = packages.find((entry) => entry.name === '@treeseed/cli');
-	run(process.execPath, [resolve(cliPackage.dir, 'dist/cli/main.js'), 'starlight:patch'], { cwd: root });
+	const corePackage = packages.find((entry) => entry.name === '@treeseed/core');
+	run(process.execPath, [resolve(corePackage.dir, 'scripts/run-ts.mjs'), resolve(corePackage.dir, 'scripts/patch-starlight-content-path.ts')], { cwd: root });
 }
 
 function linkWorkspacePackages(root, packages) {

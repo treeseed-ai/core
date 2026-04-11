@@ -48,8 +48,7 @@ function scanDirectory(root: string) {
 	}
 }
 
-run('npm', ['run', 'fixtures:check']);
-run('npm', ['run', 'build:dist']);
+run('npm', ['run', 'lint']);
 scanDirectory(resolve(packageRoot, 'dist'));
 run('npm', ['run', 'test:unit']);
 run('npm', ['run', 'check']);

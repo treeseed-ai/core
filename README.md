@@ -6,7 +6,7 @@ This repository is the package root. Run package commands from [`core`](./), not
 
 ## Requirements
 
-- Node `>=20`
+- Node `>=22`
 - npm `>=10`
 
 ## Install

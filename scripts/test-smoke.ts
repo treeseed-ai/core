@@ -8,13 +8,18 @@ import { packageRoot } from './package-tools.ts';
 
 const require = createRequire(import.meta.url);
 const sdkPackageRoot = resolve(dirname(require.resolve('@treeseed/sdk')), '..');
+const npmCacheDir = resolve(tmpdir(), 'treeseed-npm-cache');
 
 function run(command: string, args: string[], cwd = packageRoot, capture = false) {
 	const result = spawnSync(command, args, {
 		cwd,
 		stdio: capture ? 'pipe' : 'inherit',
 		encoding: 'utf8',
-		env: process.env,
+		env: {
+			...process.env,
+			npm_config_cache: npmCacheDir,
+			NPM_CONFIG_CACHE: npmCacheDir,
+		},
 	});
 
 	if (result.status !== 0) {
@@ -72,12 +77,18 @@ function pack(root: string, outputRoot: string, fallbackName: string) {
 	}
 
 	mkdirSync(outputRoot, { recursive: true });
-	const output = run('npm', ['pack', '--silent', '--ignore-scripts', '--pack-destination', outputRoot], root, true);
+	const output = run('npm', ['pack', '--ignore-scripts', '--cache', npmCacheDir, '--pack-destination', outputRoot], root, true);
 	const filename = output
 		.split('\n')
 		.map((line) => line.trim())
 		.filter(Boolean)
-		.at(-1) ?? fallbackName;
+		.at(-1)
+		?? readdirSync(outputRoot, { withFileTypes: true })
+			.filter((entry) => entry.isFile() && entry.name.endsWith('.tgz'))
+			.map((entry) => entry.name)
+			.sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
+			.at(-1)
+		?? fallbackName;
 	return resolve(outputRoot, filename);
 }
 
