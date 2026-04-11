@@ -1,3 +1,4 @@
+import { createDefaultGraphRankingProvider } from '@treeseed/sdk';
 import { defineTreeseedPlugin } from '../plugin';
 
 export default defineTreeseedPlugin({
@@ -27,5 +28,8 @@ export default defineTreeseedPlugin({
 			docs: ['default'],
 		},
 		site: ['default'],
+	},
+	graphRankingProviders: {
+		default: createDefaultGraphRankingProvider(),
 	},
 });
