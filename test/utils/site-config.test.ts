@@ -13,9 +13,9 @@ import {
 	applyPageModelDefaults,
 	applyQuestionModelDefaults,
 } from '../../src/utils/site-config';
+import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
 import { buildTenantThemeCss } from '../../src/utils/theme.ts';
-import { loadTreeseedManifest } from '../../src/tenant/config.ts';
 
 describe('site config parsing', () => {
 	it('loads grouped header and footer menus from config.yaml', () => {

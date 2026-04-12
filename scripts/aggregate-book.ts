@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BOOKS, TREESEED_LIBRARY_DOWNLOAD } from '../src/utils/books-data';
+import { BOOKS, TREESEED_LIBRARY_DOWNLOAD } from '@treeseed/sdk/platform/books-data';
 import { PROJECT_TENANT } from '../src/tenant/bridge';
 
 const projectRoot = PROJECT_TENANT.__tenantRoot ?? process.cwd();

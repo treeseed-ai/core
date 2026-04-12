@@ -1,6 +1,6 @@
 import type { APIContext } from 'astro';
-import { getTreeseedFormsProvider } from '../../deploy/runtime';
-import { resolveFormsProvider } from '../plugin-runtime';
+import { getTreeseedFormsProvider } from '@treeseed/sdk/platform/deploy-runtime';
+import { resolveFormsProvider } from './provider-runtime';
 import {
 	getContactRoutingMap,
 	getFormSecret,

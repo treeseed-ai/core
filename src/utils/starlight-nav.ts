@@ -1,5 +1,10 @@
-import type { TreeseedBookDefinition } from '../contracts';
-import { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS } from './books-data';
+import type { TreeseedBookDefinition } from '@treeseed/sdk/platform/contracts';
+import {
+	BOOKS,
+	BOOKS_LINK,
+	TREESEED_LIBRARY_DOWNLOAD,
+	TREESEED_LINKS,
+} from '@treeseed/sdk/platform/books-data';
 
 interface DocsDownload {
 	downloadFileName: string;

@@ -1,7 +1,7 @@
 {
   "name": "@treeseed/core",
   "version": "0.3.2",
-  "description": "Treeseed platform runtime package for Astro, Starlight, forms, books, plugins, and shared platform behavior.",
+  "description": "Treeseed Research Hub package for Astro, Starlight, knowledge-factory content, and forms.",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
@@ -58,7 +58,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.3.4",
+    "@treeseed/sdk": "^0.4.0",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
@@ -98,13 +98,6 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
-    "./deploy/config": {
-      "types": "./dist/deploy/config.d.ts",
-      "default": "./dist/deploy/config.js"
-    },
-    "./deploy/runtime": {
-      "default": "./dist/deploy/runtime.js"
-    },
     "./content": {
       "types": "./dist/content.d.ts",
       "default": "./dist/content.js"
@@ -114,41 +107,14 @@
       "default": "./dist/content-config.js"
     },
     "./tenant": "./dist/tenant/bridge.js",
-    "./tenant-config": {
-      "types": "./dist/tenant/config.d.ts",
-      "default": "./dist/tenant/config.js"
-    },
-    "./contracts": "./dist/contracts.js",
-    "./plugin-default": {
-      "types": "./dist/plugin-default.d.ts",
-      "default": "./dist/plugin-default.js"
-    },
-    "./plugins/plugin": {
-      "types": "./dist/plugins/plugin.d.ts",
-      "default": "./dist/plugins/plugin.js"
-    },
-    "./plugins/runtime": {
-      "types": "./dist/plugins/runtime.d.ts",
-      "default": "./dist/plugins/runtime.js"
-    },
-    "./environment": {
-      "types": "./dist/environment.d.ts",
-      "default": "./dist/environment.js"
-    },
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
     "./site-resources": {
       "types": "./dist/site-resources.d.ts",
       "default": "./dist/site-resources.js"
     },
-    "./types/agents": "./dist/types/agents.js",
     "./types/cloudflare": "./dist/types/cloudflare.js",
-    "./agents/registry-helper": "./dist/agents/registry-helper.js",
     "./utils/seo": "./dist/utils/seo.js",
     "./utils/site-config-schema": "./dist/utils/site-config-schema.js",
-    "./utils/books-data": "./dist/utils/books-data.js",
-    "./utils/agents/runtime-types": "./dist/utils/agents/runtime-types.js",
-    "./utils/agents/contracts/messages": "./dist/utils/agents/contracts/messages.js",
-    "./utils/agents/contracts/run": "./dist/utils/agents/contracts/run.js",
     "./components/site/CTASection.astro": "./dist/components/site/CTASection.astro",
     "./components/site/SectionIntro.astro": "./dist/components/site/SectionIntro.astro",
     "./components/site/PathCard.astro": "./dist/components/site/PathCard.astro",

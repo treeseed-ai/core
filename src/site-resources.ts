@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { TreeseedDeployConfig, TreeseedTenantConfig } from './contracts';
-import type { LoadedTreeseedPluginEntry } from './plugins/runtime';
+import type { TreeseedDeployConfig, TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { LoadedTreeseedPluginEntry } from '@treeseed/sdk/platform/plugins';
 
 export const TREESEED_SITE_RESOURCE_KINDS = ['pages', 'styles', 'components'] as const;
 

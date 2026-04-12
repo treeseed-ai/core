@@ -1,15 +1,15 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { LoadedTreeseedPluginEntry } from '@treeseed/sdk/platform/plugins';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { TreeseedTenantConfig } from '../../src/contracts';
 import {
 	buildTreeseedSiteLayers,
 	resolveTreeseedPageEntrypoint,
 	resolveTreeseedSiteResource,
 	resolveTreeseedStyleEntrypoint,
 } from '../../src/site-resources';
-import type { LoadedTreeseedPluginEntry } from '../../src/plugins/runtime';
 
 const tempRoots: string[] = [];
 

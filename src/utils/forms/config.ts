@@ -16,7 +16,11 @@ import {
 } from 'astro:env/server';
 import { SITE_EMAIL_NOTIFICATIONS } from '../site-config';
 import type { ContactRoutingMap, LocalDevMode } from '../../types/forms';
-import { getTreeseedFormsProvider, isTreeseedSmtpEnabled, isTreeseedTurnstileEnabled } from '../../deploy/runtime';
+import {
+	getTreeseedFormsProvider,
+	isTreeseedSmtpEnabled,
+	isTreeseedTurnstileEnabled,
+} from '@treeseed/sdk/platform/deploy-runtime';
 
 export function getFormSecret() {
 	return TREESEED_FORM_TOKEN_SECRET ?? '';

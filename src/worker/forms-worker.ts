@@ -1,7 +1,7 @@
 import { deriveFormRuntimeCapabilities } from '../utils/forms/runtime-core';
 import { resolveBuiltinFormsProvider } from '../utils/forms/provider-core';
 import { handleFormSubmissionWithConfig, handleTokenRequestWithConfig } from '../utils/forms/service-core';
-import type { TreeseedDeployConfig } from '../contracts';
+import type { TreeseedDeployConfig } from '@treeseed/sdk/platform/contracts';
 import type { CloudflareRuntimeAssets, D1DatabaseLike, KvNamespaceLike } from '../types/cloudflare';
 
 declare const __TREESEED_DEPLOY_CONFIG__: TreeseedDeployConfig;

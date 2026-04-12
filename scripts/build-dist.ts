@@ -162,11 +162,7 @@ function rewriteScriptRuntimeSpecifiers(contents) {
 		.replace(/(['"`])\.\.\/src\//g, '$1../')
 		.replace(/(['"`])\.\/src\//g, '$1./dist/')
 		.replaceAll("'src/worker/forms-worker.ts'", "'dist/worker/forms-worker.js'")
-		.replaceAll('"src/worker/forms-worker.ts"', '"dist/worker/forms-worker.js"')
-		.replaceAll("'../src/deploy/config.ts'", "'../deploy/config.js'")
-		.replaceAll('"../src/deploy/config.ts"', '"../deploy/config.js"')
-		.replaceAll("'../src/deploy/config.ts'", "'../deploy/config.js'")
-		.replaceAll('"../src/deploy/config.ts"', '"../deploy/config.js"');
+		.replaceAll('"src/worker/forms-worker.ts"', '"dist/worker/forms-worker.js"');
 }
 
 async function compileModule(filePath, sourceRoot, outputRoot) {
@@ -251,15 +247,8 @@ function rewriteDeclarations() {
 
 function emitTypeDeclarations() {
 	const sourceFiles = [
-		resolve(srcRoot, 'contracts.ts'),
-		resolve(srcRoot, 'environment.ts'),
-		resolve(srcRoot, 'types/agents.ts'),
 		resolve(srcRoot, 'types/cloudflare.ts'),
-		resolve(srcRoot, 'plugins/plugin.ts'),
 		resolve(srcRoot, 'site-resources.ts'),
-		resolve(srcRoot, 'utils/agents/runtime-types.ts'),
-		resolve(srcRoot, 'utils/agents/contracts/messages.ts'),
-		resolve(srcRoot, 'utils/agents/contracts/run.ts'),
 	].filter((filePath) => existsSync(filePath));
 
 	if (sourceFiles.length === 0) {
@@ -456,7 +445,7 @@ async function main() {
 
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'config.js'),
-		"import starlight from './vendor/starlight/index.js';\nimport { createTreeseedSite } from './site.js';\nimport { loadTreeseedManifest } from './tenant/config.js';\n\nexport function createTreeseedTenantSite(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedSite(tenant, { starlight });\n}"
+		"import starlight from './vendor/starlight/index.js';\nimport { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';\nimport { createTreeseedSite } from './site.js';\n\nexport function createTreeseedTenantSite(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedSite(tenant, { starlight });\n}"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'config.d.ts'),
@@ -465,7 +454,7 @@ async function main() {
 
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.js'),
-		"import { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createTreeseedCollections } from './content.js';\nimport { loadTreeseedManifest } from './tenant/config.js';\n\nexport function createTreeseedTenantCollections(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedCollections(tenant, { docsLoader, docsSchema });\n}"
+		"import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';\nimport { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createTreeseedCollections } from './content.js';\n\nexport function createTreeseedTenantCollections(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedCollections(tenant, { docsLoader, docsSchema });\n}"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.d.ts'),

@@ -6,14 +6,14 @@ import { fileURLToPath } from 'node:url';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 import tailwindcss from '@tailwindcss/vite';
-import type { TreeseedDeployConfig, TreeseedTenantConfig } from './contracts';
-import type { TreeseedSiteExtensionContribution, TreeseedSiteRouteContribution } from './plugins/plugin';
+import type { TreeseedDeployConfig, TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { TreeseedSiteExtensionContribution, TreeseedSiteRouteContribution } from '@treeseed/sdk/platform/plugin';
 import { parseSiteConfig } from './utils/site-config-schema.js';
-import { buildTenantBookRuntime } from './utils/books-data';
+import { buildTenantBookRuntime } from '@treeseed/sdk/platform/books-data';
 import { getStarlightSidebarConfigFromRuntime } from './utils/starlight-nav';
 import { buildTenantThemeCss } from './utils/theme.ts';
-import { loadTreeseedDeployConfig } from './deploy/config';
-import { loadTreeseedPluginRuntime } from './plugins/runtime';
+import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import {
 	buildTreeseedSiteLayers,
 	resolveTreeseedPageEntrypoint,

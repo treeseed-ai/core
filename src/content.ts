@@ -2,10 +2,10 @@ import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
-import type { TreeseedTenantConfig } from './contracts';
-import { AGENT_CLI_ALLOW_TOOLS } from './types/agents';
-import { loadTreeseedPluginRuntime } from './plugins/runtime';
-import { loadTreeseedDeployConfig } from './deploy/config';
+import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
+import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import {
 	AGENT_MODEL_DEFAULTS,
 	BOOK_MODEL_DEFAULTS,

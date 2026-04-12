@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import type { TreeseedTenantConfig } from '../contracts';
-import { loadTreeseedManifest } from './config';
+import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../utils/site-config-schema.js';
 
 declare const __TREESEED_TENANT_CONFIG__: TreeseedTenantConfig | undefined;

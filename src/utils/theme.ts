@@ -1,4 +1,4 @@
-import type { TreeseedThemeConfig } from '../contracts';
+import type { TreeseedThemeConfig } from '@treeseed/sdk/platform/contracts';
 
 const THEME_TOKEN_MAP = {
 	'surfaces.background': '--site-bg',
