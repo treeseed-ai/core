@@ -1,6 +1,6 @@
 # @treeseed/core
 
-`@treeseed/core` is the Treeseed runtime package for Astro/Starlight sites. It contains the published runtime, shared components and styles, forms and deploy helpers, plugin runtime wiring, and agent-facing utilities used by Treeseed tenants.
+`@treeseed/core` is the Treeseed Research Hub package for Astro/Starlight sites. It contains the published site runtime, shared components and styles, the knowledge-factory content model, and the Astro-specific forms stack used by Treeseed tenants.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -35,7 +35,19 @@ npm ci
 - `.github/workflows/`: CI and publish workflows for this package repo
 - `templates/github/deploy.workflow.yml`: downstream tenant deploy workflow template
 
-The package builds directly against the canonical working-site fixture in `treeseed-fixtures`.
+The package builds directly against the canonical shared working-site fixture in `treeseed-fixtures`.
+
+## Shared Fixture Usage
+
+`@treeseed/core` validates itself against the integrated shared fixture, not a Core-specific fork.
+
+That means:
+
+- the fixture may reference package surfaces owned by `sdk` and `agent`
+- Core does not gain a real dependency on `@treeseed/agent`
+- isolated Core verification may provide an Agent contracts shim so the shared fixture can typecheck and build without the full Agent runtime package
+
+This keeps the shared fixture canonical while preserving Core’s package boundary.
 
 ## Commands
 
@@ -122,6 +134,8 @@ The package currently depends on:
 - Astro and Starlight runtime packages
 - Tailwind/Vite integration used by the site runtime
 - Wrangler for Cloudflare-oriented runtime and deploy support
+
+It does not depend on `@treeseed/agent`.
 
 ## Contributor Workflow
 
