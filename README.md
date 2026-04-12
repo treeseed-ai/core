@@ -63,9 +63,18 @@ What they do:
 
 ```bash
 npm run verify
+npm run verify:local
+npm run verify:action
 ```
 
-`npm run verify` is an alias for `npm run release:verify`. The verification chain is:
+`npm run verify` uses the shared Treeseed SDK verify driver in auto mode.
+
+- `npm run verify` auto-selects between local direct verification and the `gh act` workflow path
+- `npm run verify:local` forces local direct verification against the current repo state
+- `npm run verify:action` forces the isolated workflow path through `gh act`
+- `npm run verify:direct` is the raw package verification chain used by the driver
+
+The direct verification chain is:
 
 1. `npm run build:dist`
 2. `npm run test:unit`
