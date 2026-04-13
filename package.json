@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Treeseed Research Hub package for Astro, Starlight, knowledge-factory content, and forms.",
   "license": "AGPL-3.0-only",
   "repository": {

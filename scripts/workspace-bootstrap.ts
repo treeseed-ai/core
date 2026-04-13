@@ -4,8 +4,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { packageRoot } from './package-tools.ts';
-
 const require = createRequire(import.meta.url);
 const requiredPackages = [
 	{ name: '@treeseed/sdk', dir: 'packages/sdk', build: true },
@@ -72,8 +70,33 @@ function run(command, args, options = {}) {
 	}
 }
 
+function findPackageRoot(startPath) {
+	let current = dirname(startPath);
+	while (true) {
+		const packageJsonPath = resolve(current, 'package.json');
+		if (existsSync(packageJsonPath)) {
+			return { root: current, packageJsonPath };
+		}
+		const parent = dirname(current);
+		if (parent === current) {
+			throw new Error(`Unable to resolve package root from "${startPath}".`);
+		}
+		current = parent;
+	}
+}
+
+function installedPackageRoot(root, packageName) {
+	const segments = packageName.startsWith('@') ? packageName.split('/') : [packageName];
+	const packageRoot = resolve(root, 'node_modules', ...segments);
+	const packageJsonPath = resolve(packageRoot, 'package.json');
+	if (!existsSync(packageJsonPath)) {
+		throw new Error(`Unable to resolve installed package "${packageName}" from "${root}".`);
+	}
+	return { root: packageRoot, packageJsonPath };
+}
+
 function resolvePackageBinary(packageName, binName = packageName, root = process.cwd()) {
-	const packageJsonPath = require.resolve(`${packageName}/package.json`, { paths: [root, packageRoot] });
+	const { packageJsonPath } = installedPackageRoot(root, packageName);
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 	const binField = packageJson.bin;
 	const relativePath = typeof binField === 'string' ? binField : binField?.[binName];
@@ -84,13 +107,6 @@ function resolvePackageBinary(packageName, binName = packageName, root = process
 }
 
 function runStarlightPatchFromRegistry(root) {
-	const corePackageJsonPath = require.resolve('@treeseed/core/package.json', { paths: [root, packageRoot] });
-	const coreRoot = dirname(corePackageJsonPath);
-	const patchScriptPath = resolve(coreRoot, 'dist', 'scripts', 'patch-starlight-content-path.js');
-	if (existsSync(patchScriptPath)) {
-		run(process.execPath, [patchScriptPath], { cwd: root });
-		return;
-	}
 	const treeseedBin = resolvePackageBinary('@treeseed/cli', 'treeseed', root);
 	run(process.execPath, [treeseedBin, 'starlight:patch'], { cwd: root });
 }
