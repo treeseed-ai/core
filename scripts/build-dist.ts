@@ -249,6 +249,13 @@ function emitTypeDeclarations() {
 	const sourceFiles = [
 		resolve(srcRoot, 'types/cloudflare.ts'),
 		resolve(srcRoot, 'site-resources.ts'),
+		resolve(srcRoot, 'platform-resources.ts'),
+		resolve(srcRoot, 'api.ts'),
+		resolve(srcRoot, 'railway.ts'),
+		resolve(srcRoot, 'platform.ts'),
+		resolve(srcRoot, 'plugin-default.ts'),
+		resolve(srcRoot, 'index.ts'),
+		...walkFiles(resolve(srcRoot, 'api')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
 	].filter((filePath) => existsSync(filePath));
 
 	if (sourceFiles.length === 0) {

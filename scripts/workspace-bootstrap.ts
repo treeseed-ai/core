@@ -9,7 +9,6 @@ const requiredPackages = [
 	{ name: '@treeseed/sdk', dir: 'packages/sdk', build: true },
 	{ name: '@treeseed/core', dir: 'packages/core', build: true },
 	{ name: '@treeseed/agent', dir: 'packages/agent', build: true },
-	{ name: '@treeseed/api', dir: 'packages/api', build: true },
 	{ name: '@treeseed/cli', dir: 'packages/cli', build: true, binName: 'treeseed' },
 ];
 

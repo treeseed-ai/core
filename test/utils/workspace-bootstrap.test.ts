@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { detectTreeseedBootstrapMode } from '../../scripts/workspace-bootstrap.ts';
 
-const packageDirs = ['sdk', 'core', 'cli', 'agent', 'api'];
+const packageDirs = ['sdk', 'core', 'cli', 'agent'];
 
 function makeRoot() {
 	return mkdtempSync(join(tmpdir(), 'treeseed-bootstrap-mode-'));
@@ -30,7 +30,6 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 			'packages/sdk',
 			'packages/core',
 			'packages/agent',
-			'packages/api',
 			'packages/cli',
 		]);
 	});
@@ -57,6 +56,5 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 		expect(state.mode).toBe('partial');
 		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/cli');
 		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/agent');
-		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/api');
 	});
 });

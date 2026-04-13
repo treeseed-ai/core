@@ -5,4 +5,22 @@ export {
 	resolveTreeseedStyleEntrypoint,
 	TREESEED_SITE_RESOURCE_KINDS,
 } from './site-resources';
+export {
+	buildTreeseedPlatformLayers,
+	resolveTreeseedPlatformResource,
+	TREESEED_PLATFORM_RESOURCE_KINDS,
+} from './platform-resources';
 export { parseSiteConfig } from './utils/site-config-schema.js';
+export { createTreeseedApiApp } from './api/app';
+export { createTreeseedGatewayApp } from './api/gateway';
+export { createRailwayTreeseedApiServer } from './api/railway';
+export { resolveApiConfig } from './api/config';
+export {
+	createTreeseedIntegratedDevPlan,
+	runTreeseedIntegratedDev,
+	type TreeseedIntegratedDevCommand,
+	type TreeseedIntegratedDevOptions,
+	type TreeseedIntegratedDevPlan,
+	type TreeseedIntegratedDevSurface,
+} from './dev';
+export type * from './api/types';

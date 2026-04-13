@@ -1,7 +1,7 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.2",
-  "description": "Treeseed Research Hub package for Astro, Starlight, knowledge-factory content, and forms.",
+  "version": "0.4.3",
+  "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
@@ -36,6 +36,10 @@
     "setup:ci": "npm ci",
     "build:dist": "node ./scripts/run-ts.mjs ./scripts/build-dist.ts",
     "prepack": "npm run build:dist",
+    "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
+    "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
+    "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
+    "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
     "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
     "check": "node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts check",
@@ -58,7 +62,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.4.2",
+    "@treeseed/sdk": "^0.4.4",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
@@ -66,6 +70,7 @@
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
+    "hono": "^4.8.2",
     "katex": "^0.16.22",
     "nodemailer": "^8.0.4",
     "rehype-katex": "^7.0.1",
@@ -98,6 +103,26 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
+    },
+    "./railway": {
+      "types": "./dist/railway.d.ts",
+      "default": "./dist/railway.js"
+    },
+    "./platform": {
+      "types": "./dist/platform.d.ts",
+      "default": "./dist/platform.js"
+    },
+    "./dev": {
+      "types": "./dist/dev.d.ts",
+      "default": "./dist/dev.js"
+    },
+    "./plugin-default": {
+      "types": "./dist/plugin-default.d.ts",
+      "default": "./dist/plugin-default.js"
+    },
     "./content": {
       "types": "./dist/content.d.ts",
       "default": "./dist/content.js"
@@ -107,7 +132,16 @@
       "default": "./dist/content-config.js"
     },
     "./tenant": "./dist/tenant/bridge.js",
+    "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
+    "./api/app": {
+      "types": "./dist/api/app.d.ts",
+      "default": "./dist/api/app.js"
+    },
+    "./api/gateway": {
+      "types": "./dist/api/gateway.d.ts",
+      "default": "./dist/api/gateway.js"
+    },
     "./site-resources": {
       "types": "./dist/site-resources.d.ts",
       "default": "./dist/site-resources.js"

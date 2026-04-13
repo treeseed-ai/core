@@ -1,6 +1,6 @@
 # @treeseed/core
 
-`@treeseed/core` is the Treeseed Research Hub package for Astro/Starlight sites. It contains the published site runtime, shared components and styles, the knowledge-factory content model, and the Astro-specific forms stack used by Treeseed tenants.
+`@treeseed/core` is the Treeseed integrated platform starter for Astro/Starlight sites and Hono API runtimes. It contains the published web runtime, API runtime, integrated local dev orchestration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -54,6 +54,9 @@ This keeps the shared fixture canonical while preserving Core’s package bounda
 ### Core development
 
 ```bash
+npm run dev
+npm run dev:web
+npm run dev:api
 npm run fixtures:check
 npm run build:dist
 npm run test:unit
@@ -64,6 +67,9 @@ npm run test:smoke
 
 What they do:
 
+- `dev`: starts the integrated Astro UI and Hono API local runtime from `core`
+- `dev:web`: starts only the Astro UI dev surface through the `core` runtime
+- `dev:api`: starts only the Hono API dev surface through the `core` runtime
 - `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
 - `build:dist`: builds the publishable `dist/` package output
 - `test:unit`: runs package unit tests with Vitest

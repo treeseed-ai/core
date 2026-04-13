@@ -1,5 +1,6 @@
 import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
+import cloudflare from '@astrojs/cloudflare';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -299,7 +300,12 @@ export function createTreeseedSite(
 	const resolvedGlobalCss = resolveTreeseedStyleEntrypoint(siteLayers, 'styles/global.css');
 
 	return defineConfig({
-		output: 'static',
+		adapter: deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare'
+			? cloudflare()
+			: undefined,
+		output: deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare'
+			? 'server'
+			: 'static',
 		site: siteConfig.site.siteUrl,
 		vite: {
 			define: {
