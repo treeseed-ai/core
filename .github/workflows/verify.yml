@@ -25,7 +25,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.12.0
+
+      - name: Assert node:sqlite availability
+        run: node -e "import('node:sqlite').then(() => console.log('node:sqlite available')).catch((error) => { console.error(error); process.exit(1); })"
 
       - name: Install dependencies
         run: |

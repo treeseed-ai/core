@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentSdk, parseTemplateCatalogResponse } from '@treeseed/sdk';
@@ -16,6 +15,9 @@ const authMigrationPathCandidates = [
 	resolve(packageRoot, '../../migrations/0007_site_web_sessions.sql'),
 ];
 const authMigrationPath = authMigrationPathCandidates.find((candidate) => existsSync(candidate));
+const sqliteModule = await import('node:sqlite').catch(() => null);
+const DatabaseSyncCtor = sqliteModule?.DatabaseSync ?? null;
+const apiRuntimeDescribe = DatabaseSyncCtor ? describe : describe.skip;
 
 if (!authMigrationPath) {
 	throw new Error(
@@ -27,7 +29,13 @@ class TestPreparedStatement implements D1PreparedStatementLike {
 	private bindings: unknown[] = [];
 
 	constructor(
-		private readonly db: DatabaseSync,
+		private readonly db: {
+			prepare: (query: string) => {
+				run: (...values: unknown[]) => unknown;
+				get: (...values: unknown[]) => unknown;
+				all: (...values: unknown[]) => unknown[];
+			};
+		},
 		private readonly query: string,
 	) {}
 
@@ -58,7 +66,7 @@ class TestPreparedStatement implements D1PreparedStatementLike {
 }
 
 class TestD1Database implements D1DatabaseLike {
-	private readonly db = new DatabaseSync(':memory:');
+	private readonly db = new DatabaseSyncCtor(':memory:');
 
 	constructor() {
 		this.db.exec(readFileSync(authMigrationPath, 'utf8'));
@@ -154,7 +162,7 @@ async function authorizeApp(scopes: string[]) {
 	};
 }
 
-describe('@treeseed/core api runtime', () => {
+apiRuntimeDescribe('@treeseed/core api runtime', () => {
 	it('exposes the integrated runtime exports from core', () => {
 		const packageJson = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as Record<string, any>;
 		expect(packageJson.name).toBe('@treeseed/core');
