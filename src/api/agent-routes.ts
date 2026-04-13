@@ -6,6 +6,7 @@ import type {
 	SdkTaskEntity,
 } from '@treeseed/sdk';
 import type { SdkEnqueueTaskRequest } from '@treeseed/sdk/types';
+import { listRegisteredAgentHandlers as listCoreRegisteredAgentHandlers } from '../agents/registry.ts';
 import { jsonError, requireScope } from './http.ts';
 import type {
 	AppVariables,
@@ -21,22 +22,8 @@ interface RegisterAgentRoutesOptions {
 	defaultActor?: string;
 }
 
-type AgentRuntimeModule = {
-	listRegisteredAgentHandlers?: () => unknown[];
-};
-
-async function importOptionalAgentRuntime(): Promise<AgentRuntimeModule | null> {
-	try {
-		const dynamicImport = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<AgentRuntimeModule>;
-		return await dynamicImport('@treeseed/agent');
-	} catch {
-		return null;
-	}
-}
-
 async function listRegisteredHandlers() {
-	const agent = await importOptionalAgentRuntime();
-	return agent?.listRegisteredAgentHandlers?.() ?? [];
+	return listCoreRegisteredAgentHandlers();
 }
 
 function queueEnvelopeForTask(task: Record<string, unknown>): SdkQueueMessageEnvelope {

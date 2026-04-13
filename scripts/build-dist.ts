@@ -251,11 +251,16 @@ function emitTypeDeclarations() {
 		resolve(srcRoot, 'site-resources.ts'),
 		resolve(srcRoot, 'platform-resources.ts'),
 		resolve(srcRoot, 'api.ts'),
+		resolve(srcRoot, 'agent.ts'),
+		resolve(srcRoot, 'agent-runtime.ts'),
 		resolve(srcRoot, 'railway.ts'),
 		resolve(srcRoot, 'platform.ts'),
+		resolve(srcRoot, 'services/index.ts'),
 		resolve(srcRoot, 'plugin-default.ts'),
 		resolve(srcRoot, 'index.ts'),
 		...walkFiles(resolve(srcRoot, 'api')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
+		...walkFiles(resolve(srcRoot, 'agents')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
+		...walkFiles(resolve(srcRoot, 'services')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
 	].filter((filePath) => existsSync(filePath));
 
 	if (sourceFiles.length === 0) {

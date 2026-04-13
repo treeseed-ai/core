@@ -123,7 +123,25 @@ try {
 	installPackagedPackage(extractRoot, installRoot, coreTarball, 'core');
 	mirrorDependencies(installRoot);
 	writeFileSync(resolve(installRoot, 'package.json'), `${JSON.stringify({ name: 'treeseed-core-smoke', private: true, type: 'module' }, null, 2)}\n`, 'utf8');
-	run(process.execPath, ['--input-type=module', '-e', 'await import("@treeseed/core");'], installRoot);
+	run(
+		process.execPath,
+		[
+			'--input-type=module',
+			'-e',
+			[
+				'await import("@treeseed/core");',
+				'await import("@treeseed/core/agent/cli");',
+				'await import("@treeseed/core/runtime-types");',
+				'await import("@treeseed/core/contracts/messages");',
+				'await import("@treeseed/core/contracts/run");',
+				'await import("@treeseed/core/services/manager");',
+				'await import("@treeseed/core/services/worker");',
+				'await import("@treeseed/core/services/workday-start");',
+				'await import("@treeseed/core/services/workday-report");',
+			].join(' '),
+		],
+		installRoot,
+	);
 	console.log('Core packed-install smoke passed.');
 } finally {
 	rmSync(stageRoot, { recursive: true, force: true });

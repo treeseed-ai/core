@@ -1,6 +1,6 @@
 # @treeseed/core
 
-`@treeseed/core` is the Treeseed integrated platform starter for Astro/Starlight sites and Hono API runtimes. It contains the published web runtime, API runtime, integrated local dev orchestration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
+`@treeseed/core` is the Treeseed integrated platform starter for Astro/Starlight sites, Hono API runtimes, agent runtimes, and worker services. It contains the published web runtime, API runtime, manager/worker entrypoints, integrated local dev orchestration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -41,13 +41,7 @@ The package builds directly against the canonical shared working-site fixture in
 
 `@treeseed/core` validates itself against the integrated shared fixture, not a Core-specific fork.
 
-That means:
-
-- the fixture may reference package surfaces owned by `sdk` and `agent`
-- Core does not gain a real dependency on `@treeseed/agent`
-- isolated Core verification may provide an Agent contracts shim so the shared fixture can typecheck and build without the full Agent runtime package
-
-This keeps the shared fixture canonical while preserving Core’s package boundary.
+That means the fixture may reference package surfaces owned by `sdk`, `core`, and `cli`, and isolated Core verification links the real local `core` package into the shared fixture instead of maintaining a separate agent package boundary.
 
 ## Commands
 
@@ -57,6 +51,10 @@ This keeps the shared fixture canonical while preserving Core’s package bounda
 npm run dev
 npm run dev:web
 npm run dev:api
+npm run dev:manager
+npm run dev:worker
+npm run dev:workday-start
+npm run dev:workday-report
 npm run fixtures:check
 npm run build:dist
 npm run test:unit
@@ -70,6 +68,7 @@ What they do:
 - `dev`: starts the integrated Astro UI and Hono API local runtime from `core`
 - `dev:web`: starts only the Astro UI dev surface through the `core` runtime
 - `dev:api`: starts only the Hono API dev surface through the `core` runtime
+- `dev:manager`, `dev:worker`, `dev:workday-start`, `dev:workday-report`: start the worker-service entrypoints from `core`
 - `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
 - `build:dist`: builds the publishable `dist/` package output
 - `test:unit`: runs package unit tests with Vitest
@@ -134,14 +133,7 @@ The published package includes:
 - `utils/`
 - `README.md`
 
-The package currently depends on:
-
-- `@treeseed/sdk`
-- Astro and Starlight runtime packages
-- Tailwind/Vite integration used by the site runtime
-- Wrangler for Cloudflare-oriented runtime and deploy support
-
-It does not depend on `@treeseed/agent`.
+The package currently depends on `@treeseed/sdk` plus the runtime packages needed for its web, API, and worker surfaces. It does not depend on `@treeseed/cli`.
 
 ## Contributor Workflow
 

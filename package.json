@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -29,6 +29,7 @@
     "access": "public"
   },
   "bin": {
+    "treeseed-agents": "./dist/agents/cli.js",
     "treeseed-workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js"
   },
   "scripts": {
@@ -39,6 +40,10 @@
     "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
     "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
     "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
+    "dev:manager": "node ./scripts/run-ts.mjs ./src/services/manager.ts",
+    "dev:worker": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
+    "dev:workday-start": "node ./scripts/run-ts.mjs ./src/services/workday-start.ts",
+    "dev:workday-report": "node ./scripts/run-ts.mjs ./src/services/workday-report.ts",
     "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
     "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
@@ -62,7 +67,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.4.5",
+    "@treeseed/sdk": "^0.4.6",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
@@ -107,6 +112,26 @@
       "types": "./dist/api.d.ts",
       "default": "./dist/api.js"
     },
+    "./agent": {
+      "types": "./dist/agent.d.ts",
+      "default": "./dist/agent.js"
+    },
+    "./agent/cli": {
+      "types": "./dist/agents/cli.d.ts",
+      "default": "./dist/agents/cli.js"
+    },
+    "./runtime-types": {
+      "types": "./dist/agents/runtime-types.d.ts",
+      "default": "./dist/agents/runtime-types.js"
+    },
+    "./contracts/messages": {
+      "types": "./dist/agents/contracts/messages.d.ts",
+      "default": "./dist/agents/contracts/messages.js"
+    },
+    "./contracts/run": {
+      "types": "./dist/agents/contracts/run.d.ts",
+      "default": "./dist/agents/contracts/run.js"
+    },
     "./railway": {
       "types": "./dist/railway.d.ts",
       "default": "./dist/railway.js"
@@ -134,6 +159,22 @@
     "./tenant": "./dist/tenant/bridge.js",
     "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
+    "./services/manager": {
+      "types": "./dist/services/manager.d.ts",
+      "default": "./dist/services/manager.js"
+    },
+    "./services/worker": {
+      "types": "./dist/services/worker.d.ts",
+      "default": "./dist/services/worker.js"
+    },
+    "./services/workday-start": {
+      "types": "./dist/services/workday-start.d.ts",
+      "default": "./dist/services/workday-start.js"
+    },
+    "./services/workday-report": {
+      "types": "./dist/services/workday-report.d.ts",
+      "default": "./dist/services/workday-report.js"
+    },
     "./api/app": {
       "types": "./dist/api/app.d.ts",
       "default": "./dist/api/app.js"
