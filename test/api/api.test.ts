@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -11,7 +11,17 @@ import { resolveApiConfig } from '../../src/api/config.ts';
 import { createTreeseedGatewayApp } from '../../src/api/gateway.ts';
 
 const packageRoot = process.cwd();
-const authMigrationPath = resolve(packageRoot, '../../migrations/0007_site_web_sessions.sql');
+const authMigrationPathCandidates = [
+	resolve(packageRoot, 'test/fixtures/0007_site_web_sessions.sql'),
+	resolve(packageRoot, '../../migrations/0007_site_web_sessions.sql'),
+];
+const authMigrationPath = authMigrationPathCandidates.find((candidate) => existsSync(candidate));
+
+if (!authMigrationPath) {
+	throw new Error(
+		`Unable to resolve auth migration fixture. Checked: ${authMigrationPathCandidates.join(', ')}`,
+	);
+}
 
 class TestPreparedStatement implements D1PreparedStatementLike {
 	private bindings: unknown[] = [];

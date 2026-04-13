@@ -21,13 +21,22 @@ interface RegisterAgentRoutesOptions {
 	defaultActor?: string;
 }
 
-async function listRegisteredHandlers() {
+type AgentRuntimeModule = {
+	listRegisteredAgentHandlers?: () => unknown[];
+};
+
+async function importOptionalAgentRuntime(): Promise<AgentRuntimeModule | null> {
 	try {
-		const agent = await import('@treeseed/agent');
-		return agent.listRegisteredAgentHandlers();
+		const dynamicImport = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<AgentRuntimeModule>;
+		return await dynamicImport('@treeseed/agent');
 	} catch {
-		return [];
+		return null;
 	}
+}
+
+async function listRegisteredHandlers() {
+	const agent = await importOptionalAgentRuntime();
+	return agent?.listRegisteredAgentHandlers?.() ?? [];
 }
 
 function queueEnvelopeForTask(task: Record<string, unknown>): SdkQueueMessageEnvelope {
