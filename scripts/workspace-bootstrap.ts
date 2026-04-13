@@ -105,9 +105,25 @@ function resolvePackageBinary(packageName, binName = packageName, root = process
 	return resolve(dirname(packageJsonPath), relativePath);
 }
 
+function resolveInstalledCoreScript(root, scriptRelativePath) {
+	const { root: coreRoot } = installedPackageRoot(root, '@treeseed/core');
+	const scriptPath = resolve(coreRoot, scriptRelativePath);
+	if (!existsSync(scriptPath)) {
+		throw new Error(`Unable to resolve installed @treeseed/core script "${scriptRelativePath}" from "${root}".`);
+	}
+	return scriptPath;
+}
+
 function runStarlightPatchFromRegistry(root) {
-	const treeseedBin = resolvePackageBinary('@treeseed/cli', 'treeseed', root);
-	run(process.execPath, [treeseedBin, 'starlight:patch'], { cwd: root });
+	const workspacePatchScript = resolve(root, 'packages', 'core', 'scripts', 'patch-starlight-content-path.ts');
+	const workspaceRunner = resolve(root, 'packages', 'core', 'scripts', 'run-ts.mjs');
+	if (existsSync(workspacePatchScript) && existsSync(workspaceRunner)) {
+		run(process.execPath, [workspaceRunner, workspacePatchScript], { cwd: root });
+		return;
+	}
+
+	const patchScript = resolveInstalledCoreScript(root, 'dist/scripts/patch-starlight-content-path.js');
+	run(process.execPath, [patchScript], { cwd: root });
 }
 
 function runStarlightPatchFromWorkspace(root, packages) {

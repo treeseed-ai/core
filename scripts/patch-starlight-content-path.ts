@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { packageRoot } from './paths.ts';
+import { packageRoot } from './package-tools.ts';
 
 const legacyDocsRoot = path.resolve(packageRoot, '../..');
 const candidateStarlightRoots = [
