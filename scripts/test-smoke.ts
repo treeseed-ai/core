@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -29,39 +29,87 @@ function run(command: string, args: string[], cwd = packageRoot, capture = false
 	return (result.stdout ?? '').trim();
 }
 
-function resolveNodeModulesRoot() {
-	let lastCandidate: string | null = null;
-	let current = packageRoot;
-	while (true) {
-		const candidate = resolve(current, 'node_modules');
-		try {
-			readdirSync(candidate);
-			lastCandidate = candidate;
-		} catch {
-		}
-
-		const parent = resolve(current, '..');
-		if (parent === current) break;
-		current = parent;
-	}
-
-	if (lastCandidate) {
-		return lastCandidate;
-	}
-
-	throw new Error(`Unable to locate node_modules for ${packageRoot}.`);
+function runtimeDependencyNamesFor(root: string) {
+	const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
+		dependencies?: Record<string, string>;
+	};
+	return Object.keys(packageJson.dependencies ?? {});
 }
 
-function mirrorDependencies(tempRoot: string) {
-	const sharedNodeModules = resolveNodeModulesRoot();
-	for (const entry of readdirSync(sharedNodeModules, { withFileTypes: true })) {
-		if (entry.name === '.bin' || entry.name === '@treeseed') {
+function resolveWorkspaceRuntimePackageRoots() {
+	const roots = new Map<string, string>();
+	for (const dependencyName of runtimeDependencyNamesFor(packageRoot)) {
+		if (!dependencyName.startsWith('@treeseed/')) {
 			continue;
 		}
+		const folderName = dependencyName.slice('@treeseed/'.length);
+		const candidateRoot = resolve(packageRoot, '..', folderName);
+		if (existsSync(resolve(candidateRoot, 'package.json'))) {
+			roots.set(dependencyName, candidateRoot);
+		}
+	}
+	return roots;
+}
 
-		const targetPath = resolve(tempRoot, 'node_modules', entry.name);
+function collectRuntimeDependenciesForPackaging() {
+	const dependencyNames = new Set<string>(runtimeDependencyNamesFor(packageRoot));
+	const workspaceRuntimePackageRoots = resolveWorkspaceRuntimePackageRoots();
+	const queue = [...workspaceRuntimePackageRoots.values()];
+	const visited = new Set<string>();
+
+	while (queue.length > 0) {
+		const nextRoot = queue.shift();
+		if (!nextRoot || visited.has(nextRoot)) {
+			continue;
+		}
+		visited.add(nextRoot);
+		for (const dependencyName of runtimeDependencyNamesFor(nextRoot)) {
+			dependencyNames.add(dependencyName);
+			if (!dependencyName.startsWith('@treeseed/')) {
+				continue;
+			}
+			const folderName = dependencyName.slice('@treeseed/'.length);
+			const candidateRoot = resolve(packageRoot, '..', folderName);
+			if (existsSync(resolve(candidateRoot, 'package.json'))) {
+				queue.push(candidateRoot);
+			}
+		}
+	}
+
+	return dependencyNames;
+}
+
+function resolveInstalledPackageRoot(packageName: string, searchRoots: string[]) {
+	let resolvedEntry = require.resolve(packageName, { paths: searchRoots });
+	let current = dirname(resolvedEntry);
+	while (true) {
+		const packageJsonPath = resolve(current, 'package.json');
+		if (existsSync(packageJsonPath)) {
+			return current;
+		}
+		const parent = resolve(current, '..');
+		if (parent === current) {
+			throw new Error(`Unable to resolve installed package root for ${packageName}.`);
+		}
+		current = parent;
+	}
+}
+
+function mirrorDependencies(tempRoot: string, excludedPackages = new Set<string>()) {
+	const runtimeDependencies = collectRuntimeDependenciesForPackaging();
+	const searchRoots = [
+		packageRoot,
+		...resolveWorkspaceRuntimePackageRoots().values(),
+	];
+
+	for (const packageName of runtimeDependencies) {
+		if (excludedPackages.has(packageName) || packageName === '@treeseed/core') {
+			continue;
+		}
+		const sourcePath = resolveInstalledPackageRoot(packageName, searchRoots);
+		const targetPath = resolve(tempRoot, 'node_modules', ...packageName.split('/'));
 		mkdirSync(dirname(targetPath), { recursive: true });
-		symlinkSync(resolve(sharedNodeModules, entry.name), targetPath, 'dir');
+		symlinkSync(sourcePath, targetPath, 'dir');
 	}
 }
 
@@ -113,6 +161,7 @@ try {
 	mkdirSync(packRoot, { recursive: true });
 	mkdirSync(extractRoot, { recursive: true });
 	const coreTarball = pack(packageRoot, packRoot, 'treeseed-core.tgz');
+	const workspaceRuntimePackageRoots = resolveWorkspaceRuntimePackageRoots();
 
 	if (existsSync(resolve(sdkPackageRoot, 'scripts', 'run-ts.mjs'))) {
 		const sdkTarball = pack(sdkPackageRoot, packRoot, 'treeseed-sdk.tgz');
@@ -121,7 +170,7 @@ try {
 		installPackageDirectory(installRoot, sdkPackageRoot, 'sdk');
 	}
 	installPackagedPackage(extractRoot, installRoot, coreTarball, 'core');
-	mirrorDependencies(installRoot);
+	mirrorDependencies(installRoot, new Set(workspaceRuntimePackageRoots.keys()));
 	writeFileSync(resolve(installRoot, 'package.json'), `${JSON.stringify({ name: 'treeseed-core-smoke', private: true, type: 'module' }, null, 2)}\n`, 'utf8');
 	run(
 		process.execPath,
