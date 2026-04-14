@@ -39,13 +39,9 @@ function runtimeDependencyNamesFor(root: string) {
 function resolveWorkspaceRuntimePackageRoots() {
 	const roots = new Map<string, string>();
 	for (const dependencyName of runtimeDependencyNamesFor(packageRoot)) {
-		if (!dependencyName.startsWith('@treeseed/')) {
-			continue;
-		}
-		const folderName = dependencyName.slice('@treeseed/'.length);
-		const candidateRoot = resolve(packageRoot, '..', folderName);
-		if (existsSync(resolve(candidateRoot, 'package.json'))) {
-			roots.set(dependencyName, candidateRoot);
+		const dependencyRoot = resolveTreeseedRuntimeDependencyRoot(dependencyName);
+		if (dependencyRoot) {
+			roots.set(dependencyName, dependencyRoot);
 		}
 	}
 	return roots;
@@ -53,8 +49,11 @@ function resolveWorkspaceRuntimePackageRoots() {
 
 function collectRuntimeDependenciesForPackaging() {
 	const dependencyNames = new Set<string>(runtimeDependencyNamesFor(packageRoot));
-	const workspaceRuntimePackageRoots = resolveWorkspaceRuntimePackageRoots();
-	const queue = [...workspaceRuntimePackageRoots.values()];
+	const searchRoots = [
+		packageRoot,
+		sdkPackageRoot,
+	];
+	const queue = [...resolveWorkspaceRuntimePackageRoots().values()];
 	const visited = new Set<string>();
 
 	while (queue.length > 0) {
@@ -65,18 +64,30 @@ function collectRuntimeDependenciesForPackaging() {
 		visited.add(nextRoot);
 		for (const dependencyName of runtimeDependencyNamesFor(nextRoot)) {
 			dependencyNames.add(dependencyName);
-			if (!dependencyName.startsWith('@treeseed/')) {
-				continue;
-			}
-			const folderName = dependencyName.slice('@treeseed/'.length);
-			const candidateRoot = resolve(packageRoot, '..', folderName);
-			if (existsSync(resolve(candidateRoot, 'package.json'))) {
-				queue.push(candidateRoot);
+			const dependencyRoot = resolveTreeseedRuntimeDependencyRoot(dependencyName, searchRoots);
+			if (dependencyRoot) {
+				queue.push(dependencyRoot);
 			}
 		}
 	}
 
 	return dependencyNames;
+}
+
+function resolveTreeseedRuntimeDependencyRoot(packageName: string, searchRoots: string[] = [packageRoot, sdkPackageRoot]) {
+	if (!packageName.startsWith('@treeseed/')) {
+		return null;
+	}
+	const folderName = packageName.slice('@treeseed/'.length);
+	const workspaceCandidateRoot = resolve(packageRoot, '..', folderName);
+	if (existsSync(resolve(workspaceCandidateRoot, 'package.json'))) {
+		return workspaceCandidateRoot;
+	}
+	try {
+		return resolveInstalledPackageRoot(packageName, searchRoots);
+	} catch {
+		return null;
+	}
 }
 
 function resolveInstalledPackageRoot(packageName: string, searchRoots: string[]) {
@@ -108,6 +119,9 @@ function mirrorDependencies(tempRoot: string, excludedPackages = new Set<string>
 		}
 		const sourcePath = resolveInstalledPackageRoot(packageName, searchRoots);
 		const targetPath = resolve(tempRoot, 'node_modules', ...packageName.split('/'));
+		if (existsSync(targetPath)) {
+			continue;
+		}
 		mkdirSync(dirname(targetPath), { recursive: true });
 		symlinkSync(sourcePath, targetPath, 'dir');
 	}
