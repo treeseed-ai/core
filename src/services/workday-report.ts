@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
-import { createGatewayClient, createServiceSdk } from './common.ts';
+import { createServiceSdk } from './common.ts';
 
 export async function runWorkdayReport() {
 	const sdk = createServiceSdk();
-	const gateway = createGatewayClient();
 	const workDays = await sdk.search({ model: 'work_day', limit: 1 });
 	const active = workDays.payload[0] as Record<string, unknown> | undefined;
 	if (!active || typeof active.id !== 'string') {
@@ -18,21 +17,18 @@ export async function runWorkdayReport() {
 		failedTasks: tasks.payload.filter((entry) => entry.state === 'failed').length,
 		pendingTasks: tasks.payload.filter((entry) => entry.state !== 'completed' && entry.state !== 'failed').length,
 	};
-	if (gateway) {
-		await gateway.requestJson('/reports', {
-			body: {
-				workDayId: active.id,
-				kind: 'workday_summary',
-				body: summary,
-			},
-		});
-		await gateway.requestJson(`/workdays/${encodeURIComponent(active.id)}/close`, {
-			body: {
-				state: 'completed',
-				summary,
-			},
-		});
-	}
+	await sdk.createReport({
+		workDayId: active.id,
+		kind: 'workday_summary',
+		body: summary,
+		actor: 'workday-report',
+	});
+	await sdk.closeWorkDay({
+		id: active.id,
+		state: 'completed',
+		summary,
+		actor: 'workday-report',
+	});
 	return { ok: true, workDayId: active.id, summary };
 }
 

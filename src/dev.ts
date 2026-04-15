@@ -86,6 +86,31 @@ function resolveNodeEntrypoint(packageDir: string, sourceRelativePath: string, d
 	};
 }
 
+function resolveTenantApiEntrypoint(tenantRoot: string, runTsPath: string) {
+	const javascriptCandidates = [
+		resolve(tenantRoot, 'src', 'api', 'server.js'),
+		resolve(tenantRoot, 'src', 'api', 'server.mjs'),
+	];
+	for (const candidate of javascriptCandidates) {
+		if (existsSync(candidate)) {
+			return {
+				command: process.execPath,
+				args: [candidate],
+			};
+		}
+	}
+
+	const typescriptCandidate = resolve(tenantRoot, 'src', 'api', 'server.ts');
+	if (existsSync(typescriptCandidate) && existsSync(runTsPath)) {
+		return {
+			command: process.execPath,
+			args: [runTsPath, typescriptCandidate],
+		};
+	}
+
+	return null;
+}
+
 function withWatchArgs(args: string[], watchPaths: string[]) {
 	return watchPaths.flatMap((watchPath) => ['--watch-path', watchPath]).concat(args);
 }
@@ -105,12 +130,13 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const mergedEnv = { ...process.env, ...(options.env ?? {}) };
 	const apiBaseUrl = mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
+	const coreRunTsPath = resolve(packageRoot, 'scripts', 'run-ts.mjs');
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
 		'dist/scripts/tenant-astro-command.js',
 	);
-	const apiEntrypoint = resolveNodeEntrypoint(
+	const apiEntrypoint = resolveTenantApiEntrypoint(tenantRoot, coreRunTsPath) ?? resolveNodeEntrypoint(
 		packageRoot,
 		'src/api/server.ts',
 		'dist/api/server.js',

@@ -1,30 +1,14 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
-import { createGatewayClient, createQueueClient, resolveWorkerConfig } from './common.ts';
-
-async function managerRequest<T>(baseUrl: string, path: string, body: unknown) {
-	const response = await fetch(`${baseUrl}${path}`, {
-		method: 'POST',
-		headers: {
-			accept: 'application/json',
-			'content-type': 'application/json',
-		},
-		body: JSON.stringify(body),
-	});
-	const payload = await response.json().catch(() => ({})) as T & { error?: string };
-	if (!response.ok) {
-		throw new Error(typeof payload.error === 'string' ? payload.error : `Manager request failed with ${response.status}.`);
-	}
-	return payload;
-}
+import { buildTaskContext, createQueueClient, createServiceSdk, resolveWorkerConfig } from './common.ts';
 
 export async function runWorkerCycle() {
-	const gateway = createGatewayClient();
+	const sdk = createServiceSdk();
 	const queue = createQueueClient();
 	const config = resolveWorkerConfig();
-	if (!gateway || !queue) {
-		throw new Error('Worker requires TREESEED_GATEWAY_BASE_URL, TREESEED_GATEWAY_BEARER_TOKEN, CLOUDFLARE_ACCOUNT_ID, TREESEED_QUEUE_ID, and TREESEED_QUEUE_PULL_TOKEN.');
+	if (!queue) {
+		throw new Error('Worker requires CLOUDFLARE_ACCOUNT_ID, TREESEED_QUEUE_ID, and TREESEED_QUEUE_PULL_TOKEN.');
 	}
 
 	const pulled = await queue.pull({
@@ -38,58 +22,54 @@ export async function runWorkerCycle() {
 	let processed = 0;
 	for (const message of pulled.messages) {
 		try {
-			await gateway.requestJson(`/tasks/${encodeURIComponent(message.body.taskId)}/claim`, {
-				body: {
-					workerId: config.workerId,
-					leaseSeconds: config.leaseSeconds,
-				},
+			await sdk.claimTask({
+				id: message.body.taskId,
+				workerId: config.workerId,
+				leaseSeconds: config.leaseSeconds,
+				actor: 'worker',
 			});
 
-			const context = await managerRequest<{ ok: true; payload: Record<string, unknown> }>(
-				config.managerBaseUrl,
-				'/internal/context/resolve-task',
-				{ taskId: message.body.taskId },
-			);
-			const task = context.payload.task as Record<string, unknown> | null;
+			const context = await buildTaskContext(sdk, message.body.taskId);
+			const task = context.task as Record<string, unknown> | null;
 			const payload = task && typeof task.payloadJson === 'string'
 				? JSON.parse(task.payloadJson)
 				: {};
 
-			await gateway.requestJson(`/tasks/${encodeURIComponent(message.body.taskId)}/progress`, {
-				body: {
-					workerId: config.workerId,
-					state: 'running',
-					appendEvent: {
-						kind: 'worker_started',
-						data: { workerId: config.workerId, queueAttempt: message.attempts },
-					},
+			await sdk.recordTaskProgress({
+				id: message.body.taskId,
+				workerId: config.workerId,
+				state: 'running',
+				appendEvent: {
+					kind: 'worker_started',
+					data: { workerId: config.workerId, queueAttempt: message.attempts },
 				},
+				actor: 'worker',
 			});
 
-			await gateway.requestJson(`/tasks/${encodeURIComponent(message.body.taskId)}/complete`, {
-				body: {
-					output: {
-						workerId: config.workerId,
-						queueAttempt: message.attempts,
-						payload,
-					},
-					summary: {
-						status: 'completed',
-						workerId: config.workerId,
-					},
+			await sdk.completeTask({
+				id: message.body.taskId,
+				output: {
+					workerId: config.workerId,
+					queueAttempt: message.attempts,
+					payload,
 				},
+				summary: {
+					status: 'completed',
+					workerId: config.workerId,
+				},
+				actor: 'worker',
 			});
 
 			await queue.ack([message.leaseId]);
 			processed += 1;
 		} catch (error) {
 			const retryDelaySeconds = Math.min(300, Math.max(15, message.attempts * 30));
-			await gateway.requestJson(`/tasks/${encodeURIComponent(message.body.taskId)}/fail`, {
-				body: {
-					errorMessage: error instanceof Error ? error.message : String(error),
-					retryable: true,
-					nextVisibleAt: new Date(Date.now() + retryDelaySeconds * 1000).toISOString(),
-				},
+			await sdk.failTask({
+				id: message.body.taskId,
+				errorMessage: error instanceof Error ? error.message : String(error),
+				retryable: true,
+				nextVisibleAt: new Date(Date.now() + retryDelaySeconds * 1000).toISOString(),
+				actor: 'worker',
 			}).catch(() => null);
 			await queue.retry([{ leaseId: message.leaseId, delaySeconds: retryDelaySeconds }]);
 		}

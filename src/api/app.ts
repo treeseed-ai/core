@@ -3,12 +3,12 @@ import { AgentSdk, TREESEED_REMOTE_CONTRACT_HEADER, TREESEED_REMOTE_CONTRACT_VER
 import { Hono } from 'hono';
 import { registerAgentRoutes } from './agent-routes.ts';
 import { resolveApiConfig } from './config.ts';
-import { bearerTokenFromRequest, jsonError, requireAuthentication, requirePermission, requireScope } from './http.ts';
+import { bearerTokenFromRequest, jsonError, requirePermission, requireScope } from './http.ts';
 import { registerOperationRoutes } from './operations-routes.ts';
 import { resolveApiRuntimeProviders } from './providers.ts';
 import { registerSdkRoutes } from './sdk-routes.ts';
 import { loadTemplateCatalog } from './templates.ts';
-import type { ApiServerOptions, AppVariables } from './types.ts';
+import type { ApiPrincipal, ApiServerOptions, AppVariables } from './types.ts';
 
 function mergeApiOptions(options: ApiServerOptions) {
 	const baseConfig = resolveApiConfig();
@@ -43,11 +43,46 @@ function mergeApiOptions(options: ApiServerOptions) {
 	};
 }
 
+function normalizePrefix(prefix: string | undefined) {
+	if (!prefix?.trim()) return '';
+	const normalized = prefix.trim().replace(/\/+$/u, '');
+	return normalized.startsWith('/') ? normalized : `/${normalized}`;
+}
+
+function principalScopes(permissions: string[]) {
+	const scopes = new Set<string>(['auth:me']);
+	if (permissions.includes('*:*:*') || permissions.includes('sdk:execute:global')) scopes.add('sdk');
+	if (permissions.includes('*:*:*') || permissions.includes('agent:execute:global')) scopes.add('agent');
+	if (permissions.includes('*:*:*') || permissions.includes('operations:execute:global')) scopes.add('operations');
+	return [...scopes];
+}
+
+function buildProjectApiPrincipal(config: ReturnType<typeof mergeApiOptions>['config']): ApiPrincipal {
+	return {
+		id: `project:${config.projectId}`,
+		displayName: config.projectApiLabel,
+		roles: ['project_api'],
+		permissions: [...config.projectApiPermissions],
+		scopes: principalScopes(config.projectApiPermissions),
+		metadata: {
+			projectId: config.projectId,
+		},
+	};
+}
+
+function matchesProjectApiKey(token: string, projectApiKey: string | undefined) {
+	if (!projectApiKey) return false;
+	const left = Buffer.from(token);
+	const right = Buffer.from(projectApiKey);
+	return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
 export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 	const resolved = mergeApiOptions(options);
 	const runtimeProviders = resolveApiRuntimeProviders(resolved.config, options.runtimeProviders);
 	const sharedSdk = options.sdk ?? new AgentSdk({ repoRoot: resolved.config.repoRoot });
 	const app = new Hono<{ Variables: AppVariables }>();
+	const internalPrefix = normalizePrefix(options.internalPrefix);
 
 	app.use('*', async (c, next) => {
 		c.set('requestId', crypto.randomUUID());
@@ -80,6 +115,19 @@ export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 	app.use('*', async (c, next) => {
 		const token = bearerTokenFromRequest(c.req.raw);
 		if (token) {
+			if (matchesProjectApiKey(token, resolved.config.projectApiKey)) {
+				const principal = buildProjectApiPrincipal(resolved.config);
+				c.set('principal', principal);
+				c.set('credential', {
+					type: 'project_api_key',
+					id: resolved.config.projectId,
+					label: resolved.config.projectApiLabel,
+				});
+				c.set('actorType', 'project');
+				c.set('permissionGrants', principal.permissions);
+				await next();
+				return;
+			}
 			const result = await runtimeProviders.auth.authenticateBearerToken(token);
 			if (result) {
 				c.set('principal', result.principal);
@@ -270,15 +318,16 @@ export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 			config: resolved.config,
 			sharedSdk,
 			scope: resolved.scopes.sdk,
+			prefix: internalPrefix,
 		});
 	}
 
 	if (resolved.surfaces.agent) {
 		registerAgentRoutes(app, {
 			sdk: sharedSdk,
-			prefix: '/agent',
+			prefix: `${internalPrefix}/agent`,
 			scope: resolved.scopes.agent,
-			projectId: 'treeseed-market',
+			projectId: resolved.config.projectId,
 			defaultActor: 'api',
 		});
 	}
@@ -286,9 +335,17 @@ export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 	if (resolved.surfaces.operations) {
 		registerOperationRoutes(app, {
 			scope: resolved.scopes.operations,
+			prefix: internalPrefix,
 			executeOperation: options.workflowExecutor,
 		});
 	}
+
+	options.extendApp?.(app, {
+		resolved,
+		runtimeProviders,
+		sharedSdk,
+		internalPrefix,
+	});
 
 	app.notFound((c) => jsonError(c, 404, 'Not found.'));
 

@@ -192,6 +192,22 @@ export class D1AuthStore {
 		return rows.map((row) => row.key);
 	}
 
+	private async permissionsForRoles(roleKeys: string[]) {
+		if (roleKeys.length === 0) {
+			return [];
+		}
+		const placeholders = roleKeys.map(() => '?').join(', ');
+		const rows = await this.all<{ key: string }>(
+			`SELECT DISTINCT permissions.key AS key
+			 FROM roles
+			 INNER JOIN role_permissions ON role_permissions.role_id = roles.id
+			 INNER JOIN permissions ON permissions.id = role_permissions.permission_id
+			 WHERE roles.key IN (${placeholders})`,
+			roleKeys,
+		);
+		return rows.map((row) => row.key);
+	}
+
 	private scopesForPrincipal(permissions: string[]) {
 		const scopes = new Set<string>(['auth:me']);
 		if (permissions.includes('*:*:*') || permissions.includes('sdk:execute:global')) scopes.add('sdk');
@@ -693,7 +709,12 @@ export class D1AuthStore {
 		if (!equalHash(row.secret_hash, incomingHash)) return null;
 		await this.run(`UPDATE service_credentials SET last_used_at = ?, updated_at = ? WHERE id = ?`, [isoNow(), isoNow(), row.id]);
 		const roles = parseJson<string[]>(row.roles_json, []);
-		const permissions = parseJson<string[]>(row.permissions_json, []);
+		const permissions = [
+			...new Set([
+				...await this.permissionsForRoles(roles),
+				...parseJson<string[]>(row.permissions_json, []),
+			]),
+		];
 		return {
 			principal: {
 				id: serviceId,

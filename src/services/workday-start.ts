@@ -1,22 +1,16 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
-import { resolveWorkerConfig } from './common.ts';
+import { createServiceSdk, resolveManagerConfig, startAndSeedWorkday } from './common.ts';
 
 export async function runWorkdayStart() {
-	const managerBaseUrl = resolveWorkerConfig().managerBaseUrl;
-	const response = await fetch(`${managerBaseUrl}/internal/workdays/start`, {
-		method: 'POST',
-		headers: {
-			accept: 'application/json',
-			'content-type': 'application/json',
-		},
-		body: JSON.stringify({}),
+	const sdk = createServiceSdk();
+	const config = resolveManagerConfig();
+	return startAndSeedWorkday(sdk, {
+		projectId: config.projectId,
+		capacityBudget: config.defaultCapacityBudget,
+		actor: 'manager',
 	});
-	if (!response.ok) {
-		throw new Error(`Workday start failed with ${response.status}.`);
-	}
-	return response.json();
 }
 
 const currentFile = fileURLToPath(import.meta.url);

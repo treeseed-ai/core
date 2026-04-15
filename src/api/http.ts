@@ -43,6 +43,13 @@ export function requireAuthentication(c: ApiContext) {
 	return null;
 }
 
+export function requireActorType(c: ApiContext, actorType: 'anonymous' | 'user' | 'service' | 'project', message = 'Trusted service authentication required.') {
+	if (c.get('actorType') !== actorType) {
+		return jsonError(c, 401, message);
+	}
+	return null;
+}
+
 export function requirePermission(c: ApiContext, permission: string) {
 	const principal = c.get('principal');
 	if (!principal || !permissionGranted(c.get('permissionGrants'), permission)) {

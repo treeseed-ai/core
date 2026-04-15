@@ -8,13 +8,19 @@ interface RegisterSdkRoutesOptions {
 	config: ApiConfig;
 	sharedSdk?: AgentSdk;
 	scope: string;
+	prefix?: string;
+}
+
+function withPrefix(prefix: string, path: string) {
+	if (!prefix) return path;
+	return `${prefix}${path}`.replace(/\/{2,}/g, '/');
 }
 
 export function registerSdkRoutes(
 	app: Hono<any>,
 	options: RegisterSdkRoutesOptions,
 ) {
-	app.post('/sdk/:operation', async (c) => {
+	app.post(withPrefix(options.prefix ?? '', '/sdk/:operation'), async (c) => {
 		const unauthorized = requireScope(c, options.scope);
 		if (unauthorized) return unauthorized;
 

@@ -1,49 +1,24 @@
-import crypto from 'node:crypto';
 import type { Hono } from 'hono';
 import type {
 	AgentSdk,
-	SdkQueueMessageEnvelope,
 	SdkTaskEntity,
 } from '@treeseed/sdk';
-import type { SdkEnqueueTaskRequest } from '@treeseed/sdk/types';
 import { listRegisteredAgentHandlers as listCoreRegisteredAgentHandlers } from '../agents/registry.ts';
+import { buildTaskContext, enqueueTaskFromSdk } from '../services/common.ts';
+import type { ApiContext } from './http.ts';
 import { jsonError, requireScope } from './http.ts';
-import type {
-	AppVariables,
-	GatewayQueueProducer,
-} from './types.ts';
 
 interface RegisterAgentRoutesOptions {
 	sdk: AgentSdk;
 	prefix?: string;
 	scope?: string | null;
 	projectId?: string;
-	queueProducer?: GatewayQueueProducer;
 	defaultActor?: string;
+	authorize?: (c: ApiContext) => Response | null;
 }
 
 async function listRegisteredHandlers() {
 	return listCoreRegisteredAgentHandlers();
-}
-
-function queueEnvelopeForTask(task: Record<string, unknown>): SdkQueueMessageEnvelope {
-	return {
-		messageId: crypto.randomUUID(),
-		taskId: String(task.id ?? ''),
-		workDayId: String(task.workDayId ?? task.work_day_id ?? ''),
-		agentId: String(task.agentId ?? task.agent_id ?? ''),
-		taskType: String(task.type ?? ''),
-		idempotencyKey: String(task.idempotencyKey ?? task.idempotency_key ?? ''),
-		attempt: Number(task.attemptCount ?? task.attempt_count ?? 0) + 1,
-		payloadRef: `d1:tasks/${String(task.id ?? '')}`,
-		graphVersion:
-			task.graphVersion !== undefined && task.graphVersion !== null
-				? String(task.graphVersion)
-				: task.graph_version !== undefined && task.graph_version !== null
-					? String(task.graph_version)
-					: null,
-		budgetHint: 1,
-	};
 }
 
 function withPrefix(prefix: string, path: string) {
@@ -54,41 +29,15 @@ function actor(body: Record<string, unknown>, fallback: string) {
 	return String(body.actor ?? fallback);
 }
 
-async function enqueueTask(
-	options: RegisterAgentRoutesOptions,
-	request: SdkEnqueueTaskRequest,
-) {
-	if (!options.queueProducer) {
-		throw new Error('Queue producer not configured.');
+function authorizeRequest(c: ApiContext, options: RegisterAgentRoutesOptions) {
+	const routeUnauthorized = options.authorize?.(c);
+	if (routeUnauthorized) {
+		return routeUnauthorized;
 	}
-	const task = await options.sdk.get({ model: 'task', id: request.taskId });
-	if (!task.payload) {
-		throw new Error('Unknown task.');
+	if (options.scope) {
+		return requireScope(c, options.scope);
 	}
-	await options.queueProducer.enqueue({
-		queueName: request.queueName,
-		message: queueEnvelopeForTask(task.payload as Record<string, unknown>),
-		delaySeconds: request.deliveryDelaySeconds ?? 0,
-	});
-	await options.sdk.recordTaskProgress({
-		id: request.taskId,
-		state: 'queued',
-		appendEvent: { kind: 'queued', data: { queueName: request.queueName ?? null } },
-		actor: request.actor,
-	});
-	return { ok: true, taskId: request.taskId, queued: true };
-}
-
-async function buildTaskContext(sdk: AgentSdk, taskId: string) {
-	const context = await sdk.getManagerContext(taskId);
-	const task = context.payload.task;
-	const agent = task
-		? (await sdk.get({ model: 'agent', slug: String(task.agentId) })).payload
-		: null;
-	return {
-		...context.payload,
-		agent,
-	};
+	return null;
 }
 
 export function registerAgentRoutes(
@@ -105,10 +54,8 @@ export function registerAgentRoutes(
 	}));
 
 	app.get(withPrefix(prefix, '/specs'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const payload = await options.sdk.listAgentSpecs({ enabled: true });
 		return c.json({
 			ok: true,
@@ -118,10 +65,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/workdays/start'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const graphRefresh = await options.sdk.refreshGraph();
 		const result = await options.sdk.startWorkDay({
@@ -136,10 +81,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/workdays/:id/close'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.closeWorkDay({
 			id: c.req.param('id'),
@@ -151,10 +94,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.createTask({
 			id: typeof body.id === 'string' ? body.id : undefined,
@@ -176,10 +117,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/search'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.searchTasks({
 			workDayId: typeof body.workDayId === 'string' ? body.workDayId : undefined,
@@ -191,10 +130,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/claim'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.claimTask({
 			id: c.req.param('id'),
@@ -206,10 +143,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/progress'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.recordTaskProgress({
 			id: c.req.param('id'),
@@ -223,10 +158,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/complete'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.completeTask({
 			id: c.req.param('id'),
@@ -239,10 +172,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/fail'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.failTask({
 			id: c.req.param('id'),
@@ -256,13 +187,11 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/requeue'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		try {
-			return c.json(await enqueueTask(options, {
+			return c.json(await enqueueTaskFromSdk(options.sdk, {
 				taskId: c.req.param('id'),
 				queueName: typeof body.queueName === 'string' ? body.queueName : undefined,
 				deliveryDelaySeconds: body.delaySeconds === undefined ? undefined : Number(body.delaySeconds),
@@ -275,10 +204,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/tasks/:id/followups'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const current = await options.sdk.get({ model: 'task', id: c.req.param('id') });
 		if (!current.payload) {
@@ -304,13 +231,11 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/queue/enqueue'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		try {
-			return c.json(await enqueueTask(options, {
+			return c.json(await enqueueTaskFromSdk(options.sdk, {
 				taskId: String(body.taskId ?? ''),
 				queueName: typeof body.queueName === 'string' ? body.queueName : undefined,
 				deliveryDelaySeconds: body.deliveryDelaySeconds === undefined ? undefined : Number(body.deliveryDelaySeconds),
@@ -318,15 +243,13 @@ export function registerAgentRoutes(
 			}));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			return jsonError(c, /Unknown task/.test(message) ? 404 : /Queue producer/.test(message) ? 501 : 500, message);
+			return jsonError(c, /Unknown task/.test(message) ? 404 : /Queue push client/.test(message) ? 501 : 500, message);
 		}
 	});
 
 	app.post(withPrefix(prefix, '/reports'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const result = await options.sdk.createReport({
 			id: typeof body.id === 'string' ? body.id : undefined,
@@ -341,10 +264,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/context/resolve-task'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		return c.json({
 			ok: true,
@@ -353,10 +274,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/graph/search'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const query = String(body.query ?? '');
 		const scope = String(body.scope ?? 'sections');
@@ -370,10 +289,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/graph/subgraph'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const payload = await options.sdk.getSubgraph(
 			Array.isArray(body.seedIds) ? body.seedIds.map(String) : [],
@@ -383,10 +300,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/graph/query'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const payload = await options.sdk.queryGraph(body as never);
 		if (typeof body.workDayId === 'string' && body.workDayId) {
@@ -408,10 +323,8 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/graph/context-pack'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const payload = await options.sdk.buildContextPack(body as never);
 		if (typeof body.workDayId === 'string' && body.workDayId) {
@@ -437,20 +350,16 @@ export function registerAgentRoutes(
 	});
 
 	app.post(withPrefix(prefix, '/graph/parse-dsl'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 		const payload = await options.sdk.parseGraphDsl(String(body.source ?? body.query ?? ''));
 		return c.json({ ok: true, payload });
 	});
 
 	app.get(withPrefix(prefix, '/graph/node/:id'), async (c) => {
-		if (options.scope) {
-			const unauthorized = requireScope(c, options.scope);
-			if (unauthorized) return unauthorized;
-		}
+		const unauthorized = authorizeRequest(c as ApiContext, options);
+		if (unauthorized) return unauthorized;
 		const payload = await options.sdk.getGraphNode(c.req.param('id'));
 		return payload ? c.json({ ok: true, payload }) : jsonError(c, 404, 'Unknown graph node.');
 	});

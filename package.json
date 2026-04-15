@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -40,8 +40,8 @@
     "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
     "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
     "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
-    "dev:manager": "node ./scripts/run-ts.mjs ./src/services/manager.ts",
     "dev:worker": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
+    "dev:remote-runner": "node ./scripts/run-ts.mjs ./src/services/remote-runner.ts",
     "dev:workday-start": "node ./scripts/run-ts.mjs ./src/services/workday-start.ts",
     "dev:workday-report": "node ./scripts/run-ts.mjs ./src/services/workday-report.ts",
     "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
@@ -67,7 +67,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.4.8",
+    "@treeseed/sdk": "^0.4.9",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
@@ -159,13 +159,13 @@
     "./tenant": "./dist/tenant/bridge.js",
     "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
-    "./services/manager": {
-      "types": "./dist/services/manager.d.ts",
-      "default": "./dist/services/manager.js"
-    },
     "./services/worker": {
       "types": "./dist/services/worker.d.ts",
       "default": "./dist/services/worker.js"
+    },
+    "./services/remote-runner": {
+      "types": "./dist/services/remote-runner.d.ts",
+      "default": "./dist/services/remote-runner.js"
     },
     "./services/workday-start": {
       "types": "./dist/services/workday-start.d.ts",
@@ -178,10 +178,6 @@
     "./api/app": {
       "types": "./dist/api/app.d.ts",
       "default": "./dist/api/app.js"
-    },
-    "./api/gateway": {
-      "types": "./dist/api/gateway.d.ts",
-      "default": "./dist/api/gateway.js"
     },
     "./site-resources": {
       "types": "./dist/site-resources.d.ts",

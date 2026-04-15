@@ -2,12 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AgentSdk, parseTemplateCatalogResponse } from '@treeseed/sdk';
+import { parseTemplateCatalogResponse } from '@treeseed/sdk';
 import type { D1DatabaseLike, D1PreparedStatementLike } from '@treeseed/sdk/types/cloudflare';
 import { createTreeseedApiApp } from '../../src/api/app.ts';
 import { D1AuthProvider } from '../../src/api/auth/d1-provider.ts';
 import { resolveApiConfig } from '../../src/api/config.ts';
-import { createTreeseedGatewayApp } from '../../src/api/gateway.ts';
 
 const packageRoot = process.cwd();
 const authMigrationPathCandidates = [
@@ -170,7 +169,6 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 			'.': { default: './dist/index.js' },
 			'./api': { default: './dist/api.js' },
 			'./api/app': { default: './dist/api/app.js' },
-			'./api/gateway': { default: './dist/api/gateway.js' },
 			'./config': { default: './dist/config.js' },
 			'./railway': { default: './dist/railway.js' },
 			'./platform': { default: './dist/platform.js' },
@@ -217,6 +215,60 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 		const agentHealthResponse = await app.request('/agent/healthz');
 		expect(agentHealthResponse.status).toBe(200);
 		expect(await json(agentHealthResponse)).toMatchObject({ ok: true });
+	});
+
+	it('mounts internal project routes behind a prefix and accepts project API keys', async () => {
+		const app = createTestApp({
+			internalPrefix: '/internal/core',
+			config: {
+				projectId: 'project-api-test',
+				projectApiKey: 'project-secret',
+				projectApiPermissions: ['sdk:execute:global', 'agent:execute:global', 'operations:execute:global'],
+			},
+		});
+
+		const publicResponse = await app.request('/sdk/startWorkDay', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				input: {
+					projectId: 'project-api-test',
+					capacityBudget: 3,
+					actor: 'project-key',
+				},
+			}),
+		});
+		expect(publicResponse.status).toBe(404);
+
+		const internalResponse = await app.request('/internal/core/sdk/startWorkDay', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				authorization: 'Bearer project-secret',
+			},
+			body: JSON.stringify({
+				input: {
+					projectId: 'project-api-test',
+					capacityBudget: 3,
+					actor: 'project-key',
+				},
+			}),
+		});
+		expect(internalResponse.status).toBe(200);
+		expect(await json(internalResponse)).toMatchObject({
+			ok: true,
+			model: 'work_day',
+			operation: 'create',
+			payload: {
+				projectId: 'project-api-test',
+			},
+		});
+
+		const internalAgentHealth = await app.request('/internal/core/agent/healthz');
+		expect(internalAgentHealth.status).toBe(200);
+
+		const publicAgentHealth = await app.request('/agent/healthz');
+		expect(publicAgentHealth.status).toBe(404);
 	});
 
 	it('runs the device-code lifecycle and injects bearer principals', async () => {
@@ -522,6 +574,17 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 		expect(Array.isArray(specsPayload.handlers)).toBe(true);
 	});
 
+	it('does not mount the removed internal control-plane routes', async () => {
+		const app = createTestApp();
+
+		const response = await app.request('/internal/control/specs');
+		expect(response.status).toBe(404);
+		expect(await json(response)).toMatchObject({
+			ok: false,
+			error: 'Not found.',
+		});
+	});
+
 	it('returns stable errors for unsupported operations and missing auth', async () => {
 		const app = createTestApp({
 			config: {
@@ -631,87 +694,4 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 		})).toThrow(/could not resolve auth provider/i);
 	});
 
-	it('reuses the shared agent route handlers in the gateway app', async () => {
-		const queued: Array<Record<string, unknown>> = [];
-		const sdk = new AgentSdk({
-			repoRoot: packageRoot,
-		});
-		const app = createTreeseedGatewayApp({
-			sdk,
-			bearerToken: 'gateway-secret',
-			projectId: 'treeseed-market',
-			queueProducer: {
-				async enqueue(request) {
-					queued.push(request.message as unknown as Record<string, unknown>);
-				},
-			},
-		});
-
-		const started = await app.request('/workdays/start', {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer gateway-secret',
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({ capacityBudget: 25 }),
-		});
-		expect(started.status).toBe(200);
-		const startedPayload = await json(started);
-		const workDayId = startedPayload.payload.id;
-
-		const task = await app.request('/tasks', {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer gateway-secret',
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({
-				workDayId,
-				agentId: 'market-curator',
-				type: 'agent_root',
-				idempotencyKey: `${workDayId}:market-curator`,
-				payload: { hello: 'world' },
-			}),
-		});
-		const taskPayload = await json(task);
-		expect(taskPayload.payload.agentId).toBe('market-curator');
-
-		const queuedResponse = await app.request('/queue/enqueue', {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer gateway-secret',
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({ taskId: taskPayload.payload.id }),
-		});
-		expect(queuedResponse.status).toBe(200);
-		expect(queued).toHaveLength(1);
-
-		const completed = await app.request(`/tasks/${taskPayload.payload.id}/complete`, {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer gateway-secret',
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({
-				output: { ok: true },
-				summary: { status: 'done' },
-			}),
-		});
-		expect(completed.status).toBe(200);
-
-		const report = await app.request('/reports', {
-			method: 'POST',
-			headers: {
-				authorization: 'Bearer gateway-secret',
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({
-				workDayId,
-				kind: 'workday_summary',
-				body: { totalTasks: 1 },
-			}),
-		});
-		expect(report.status).toBe(200);
-	});
 });

@@ -197,7 +197,6 @@ try {
 				'await import("@treeseed/core/runtime-types");',
 				'await import("@treeseed/core/contracts/messages");',
 				'await import("@treeseed/core/contracts/run");',
-				'await import("@treeseed/core/services/manager");',
 				'await import("@treeseed/core/services/worker");',
 				'await import("@treeseed/core/services/workday-start");',
 				'await import("@treeseed/core/services/workday-report");',

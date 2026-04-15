@@ -8,12 +8,19 @@ export function registerOperationRoutes(
 	app: Hono<any>,
 	options: {
 		scope: string;
+		prefix?: string;
 		executeOperation?: typeof executeHttpWorkflowOperation;
 	},
 ) {
 	const executeOperation = options.executeOperation ?? executeHttpWorkflowOperation;
+	const prefix = options.prefix ?? '';
 
-	app.post('/operations/:operation', async (c) => {
+	function withPrefix(path: string) {
+		if (!prefix) return path;
+		return `${prefix}${path}`.replace(/\/{2,}/g, '/');
+	}
+
+	app.post(withPrefix('/operations/:operation'), async (c) => {
 		const unauthorized = requireScope(c, options.scope);
 		if (unauthorized) return unauthorized;
 

@@ -22,6 +22,7 @@ export function createTreeseedTenantApi(manifestPath?: string, options: ApiServe
 		config: {
 			name: '@treeseed/core/api',
 			repoRoot: tenantRoot,
+			projectId: tenant.id,
 			baseUrl: surfaceConfig?.localBaseUrl ?? surfaceConfig?.publicBaseUrl ?? serviceConfig?.environments?.local?.baseUrl ?? options.config?.baseUrl,
 			...options.config,
 		},

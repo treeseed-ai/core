@@ -12,7 +12,6 @@ export {
 } from './platform-resources';
 export { parseSiteConfig } from './utils/site-config-schema.js';
 export { createTreeseedApiApp } from './api/app';
-export { createTreeseedGatewayApp } from './api/gateway';
 export { createRailwayTreeseedApiServer } from './api/railway';
 export { resolveApiConfig } from './api/config';
 export {

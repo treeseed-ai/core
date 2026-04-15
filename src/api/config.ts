@@ -44,7 +44,14 @@ export function resolveApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfi
 		baseUrl,
 		issuer,
 		repoRoot,
+		projectId: env.TREESEED_PROJECT_ID?.trim() || 'treeseed-project',
 		authSecret: env.TREESEED_API_AUTH_SECRET?.trim() || 'treeseed-api-dev-secret',
+		projectApiKey: env.TREESEED_API_PROJECT_KEY?.trim() || undefined,
+		projectApiLabel: env.TREESEED_API_PROJECT_LABEL?.trim() || 'Project API Key',
+		projectApiPermissions: parseCsv(env.TREESEED_API_PROJECT_KEY_PERMISSIONS)
+			.length > 0
+			? parseCsv(env.TREESEED_API_PROJECT_KEY_PERMISSIONS)
+			: ['sdk:execute:global', 'agent:execute:global', 'operations:execute:global'],
 		cloudflareAccountId: env.CLOUDFLARE_ACCOUNT_ID?.trim() || undefined,
 		cloudflareApiToken: env.CLOUDFLARE_API_TOKEN?.trim() || undefined,
 		d1DatabaseId: env.TREESEED_API_D1_DATABASE_ID?.trim() || undefined,

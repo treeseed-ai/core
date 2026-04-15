@@ -1,4 +1,5 @@
-import type { AgentSdk, SdkQueueMessageEnvelope } from '@treeseed/sdk';
+import type { Hono } from 'hono';
+import type { AgentSdk } from '@treeseed/sdk';
 import type {
 	ApiPrincipal,
 	ApiScope,
@@ -97,7 +98,11 @@ export interface ApiConfig {
 	baseUrl: string;
 	issuer: string;
 	repoRoot: string;
+	projectId: string;
 	authSecret: string;
+	projectApiKey?: string;
+	projectApiLabel: string;
+	projectApiPermissions: string[];
 	cloudflareAccountId?: string;
 	cloudflareApiToken?: string;
 	d1DatabaseId?: string;
@@ -122,12 +127,12 @@ export interface AppVariables {
 	principal: ApiPrincipal | null;
 	actingUser: ApiPrincipal | null;
 	credential: ApiCredential | null;
-	actorType: 'anonymous' | 'user' | 'service';
+	actorType: 'anonymous' | 'user' | 'service' | 'project';
 	permissionGrants: string[];
 }
 
 export interface ApiCredential {
-	type: 'access_token' | 'personal_access_token' | 'service_secret' | 'service_token';
+	type: 'access_token' | 'personal_access_token' | 'service_secret' | 'service_token' | 'project_api_key' | 'team_api_key';
 	id: string;
 	label?: string;
 }
@@ -174,6 +179,30 @@ export interface ResolvedApiRuntimeProviders {
 	selections: ApiRuntimeProviderSelections;
 }
 
+export interface ApiResolvedSettings {
+	config: ApiConfig;
+	surfaces: {
+		auth: boolean;
+		templates: boolean;
+		sdk: boolean;
+		agent: boolean;
+		operations: boolean;
+	};
+	scopes: {
+		authMe: ApiScope;
+		sdk: ApiScope;
+		agent: ApiScope;
+		operations: ApiScope;
+	};
+}
+
+export interface ApiAppRuntime {
+	resolved: ApiResolvedSettings;
+	runtimeProviders: ResolvedApiRuntimeProviders;
+	sharedSdk: AgentSdk;
+	internalPrefix: string;
+}
+
 export interface ApiServerOptions {
 	config?: Partial<ApiConfig>;
 	runtimeProviders?: ApiRuntimeProviders;
@@ -192,20 +221,7 @@ export interface ApiServerOptions {
 		agent: ApiScope;
 		operations: ApiScope;
 	}>;
+	internalPrefix?: string;
+	extendApp?: (app: Hono<any>, runtime: ApiAppRuntime) => void;
 	log?: (message: string, details?: Record<string, unknown>) => void;
-}
-
-export interface GatewayQueueProducer {
-	enqueue(request: {
-		queueName?: string;
-		message: SdkQueueMessageEnvelope;
-		delaySeconds?: number;
-	}): Promise<void>;
-}
-
-export interface GatewayServerOptions {
-	sdk: AgentSdk;
-	bearerToken: string;
-	queueProducer?: GatewayQueueProducer;
-	projectId?: string;
 }
