@@ -14,6 +14,7 @@ import {
 	applyQuestionModelDefaults,
 } from '../../src/utils/site-config';
 import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
+import { tenantModelRendered } from '../../../sdk/src/platform/tenant-config.ts';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
 import { buildTenantThemeCss } from '../../src/utils/theme.ts';
 
@@ -239,6 +240,69 @@ models:
 		expect(parsed.models.pages.defaults.pageLayout).toBe('bridge');
 	});
 
+	it('parses access roles, policies, defaults, and bootstrap owners', () => {
+		const parsed = parseSiteConfig(`
+site:
+  logo:
+    src: /logo.png
+    alt: Example logo
+  name: Example
+  statement: Example statement
+  siteUrl: https://example.com
+  githubRepository: https://github.com/example/repo
+  discordLink: https://discord.gg/example
+  headerMenu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  footerMenu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  emailNotifications:
+    contactRouting:
+      default:
+        - hello@example.com
+    subscribeRecipients:
+      - hello@example.com
+  summary: Example summary
+  projectStage: Founding
+  projectStageDetail: Still early
+models: {}
+access:
+  roles:
+    site_admin:
+      grants:
+        - site:manage
+        - content:*:*
+  policies:
+    public_free:
+      audience: public
+      offer: free
+    paid_updates:
+      audience: entitlement
+      entitlement: subscription_updates
+  defaults:
+    models:
+      books:
+        page: public_free
+        updates: paid_updates
+  bootstrap:
+    owners:
+      emails:
+        - owner@example.com
+      roles:
+        - site_admin
+		`);
+
+		expect(parsed.access.roles.site_admin.grants).toEqual(['site:manage', 'content:*:*']);
+		expect(parsed.access.policies.public_free.offer).toBe('free');
+		expect(parsed.access.defaults.models.books.page).toBe('public_free');
+		expect(parsed.access.bootstrap.owners.emails).toEqual(['owner@example.com']);
+	});
+
 	it('accepts aliased tenant manifest keys', () => {
 		const tenantRoot = mkdtempSync(join(tmpdir(), 'treeseed-core-tenant-'));
 		mkdirSync(resolve(tenantRoot, 'src'), { recursive: true });
@@ -268,6 +332,53 @@ features:
 			expect(manifest.siteConfigPath).toBe(resolve(tenantRoot, 'src', 'config.yaml'));
 			expect(manifest.content.pages).toBe(resolve(tenantRoot, 'src', 'content', 'pages'));
 			expect(manifest.content.docs).toBe(resolve(tenantRoot, 'src', 'content', 'knowledge'));
+		} finally {
+			if (previousRoot === undefined) {
+				delete process.env.TREESEED_TENANT_ROOT;
+			} else {
+				process.env.TREESEED_TENANT_ROOT = previousRoot;
+			}
+		}
+	});
+
+	it('loads manifest-owned site rendering flags and defaults omitted models to rendered', () => {
+		const tenantRoot = mkdtempSync(join(tmpdir(), 'treeseed-core-tenant-'));
+		mkdirSync(resolve(tenantRoot, 'src'), { recursive: true });
+		writeFileSync(
+			resolve(tenantRoot, 'src', 'manifest.yaml'),
+			`id: tenant
+siteConfigPath: ./src/config.yaml
+content:
+  pages: ./src/content/pages
+  notes: ./src/content/notes
+  questions: ./src/content/questions
+  objectives: ./src/content/objectives
+  people: ./src/content/people
+  agents: ./src/content/agents
+  books: ./src/content/books
+  docs: ./src/content/knowledge
+  workdays: ./src/content/workdays
+features:
+  docs: true
+  notes: true
+site:
+  models:
+    workdays:
+      rendered: false
+    notes:
+      rendered: false
+`,
+			'utf8',
+		);
+
+		const previousRoot = process.env.TREESEED_TENANT_ROOT;
+		process.env.TREESEED_TENANT_ROOT = tenantRoot;
+		try {
+			const manifest = loadTreeseedManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
+			expect(manifest.site?.models?.workdays?.rendered).toBe(false);
+			expect(tenantModelRendered(manifest, 'workdays')).toBe(false);
+			expect(tenantModelRendered(manifest, 'notes')).toBe(false);
+			expect(tenantModelRendered(manifest, 'people')).toBe(true);
 		} finally {
 			if (previousRoot === undefined) {
 				delete process.env.TREESEED_TENANT_ROOT;

@@ -2,30 +2,37 @@
 import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
 
-export async function getStaticPaths() {
-	const questions = await getCollection('questions', ({ data }) => !data.draft);
-	return questions.map((question) => ({
-		params: { slug: question.id },
-		props: { question },
-	}));
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const questions = await getCollection('questions', ({ data }) => !data.draft);
+const question = questions.find((candidate) => candidate.id === slug) ?? null;
+if (!question) {
+	Astro.response.status = 404;
 }
-
-const { question } = Astro.props;
-const { Content } = await render(question);
-const contributor = await resolveContributor(question.data.primaryContributor);
-const relatedObjectives = await resolveReferences(question.data.relatedObjectives);
-const relatedBooks = await resolveReferences(question.data.relatedBooks);
+const rendered = question ? await render(question) : null;
+const Content = rendered?.Content ?? null;
+const contributor = question ? await resolveContributor(question.data.primaryContributor) : null;
+const relatedObjectives = question ? await resolveReferences(question.data.relatedObjectives) : [];
+const relatedBooks = question ? await resolveReferences(question.data.relatedBooks) : [];
 ---
 
-<AuthoredEntryLayout
-	entry={question.data}
-	currentPath="/questions/"
-	contributor={contributor}
-	metaLabel="Question type"
-	metaValue={question.data.questionType}
-	relatedObjectives={relatedObjectives}
-	relatedBooks={relatedBooks}
->
-	<Content />
-</AuthoredEntryLayout>
+{
+	!question || !Content ? (
+		<RouteNotFound title="Question not found" description="The requested question could not be found in this Treeseed." currentPath="/questions/" />
+	) : (
+		<AuthoredEntryLayout
+			entry={question.data}
+			currentPath="/questions/"
+			contributor={contributor}
+			metaLabel="Question type"
+			metaValue={question.data.questionType}
+			relatedObjectives={relatedObjectives}
+			relatedBooks={relatedBooks}
+		>
+			<Content />
+		</AuthoredEntryLayout>
+	)
+}

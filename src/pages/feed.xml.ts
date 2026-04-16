@@ -1,10 +1,12 @@
 import type { APIContext } from 'astro';
-import { getCollection } from 'astro:content';
+import { getPublishedNotes } from '../utils/hub-content';
+import { siteModelRendered } from '../utils/site-models.ts';
 
 export async function GET(context: APIContext) {
-	const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
-		(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-	);
+	if (!siteModelRendered('notes')) {
+		return new Response('Not found', { status: 404 });
+	}
+	const notes = await getPublishedNotes();
 	const origin = context.site?.origin ?? 'https://treeseed.dev';
 
 	const items = notes

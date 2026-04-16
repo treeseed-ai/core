@@ -8,6 +8,9 @@ export async function runWorkerCycle() {
 	const queue = createQueueClient();
 	const config = resolveWorkerConfig();
 	if (!queue) {
+		if (process.env.TREESEED_LOCAL_DEV_MODE?.trim()) {
+			return { ok: true, processed: 0, idle: true, reason: 'queue_unconfigured' };
+		}
 		throw new Error('Worker requires CLOUDFLARE_ACCOUNT_ID, TREESEED_QUEUE_ID, and TREESEED_QUEUE_PULL_TOKEN.');
 	}
 

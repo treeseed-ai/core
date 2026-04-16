@@ -1,4 +1,5 @@
 import { getCollection, getEntries, getEntry, type CollectionEntry } from 'astro:content';
+import { siteModelRendered } from './site-models.ts';
 
 export type ContributorEntry = CollectionEntry<'people'> | CollectionEntry<'agents'>;
 export type HubQuestionEntry = CollectionEntry<'questions'>;
@@ -25,9 +26,43 @@ export async function resolveReferences<T extends Parameters<typeof getEntries>[
 }
 
 export async function getPublishedQuestions() {
+	if (!siteModelRendered('questions')) {
+		return [];
+	}
 	return sortEntriesByDateDescending(await getCollection('questions', ({ data }) => !data.draft));
 }
 
 export async function getPublishedObjectives() {
+	if (!siteModelRendered('objectives')) {
+		return [];
+	}
 	return sortEntriesByDateDescending(await getCollection('objectives', ({ data }) => !data.draft));
+}
+
+export async function getPublishedNotes() {
+	if (!siteModelRendered('notes')) {
+		return [];
+	}
+	return sortEntriesByDateDescending(await getCollection('notes', ({ data }) => !data.draft));
+}
+
+export async function getPublishedPeople() {
+	if (!siteModelRendered('people')) {
+		return [];
+	}
+	return getCollection('people');
+}
+
+export async function getPublishedAgents() {
+	if (!siteModelRendered('agents')) {
+		return [];
+	}
+	return getCollection('agents');
+}
+
+export async function getPublishedBooks() {
+	if (!siteModelRendered('books')) {
+		return [];
+	}
+	return (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
 }

@@ -1,15 +1,11 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
-import { createServiceSdk, resolveManagerConfig, startAndSeedWorkday } from './common.ts';
+import { runManagerAction } from './manager.ts';
 
 export async function runWorkdayStart() {
-	const sdk = createServiceSdk();
-	const config = resolveManagerConfig();
-	return startAndSeedWorkday(sdk, {
-		projectId: config.projectId,
-		capacityBudget: config.defaultCapacityBudget,
-		actor: 'manager',
+	return runManagerAction({
+		mode: 'open-workday',
 	});
 }
 

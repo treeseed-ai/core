@@ -2,28 +2,35 @@
 import { getCollection, render } from 'astro:content';
 import ProfileLayout from '../../layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
 
-export async function getStaticPaths() {
-	const agents = await getCollection('agents');
-	return agents.map((agent) => ({
-		params: { slug: agent.id },
-		props: { agent },
-	}));
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const agents = await getCollection('agents');
+const agent = agents.find((candidate) => candidate.id === slug) ?? null;
+if (!agent) {
+	Astro.response.status = 404;
 }
-
-const { agent } = Astro.props;
-const { Content } = await render(agent);
-const relatedQuestions = await resolveReferences(agent.data.relatedQuestions);
-const relatedObjectives = await resolveReferences(agent.data.relatedObjectives);
+const rendered = agent ? await render(agent) : null;
+const Content = rendered?.Content ?? null;
+const relatedQuestions = agent ? await resolveReferences(agent.data.relatedQuestions) : [];
+const relatedObjectives = agent ? await resolveReferences(agent.data.relatedObjectives) : [];
 ---
 
-<ProfileLayout
-	entry={agent.data}
-	currentPath="/agents/"
-	metaLabel="Operator"
-	metaValue={`${agent.data.operator} · ${agent.data.runtimeStatus}`}
-	relatedQuestions={relatedQuestions}
-	relatedObjectives={relatedObjectives}
->
-	<Content />
-</ProfileLayout>
+{
+	!agent || !Content ? (
+		<RouteNotFound title="Agent not found" description="The requested agent profile could not be found in this Treeseed." currentPath="/agents/" />
+	) : (
+		<ProfileLayout
+			entry={agent.data}
+			currentPath="/agents/"
+			metaLabel="Operator"
+			metaValue={`${agent.data.operator} · ${agent.data.runtimeStatus}`}
+			relatedQuestions={relatedQuestions}
+			relatedObjectives={relatedObjectives}
+		>
+			<Content />
+		</ProfileLayout>
+	)
+}

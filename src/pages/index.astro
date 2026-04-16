@@ -1,5 +1,4 @@
 ---
-import { getCollection } from 'astro:content';
 import MainLayout from '../layouts/MainLayout.astro';
 import Hero from '../components/site/Hero.astro';
 import StageBanner from '../components/site/StageBanner.astro';
@@ -11,18 +10,36 @@ import NotesList from '../components/site/NotesList.astro';
 import ChronicleList from '../components/site/ChronicleList.astro';
 import ProfileList from '../components/site/ProfileList.astro';
 import BookList from '../components/site/BookList.astro';
-import { getPublishedObjectives, getPublishedQuestions, resolveContributorsForEntries } from '../utils/hub-content';
+import {
+	getPublishedAgents,
+	getPublishedBooks,
+	getPublishedNotes,
+	getPublishedObjectives,
+	getPublishedPeople,
+	getPublishedQuestions,
+	resolveContributorsForEntries,
+} from '../utils/hub-content';
+import { siteModelRendered } from '../utils/site-models.ts';
 
-const notes = (await getCollection('notes', ({ data }) => !data.draft))
-	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-	.slice(0, 3);
-const questions = (await getPublishedQuestions()).slice(0, 2);
-const objectives = (await getPublishedObjectives()).slice(0, 2);
+const notesRendered = siteModelRendered('notes');
+const questionsRendered = siteModelRendered('questions');
+const objectivesRendered = siteModelRendered('objectives');
+const peopleRendered = siteModelRendered('people');
+const agentsRendered = siteModelRendered('agents');
+const booksRendered = siteModelRendered('books');
+
+const notes = notesRendered ? (await getPublishedNotes()).slice(0, 3) : [];
+const questions = questionsRendered ? (await getPublishedQuestions()).slice(0, 2) : [];
+const objectives = objectivesRendered ? (await getPublishedObjectives()).slice(0, 2) : [];
 const questionContributors = await resolveContributorsForEntries(questions);
 const objectiveContributors = await resolveContributorsForEntries(objectives);
-const people = (await getCollection('people')).slice(0, 2);
-const agents = (await getCollection('agents')).slice(0, 2);
-const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const people = peopleRendered ? (await getPublishedPeople()).slice(0, 2) : [];
+const agents = agentsRendered ? (await getPublishedAgents()).slice(0, 2) : [];
+const books = booksRendered ? await getPublishedBooks() : [];
+const ctaPrimaryHref = questionsRendered ? '/questions/' : objectivesRendered ? '/objectives/' : '/status/';
+const ctaPrimaryLabel = questionsRendered ? 'Browse questions' : objectivesRendered ? 'Browse objectives' : 'View status';
+const ctaSecondaryHref = booksRendered ? '/books/' : notesRendered ? '/notes/' : '/vision/';
+const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Read notes' : 'Read vision';
 ---
 
 <MainLayout
@@ -178,6 +195,7 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 			</div>
 		</section>
 
+		{notesRendered && (
 		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
 			<SectionIntro
 				eyebrow="Notes"
@@ -186,7 +204,9 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 			/>
 			<NotesList notes={notes} />
 		</section>
+		)}
 
+		{(questionsRendered || objectivesRendered || peopleRendered || agentsRendered || booksRendered) && (
 		<section class="space-y-8 border-t border-[color:var(--site-border)] pt-10">
 			<SectionIntro
 				eyebrow="TreeSeed"
@@ -194,6 +214,7 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 				description="The fixture shows how humans and agents can publish questions, anchor them to objectives, and connect that work to books and contributor profiles."
 			/>
 			<div class="grid gap-10 lg:grid-cols-2">
+				{questionsRendered && (
 				<div class="space-y-6">
 					<SectionIntro
 						eyebrow="Questions"
@@ -212,6 +233,8 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 						}))}
 					/>
 				</div>
+				)}
+				{objectivesRendered && (
 				<div class="space-y-6">
 					<SectionIntro
 						eyebrow="Objectives"
@@ -230,8 +253,10 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 						}))}
 					/>
 				</div>
+				)}
 			</div>
 			<div class="grid gap-10 lg:grid-cols-2">
+				{(peopleRendered || agentsRendered) && (
 				<div class="space-y-6">
 					<SectionIntro
 						eyebrow="Contributors"
@@ -258,6 +283,8 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 						]}
 					/>
 				</div>
+				)}
+				{booksRendered && (
 				<div class="space-y-6">
 					<SectionIntro
 						eyebrow="Books"
@@ -275,16 +302,18 @@ const books = (await getCollection('books')).sort((a, b) => a.data.order - b.dat
 						}))}
 					/>
 				</div>
+				)}
 			</div>
 		</section>
+		)}
 
 		<CTASection
 			title="Follow the Treeseed from question to objective to book"
 			body="If you are new here, start with current questions and objectives, then use the books and contributor pages to understand how TreeSeed organizes work across the platform."
-			primaryHref="/questions/"
-			primaryLabel="Browse questions"
-			secondaryHref="/books/"
-			secondaryLabel="Explore books"
+			primaryHref={ctaPrimaryHref}
+			primaryLabel={ctaPrimaryLabel}
+			secondaryHref={ctaSecondaryHref}
+			secondaryLabel={ctaSecondaryLabel}
 		/>
 	</div>
 </MainLayout>

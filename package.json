@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -40,7 +40,9 @@
     "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
     "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
     "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
+    "dev:manager": "node ./scripts/run-ts.mjs ./src/services/manager.ts",
     "dev:worker": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
+    "dev:agents": "node ./scripts/run-ts.mjs ./src/services/agents.ts",
     "dev:remote-runner": "node ./scripts/run-ts.mjs ./src/services/remote-runner.ts",
     "dev:workday-start": "node ./scripts/run-ts.mjs ./src/services/workday-start.ts",
     "dev:workday-report": "node ./scripts/run-ts.mjs ./src/services/workday-report.ts",
@@ -67,7 +69,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.4.9",
+    "@treeseed/sdk": "^0.4.11",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",
@@ -156,12 +158,28 @@
       "types": "./dist/content-config.d.ts",
       "default": "./dist/content-config.js"
     },
+    "./templates": {
+      "types": "./dist/templates.d.ts",
+      "default": "./dist/templates.js"
+    },
+    "./middleware/editorial-preview": {
+      "types": "./dist/middleware/editorial-preview.d.ts",
+      "default": "./dist/middleware/editorial-preview.js"
+    },
     "./tenant": "./dist/tenant/bridge.js",
     "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
     "./services/worker": {
       "types": "./dist/services/worker.d.ts",
       "default": "./dist/services/worker.js"
+    },
+    "./services/manager": {
+      "types": "./dist/services/manager.d.ts",
+      "default": "./dist/services/manager.js"
+    },
+    "./services/agents": {
+      "types": "./dist/services/agents.d.ts",
+      "default": "./dist/services/agents.js"
     },
     "./services/remote-runner": {
       "types": "./dist/services/remote-runner.d.ts",

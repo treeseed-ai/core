@@ -1,6 +1,7 @@
 import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
-import { glob } from 'astro/loaders';
+import { glob, type Loader } from 'astro/loaders';
+import { existsSync, readdirSync } from 'node:fs';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
 import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
@@ -35,6 +36,32 @@ type DocsCollectionProvider = {
 	loader: unknown;
 	schema: unknown;
 };
+
+function hasMarkdownContent(base: string): boolean {
+	if (!existsSync(base)) {
+		return false;
+	}
+	for (const entry of readdirSync(base, { withFileTypes: true, recursive: true })) {
+		if (entry.isFile() && /\.(md|mdx)$/iu.test(entry.name)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function optionalMarkdownGlob(base: string): Loader {
+	const delegate = glob({ pattern: '**/*.{md,mdx}', base });
+	return {
+		name: `treeseed-optional-markdown-glob:${base}`,
+		async load(context) {
+			if (!hasMarkdownContent(base)) {
+				context.store.clear();
+				return;
+			}
+			await delegate.load(context);
+		},
+	};
+}
 
 function withOptionalDefault<TSchema extends { default: (value: unknown) => TSchema }>(
 	schema: TSchema,
@@ -285,9 +312,142 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		tags: z.array(z.string()).default(BOOK_MODEL_DEFAULTS.tags ?? []),
 	}));
 
-	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
+	const publisherSchema = z.object({
+		id: z.string(),
+		name: z.string(),
+		url: z.string().optional(),
+	});
+	const templateGitSourceSchema = z.object({
+		kind: z.literal('git'),
+		repoUrl: z.string(),
+		directory: z.string(),
+		ref: z.string(),
+		integrity: z.string().optional(),
+	});
+	const templateR2SourceSchema = z.object({
+		kind: z.literal('r2'),
+		bucket: z.string().optional(),
+		objectKey: z.string(),
+		version: z.string(),
+		publicUrl: z.string().optional(),
+		integrity: z.string().optional(),
+	});
+	const templateProductSchema = z.object({
+		slug: z.string(),
+		title: z.string(),
+		description: z.string(),
+		summary: z.string(),
+		status: z.enum(['draft', 'live', 'archived']),
+		featured: z.boolean().default(false),
+		teamId: z.string().optional(),
+		listingEnabled: z.boolean().default(true),
+		category: z.string(),
+		audience: z.array(z.string()).default([]),
+		tags: z.array(z.string()).default([]),
+		publisher: publisherSchema,
+		publisherVerified: z.boolean().default(false),
+		templateVersion: z.string(),
+		templateApiVersion: z.number().int().positive(),
+		minCliVersion: z.string(),
+		minCoreVersion: z.string(),
+		fulfillment: z.object({
+			mode: z.enum(['packaged', 'git', 'r2']).default('packaged'),
+			source: z.union([templateGitSourceSchema, templateR2SourceSchema]),
+			hooksPolicy: z.enum(['builtin_only', 'trusted_only', 'disabled']).default('builtin_only'),
+			supportsReconcile: z.boolean().default(true),
+		}),
+		offer: z.object({
+			priceModel: z.enum(['free', 'paid', 'contact', 'one_time_current_version', 'subscription_updates', 'private']).default('free'),
+			license: z.string().optional(),
+			support: z.string().optional(),
+		}).default({ priceModel: 'free' }),
+		relatedBooks: z.array(z.string()).default([]),
+		relatedKnowledge: z.array(z.string()).default([]),
+		relatedObjectives: z.array(z.string()).default([]),
+	});
+	const knowledgePackSchema = z.object({
+		slug: z.string(),
+		title: z.string(),
+		description: z.string(),
+		status: z.enum(['draft', 'live', 'archived']).default('draft'),
+	});
 
-	return {
+	const workdaySummaryTaskSchema = z.object({
+		id: z.string(),
+		agentId: z.string().optional(),
+		type: z.string().optional(),
+		state: z.string().optional(),
+		priority: z.number().optional(),
+		idempotencyKey: z.string().optional(),
+		createdAt: z.coerce.date().optional(),
+		startedAt: z.coerce.date().optional(),
+		completedAt: z.coerce.date().optional(),
+		lastErrorCode: z.string().nullable().optional(),
+		lastErrorMessage: z.string().nullable().optional(),
+		lastEventKind: z.string().optional(),
+		outputCount: z.number().int().optional(),
+		changedFiles: z.array(z.string()).default([]),
+	});
+	const workdayPriorityItemSchema = z.object({
+		id: z.string(),
+		model: z.string(),
+		slug: z.string().optional(),
+		title: z.string().optional(),
+		status: z.string().optional(),
+		priority: z.number(),
+		estimatedCredits: z.number().optional(),
+		reason: z.string().optional(),
+	});
+	const workdayReleaseSchema = z.object({
+		id: z.string().optional(),
+		deploymentKind: z.string(),
+		status: z.string(),
+		releaseTag: z.string().nullable().optional(),
+		commitSha: z.string().nullable().optional(),
+		sourceRef: z.string().nullable().optional(),
+		startedAt: z.coerce.date().optional(),
+		finishedAt: z.coerce.date().optional(),
+		createdAt: z.coerce.date().optional(),
+	});
+	const workdaySchema = z.object({
+		title: z.string(),
+		slug: z.string(),
+		workDayId: z.string(),
+		reportVersion: z.string(),
+		reportKind: z.string().default('workday_summary'),
+		projectId: z.string(),
+		teamId: z.string().optional(),
+		environment: z.string(),
+		status: z.string().default('live'),
+		visibility: z.enum(['public', 'authenticated', 'team', 'private']).default('team'),
+		workdayState: z.string(),
+		startedAt: z.coerce.date(),
+		endedAt: z.coerce.date().nullable().optional(),
+		generatedAt: z.coerce.date(),
+		createdAt: z.coerce.date().optional(),
+		summary: z.string(),
+		dailyTaskCreditBudget: z.number().default(0),
+		usedTaskCredits: z.number().default(0),
+		remainingTaskCredits: z.number().default(0),
+		creditLedgerEntries: z.number().int().default(0),
+		prioritySnapshotId: z.string().nullable().optional(),
+		priorityItemCount: z.number().int().default(0),
+		priorityItems: z.array(workdayPriorityItemSchema).default([]),
+		totalTasks: z.number().int().default(0),
+		completedTasks: z.number().int().default(0),
+		failedTasks: z.number().int().default(0),
+		queuedTasks: z.number().int().default(0),
+		activeTasks: z.number().int().default(0),
+		taskItems: z.array(workdaySummaryTaskSchema).default([]),
+		changedFiles: z.array(z.string()).default([]),
+		releases: z.array(workdayReleaseSchema).default([]),
+		scaleDecision: z.record(z.any()).default({}),
+		scaleResult: z.record(z.any()).default({}),
+		metadata: z.record(z.any()).default({}),
+	});
+
+	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
+	const collections: Record<string, any> = {
 		pages: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.pages }), schema: pageSchema }),
 		notes: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.notes }), schema: noteSchema }),
 		questions: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.questions }), schema: questionSchema }),
@@ -300,4 +460,27 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 			schema: docsCollectionProvider.schema as any,
 		}),
 	};
+
+	if (tenantConfig.content.workdays) {
+		collections.workdays = defineCollection({
+			loader: optionalMarkdownGlob(tenantConfig.content.workdays),
+			schema: workdaySchema,
+		});
+	}
+
+	if (tenantConfig.content.templates) {
+		collections.templates = defineCollection({
+			loader: optionalMarkdownGlob(tenantConfig.content.templates),
+			schema: templateProductSchema,
+		});
+	}
+
+	if (tenantConfig.content.knowledge_packs) {
+		collections.knowledge_packs = defineCollection({
+			loader: optionalMarkdownGlob(tenantConfig.content.knowledge_packs),
+			schema: knowledgePackSchema,
+		});
+	}
+
+	return collections;
 }

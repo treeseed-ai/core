@@ -13,8 +13,9 @@ export const TREESEED_DEFAULT_WEB_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_WEB_PORT = 4321;
 export const TREESEED_DEFAULT_API_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_API_PORT = 3000;
+export const TREESEED_DEFAULT_MANAGER_PORT = 3100;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'web' | 'api';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | 'api' | 'manager' | 'worker' | 'agents';
 
 export type TreeseedIntegratedDevOptions = {
 	surface?: TreeseedIntegratedDevSurface;
@@ -26,10 +27,14 @@ export type TreeseedIntegratedDevOptions = {
 	webPort?: number;
 	apiHost?: string;
 	apiPort?: number;
+	managerPort?: number;
+	includeServices?: boolean;
+	projectId?: string;
+	teamId?: string;
 };
 
 export type TreeseedIntegratedDevCommand = {
-	id: 'web' | 'api';
+	id: 'web' | 'api' | 'manager' | 'worker' | 'agents';
 	label: string;
 	command: string;
 	args: string[];
@@ -127,6 +132,10 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const webPort = normalizePort(options.webPort, TREESEED_DEFAULT_WEB_PORT);
 	const apiHost = options.apiHost ?? TREESEED_DEFAULT_API_HOST;
 	const apiPort = normalizePort(options.apiPort, TREESEED_DEFAULT_API_PORT);
+	const managerPort = normalizePort(options.managerPort, TREESEED_DEFAULT_MANAGER_PORT);
+	const includeServices = options.includeServices ?? (surface === 'integrated' || surface === 'services');
+	const projectId = options.projectId ?? process.env.TREESEED_PROJECT_ID;
+	const teamId = options.teamId ?? process.env.TREESEED_HOSTING_TEAM_ID;
 	const mergedEnv = { ...process.env, ...(options.env ?? {}) };
 	const apiBaseUrl = mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
@@ -141,6 +150,21 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		'src/api/server.ts',
 		'dist/api/server.js',
 	);
+	const managerEntrypoint = resolveNodeEntrypoint(
+		packageRoot,
+		'src/services/manager.ts',
+		'dist/services/manager.js',
+	);
+	const workerEntrypoint = resolveNodeEntrypoint(
+		packageRoot,
+		'src/services/worker.ts',
+		'dist/services/worker.js',
+	);
+	const agentsEntrypoint = resolveNodeEntrypoint(
+		packageRoot,
+		'src/services/agents.ts',
+		'dist/services/agents.js',
+	);
 
 	const watchPaths = [
 		resolve(packageRoot, existsSync(resolve(packageRoot, 'src')) ? 'src' : 'dist'),
@@ -153,6 +177,9 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		...mergedEnv,
 		TREESEED_LOCAL_DEV_MODE: mergedEnv.TREESEED_LOCAL_DEV_MODE ?? 'cloudflare',
 		TREESEED_API_BASE_URL: apiBaseUrl,
+		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
+		TREESEED_PROJECT_ID: projectId ?? mergedEnv.TREESEED_PROJECT_ID,
+		TREESEED_HOSTING_TEAM_ID: teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
 	};
 
 	if (watch) {
@@ -183,6 +210,43 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 				...sharedEnv,
 				PORT: sharedEnv.PORT ?? String(apiPort),
 			},
+		});
+	}
+
+	if (includeServices || surface === 'manager') {
+		commands.push({
+			id: 'manager',
+			label: 'Manager',
+			command: managerEntrypoint.command,
+			args: watch ? withWatchArgs(managerEntrypoint.args, watchPaths) : managerEntrypoint.args,
+			cwd: tenantRoot,
+			env: {
+				...sharedEnv,
+				PORT: sharedEnv.PORT ?? String(managerPort),
+				TREESEED_MANAGER_BASE_URL: sharedEnv.TREESEED_MANAGER_BASE_URL ?? `http://${apiHost}:${managerPort}`,
+			},
+		});
+	}
+
+	if (includeServices || surface === 'worker') {
+		commands.push({
+			id: 'worker',
+			label: 'Worker',
+			command: workerEntrypoint.command,
+			args: watch ? withWatchArgs(workerEntrypoint.args, watchPaths) : workerEntrypoint.args,
+			cwd: tenantRoot,
+			env: sharedEnv,
+		});
+	}
+
+	if (includeServices || surface === 'agents') {
+		commands.push({
+			id: 'agents',
+			label: 'Agents',
+			command: agentsEntrypoint.command,
+			args: watch ? withWatchArgs(agentsEntrypoint.args, watchPaths) : agentsEntrypoint.args,
+			cwd: tenantRoot,
+			env: sharedEnv,
 		});
 	}
 

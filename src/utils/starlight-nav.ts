@@ -1,4 +1,6 @@
+import type { SidebarEntry, SidebarGroup, SidebarLink } from '@astrojs/starlight/route-data';
 import type { TreeseedBookDefinition } from '@treeseed/sdk/platform/contracts';
+import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
 import {
 	BOOKS,
 	BOOKS_LINK,
@@ -12,16 +14,49 @@ interface DocsDownload {
 	downloadTitle: string;
 }
 
-interface StarlightRuntime {
-	BOOKS: TreeseedBookDefinition[];
-	BOOKS_LINK: unknown;
-	TREESEED_LIBRARY_DOWNLOAD: DocsDownload;
-	TREESEED_LINKS: {
-		home: string;
+type StarlightRuntime = TreeseedBookRuntime;
+
+export const normalizeHref = (href: string) => (href.endsWith('/') ? href : `${href}/`);
+
+function buildSidebarLink(href: string, label: string, currentPath: string): SidebarLink {
+	return {
+		type: 'link',
+		label,
+		href,
+		isCurrent: normalizeHref(href) === normalizeHref(currentPath),
+		badge: undefined,
+		attrs: {},
 	};
 }
 
-export const normalizeHref = (href: string) => (href.endsWith('/') ? href : `${href}/`);
+function buildSidebarEntries(
+	items: TreeseedBookDefinition['sidebarItems'],
+	currentPath: string,
+): SidebarEntry[] {
+	return items.map((item) => {
+		if (item.items?.length) {
+			return {
+				type: 'group',
+				label: item.label,
+				entries: buildSidebarEntries(item.items, currentPath),
+				collapsed: false,
+				badge: undefined,
+			} satisfies SidebarGroup;
+		}
+
+		if (item.link) {
+			return buildSidebarLink(item.link, item.label, currentPath);
+		}
+
+		return {
+			type: 'group',
+			label: item.label,
+			entries: [],
+			collapsed: false,
+			badge: undefined,
+		} satisfies SidebarGroup;
+	});
+}
 
 export function buildBookSidebarFromRuntime(runtime: StarlightRuntime, bookSlug: string) {
 	const book = runtime.BOOKS.find((candidate) => candidate.slug === bookSlug);
@@ -37,6 +72,22 @@ export function buildBookSidebarFromRuntime(runtime: StarlightRuntime, bookSlug:
 
 export function getStarlightSidebarConfigFromRuntime(runtime: StarlightRuntime) {
 	return [runtime.BOOKS_LINK, ...runtime.BOOKS.map((book) => buildBookSidebarFromRuntime(runtime, book.slug))];
+}
+
+export function buildStarlightSidebarEntriesFromRuntime(
+	runtime: StarlightRuntime,
+	currentPath: string = runtime.TREESEED_LINKS.home,
+): SidebarEntry[] {
+	return [
+		buildSidebarLink(String(runtime.BOOKS_LINK.link ?? runtime.TREESEED_LINKS.home), String(runtime.BOOKS_LINK.label ?? 'Books'), currentPath),
+		...runtime.BOOKS.map((book) => ({
+			type: 'group',
+			label: book.sectionLabel,
+			entries: buildSidebarEntries(book.sidebarItems, currentPath),
+			collapsed: false,
+			badge: undefined,
+		} satisfies SidebarGroup)),
+	];
 }
 
 export function getBookForPathFromRuntime(runtime: StarlightRuntime, pathname: string) {
@@ -73,6 +124,10 @@ export function buildBookSidebar(bookSlug: string) {
 
 export function getStarlightSidebarConfig() {
 	return getStarlightSidebarConfigFromRuntime(runtime);
+}
+
+export function getStarlightSidebarEntries(currentPath?: string) {
+	return buildStarlightSidebarEntriesFromRuntime(runtime, currentPath);
 }
 
 export function getBookForPath(pathname: string) {

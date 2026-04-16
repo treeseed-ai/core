@@ -1,19 +1,26 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BookLayout from '../../layouts/BookLayout.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
 
-export async function getStaticPaths() {
-	const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
-	return books.map((book) => ({
-		params: { slug: book.id },
-		props: { book },
-	}));
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const book = books.find((candidate) => candidate.id === slug) ?? null;
+if (!book) {
+	Astro.response.status = 404;
 }
-
-const { book } = Astro.props;
-const { Content } = await render(book);
+const rendered = book ? await render(book) : null;
+const Content = rendered?.Content ?? null;
 ---
 
-<BookLayout entry={book.data} currentPath="/books/">
-	<Content />
-</BookLayout>
+{
+	!book || !Content ? (
+		<RouteNotFound title="Book not found" description="The requested book could not be found in this Treeseed." currentPath="/books/" />
+	) : (
+		<BookLayout entry={book.data} currentPath="/books/">
+			<Content />
+		</BookLayout>
+	)
+}

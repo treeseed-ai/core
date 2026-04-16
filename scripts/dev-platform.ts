@@ -17,7 +17,15 @@ function readOption(name: string) {
 }
 
 function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
-	if (value === 'web' || value === 'api' || value === 'integrated') {
+	if (
+		value === 'web'
+		|| value === 'api'
+		|| value === 'manager'
+		|| value === 'worker'
+		|| value === 'agents'
+		|| value === 'services'
+		|| value === 'integrated'
+	) {
 		return value;
 	}
 	return 'integrated';
@@ -26,6 +34,8 @@ function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
 const exitCode = await runTreeseedIntegratedDev({
 	surface: parseSurface(readOption('--surface')),
 	watch: readFlag('--watch'),
+	projectId: readOption('--project-id'),
+	teamId: readOption('--team-id'),
 });
 
 process.exit(exitCode);

@@ -1,6 +1,9 @@
 import { defineRouteMiddleware } from '@astrojs/starlight/route-data';
 import type { StarlightRouteData } from '@astrojs/starlight/route-data';
-import { BOOKS, TREESEED_LINKS, normalizeHref } from '../utils/starlight-nav';
+import { TREESEED_LINKS, buildStarlightSidebarEntriesFromRuntime, normalizeHref } from '../utils/starlight-nav';
+import { loadHostedBookRuntime } from '../utils/published-content';
+import { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD } from '@treeseed/sdk/platform/books-data';
+import { loadTreeseedManifest, tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 
 type SidebarEntry = StarlightRouteData['sidebar'][number];
 type SidebarLink = Extract<SidebarEntry, { type: 'link' }>;
@@ -48,11 +51,20 @@ const setRouteSidebar = (
 	route.pagination = paginationSource ? buildPagination(paginationSource, currentPath) : { prev: undefined, next: undefined };
 };
 
-export const onRequest = defineRouteMiddleware((context) => {
+const defaultRuntime = { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS };
+const tenantConfig = loadTreeseedManifest();
+
+export const onRequest = defineRouteMiddleware(async (context) => {
 	const route = context.locals.starlightRoute;
 	const currentPath = normalizeHref(context.url.pathname);
+	if (!tenantModelRendered(tenantConfig, 'books')) {
+		setRouteSidebar(route, currentPath, [], null);
+		return;
+	}
+	const runtime = (await loadHostedBookRuntime(context.locals)) ?? defaultRuntime;
+	route.sidebar = buildStarlightSidebarEntriesFromRuntime(runtime, currentPath);
 
-	const activeBook = BOOKS.find((book: (typeof BOOKS)[number]) =>
+	const activeBook = runtime.BOOKS.find((book: (typeof BOOKS)[number]) =>
 		currentPath.startsWith(normalizeHref(book.basePath)),
 	);
 	if (activeBook) {
@@ -63,7 +75,7 @@ export const onRequest = defineRouteMiddleware((context) => {
 		return;
 	}
 
-	if (currentPath === normalizeHref(TREESEED_LINKS.home)) {
+	if (currentPath === normalizeHref(runtime.TREESEED_LINKS.home)) {
 		setRouteSidebar(route, currentPath, [], null);
 		return;
 	}

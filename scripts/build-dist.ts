@@ -247,7 +247,10 @@ function rewriteDeclarations() {
 
 function emitTypeDeclarations() {
 	const sourceFiles = [
+		resolve(srcRoot, 'types/astro-build.d.ts'),
 		resolve(srcRoot, 'types/cloudflare.ts'),
+		resolve(srcRoot, 'utils/site-models.ts'),
+		resolve(srcRoot, 'middleware/editorial-preview.ts'),
 		resolve(srcRoot, 'site-resources.ts'),
 		resolve(srcRoot, 'platform-resources.ts'),
 		resolve(srcRoot, 'api.ts'),
@@ -255,6 +258,7 @@ function emitTypeDeclarations() {
 		resolve(srcRoot, 'agent-runtime.ts'),
 		resolve(srcRoot, 'railway.ts'),
 		resolve(srcRoot, 'platform.ts'),
+		resolve(srcRoot, 'templates.ts'),
 		resolve(srcRoot, 'services/index.ts'),
 		resolve(srcRoot, 'plugin-default.ts'),
 		resolve(srcRoot, 'index.ts'),
@@ -465,12 +469,17 @@ async function main() {
 	);
 
 	writeCompatibilityEntrypoint(
+		resolve(distRoot, 'content.d.ts'),
+		"export declare function createTreeseedCollections(tenantConfig: any, dependencies: any): Record<string, any>;"
+	);
+
+	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.js'),
 		"import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';\nimport { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createTreeseedCollections } from './content.js';\n\nexport function createTreeseedTenantCollections(manifestPath) {\n\tconst tenant = loadTreeseedManifest(manifestPath);\n\treturn createTreeseedCollections(tenant, { docsLoader, docsSchema });\n}"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.d.ts'),
-		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tbooks: any;\n\tdocs: any;\n};"
+		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tbooks: any;\n\tdocs: any;\n\tworkdays?: any;\n};"
 	);
 	rmSync(resolve(distRoot, 'config.d.js'), { force: true });
 	rmSync(resolve(distRoot, 'content-config.d.js'), { force: true });

@@ -1,19 +1,26 @@
 ---
 import { getCollection, render } from 'astro:content';
 import NoteLayout from '../../layouts/NoteLayout.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
 
-export async function getStaticPaths() {
-	const notes = await getCollection('notes', ({ data }) => !data.draft);
-	return notes.map((note) => ({
-		params: { slug: note.id },
-		props: { note },
-	}));
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const notes = await getCollection('notes', ({ data }) => !data.draft);
+const note = notes.find((candidate) => candidate.id === slug) ?? null;
+if (!note) {
+	Astro.response.status = 404;
 }
-
-const { note } = Astro.props;
-const { Content } = await render(note);
+const rendered = note ? await render(note) : null;
+const Content = rendered?.Content ?? null;
 ---
 
-<NoteLayout note={note.data}>
-	<Content />
-</NoteLayout>
+{
+	!note || !Content ? (
+		<RouteNotFound title="Note not found" description="The requested note could not be found in this Treeseed." currentPath="/notes/" />
+	) : (
+		<NoteLayout note={note.data}>
+			<Content />
+		</NoteLayout>
+	)
+}

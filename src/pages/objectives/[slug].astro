@@ -2,30 +2,37 @@
 import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
 
-export async function getStaticPaths() {
-	const objectives = await getCollection('objectives', ({ data }) => !data.draft);
-	return objectives.map((objective) => ({
-		params: { slug: objective.id },
-		props: { objective },
-	}));
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const objectives = await getCollection('objectives', ({ data }) => !data.draft);
+const objective = objectives.find((candidate) => candidate.id === slug) ?? null;
+if (!objective) {
+	Astro.response.status = 404;
 }
-
-const { objective } = Astro.props;
-const { Content } = await render(objective);
-const contributor = await resolveContributor(objective.data.primaryContributor);
-const relatedQuestions = await resolveReferences(objective.data.relatedQuestions);
-const relatedBooks = await resolveReferences(objective.data.relatedBooks);
+const rendered = objective ? await render(objective) : null;
+const Content = rendered?.Content ?? null;
+const contributor = objective ? await resolveContributor(objective.data.primaryContributor) : null;
+const relatedQuestions = objective ? await resolveReferences(objective.data.relatedQuestions) : [];
+const relatedBooks = objective ? await resolveReferences(objective.data.relatedBooks) : [];
 ---
 
-<AuthoredEntryLayout
-	entry={objective.data}
-	currentPath="/objectives/"
-	contributor={contributor}
-	metaLabel="Time horizon"
-	metaValue={objective.data.timeHorizon}
-	relatedQuestions={relatedQuestions}
-	relatedBooks={relatedBooks}
->
-	<Content />
-</AuthoredEntryLayout>
+{
+	!objective || !Content ? (
+		<RouteNotFound title="Objective not found" description="The requested objective could not be found in this Treeseed." currentPath="/objectives/" />
+	) : (
+		<AuthoredEntryLayout
+			entry={objective.data}
+			currentPath="/objectives/"
+			contributor={contributor}
+			metaLabel="Time horizon"
+			metaValue={objective.data.timeHorizon}
+			relatedQuestions={relatedQuestions}
+			relatedBooks={relatedBooks}
+		>
+			<Content />
+		</AuthoredEntryLayout>
+	)
+}

@@ -22,4 +22,9 @@ export {
 	type TreeseedIntegratedDevPlan,
 	type TreeseedIntegratedDevSurface,
 } from './dev';
+export {
+	filterSiteRenderedModels,
+	isSiteRenderedModel,
+	siteModelRendered,
+} from './utils/site-models.ts';
 export type * from './api/types';

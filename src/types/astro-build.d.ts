@@ -14,5 +14,7 @@ declare module 'astro:env/server' {
 declare namespace App {
 	interface Locals {
 		starlightRoute?: any;
+		runtime?: import('@treeseed/sdk/types/cloudflare').CloudflareRuntime;
+		contentPreview?: import('@treeseed/sdk/platform/published-content').EditorialPreviewTokenPayload | null;
 	}
 }

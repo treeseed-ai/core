@@ -39,9 +39,10 @@ describe('Treeseed integrated dev orchestration', () => {
 
 		expect(plan.surface).toBe('integrated');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker', 'agents']);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
+		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
 	});
 
 	it('preserves explicit env values and switches the API command into watch mode', () => {
@@ -63,8 +64,7 @@ describe('Treeseed integrated dev orchestration', () => {
 
 	it('starts both child processes and stops the sibling when one exits with failure', async () => {
 		const spawns: Array<{ command: string; args: string[]; options: SpawnOptions }> = [];
-		const webChild = new FakeChildProcess();
-		const apiChild = new FakeChildProcess();
+		const children = Array.from({ length: 5 }, () => new FakeChildProcess());
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 		const promise = runTreeseedIntegratedDev(
@@ -72,7 +72,7 @@ describe('Treeseed integrated dev orchestration', () => {
 			{
 				spawn(command, args, options) {
 					spawns.push({ command, args, options });
-					return (spawns.length === 1 ? webChild : apiChild) as never;
+					return children[spawns.length - 1] as never;
 				},
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
@@ -82,16 +82,18 @@ describe('Treeseed integrated dev orchestration', () => {
 			},
 		);
 
-		expect(spawns).toHaveLength(2);
-		apiChild.exit(1);
+		expect(spawns).toHaveLength(5);
+		children[1]?.exit(1);
 		await expect(promise).resolves.toBe(1);
-		expect(webChild.kills).toEqual(['SIGTERM']);
+		expect(children[0]?.kills).toEqual(['SIGTERM']);
+		expect(children[2]?.kills).toEqual(['SIGTERM']);
+		expect(children[3]?.kills).toEqual(['SIGTERM']);
+		expect(children[4]?.kills).toEqual(['SIGTERM']);
 		expect(signalHandlers.size).toBe(0);
 	});
 
 	it('shuts down children on parent signals', async () => {
-		const webChild = new FakeChildProcess();
-		const apiChild = new FakeChildProcess();
+		const children = Array.from({ length: 5 }, () => new FakeChildProcess());
 		let spawnCount = 0;
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
@@ -100,7 +102,7 @@ describe('Treeseed integrated dev orchestration', () => {
 			{
 				spawn() {
 					spawnCount += 1;
-					return (spawnCount === 1 ? webChild : apiChild) as never;
+					return children[spawnCount - 1] as never;
 				},
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
@@ -112,7 +114,8 @@ describe('Treeseed integrated dev orchestration', () => {
 
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
-		expect(webChild.kills).toEqual(['SIGTERM']);
-		expect(apiChild.kills).toEqual(['SIGTERM']);
+		for (const child of children) {
+			expect(child.kills).toEqual(['SIGTERM']);
+		}
 	});
 });

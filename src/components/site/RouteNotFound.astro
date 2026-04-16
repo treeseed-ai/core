@@ -1,0 +1,25 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+
+const {
+	title = 'Page not found',
+	description = 'The requested Treeseed content could not be found.',
+	currentPath = '/404/',
+} = Astro.props;
+---
+
+<MainLayout title={title} description={description} currentPath={currentPath}>
+	<section class="mx-auto max-w-3xl space-y-6 py-20">
+		<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-accent-strong)]">404</p>
+		<h1 class="font-serif text-5xl text-[color:var(--site-text)]">{title}</h1>
+		<p class="text-lg leading-9 text-[color:var(--site-text-muted)]">{description}</p>
+		<div class="flex flex-wrap gap-4">
+			<a href="/" class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+				Go home
+			</a>
+			<a href="/knowledge/" class="border border-[color:var(--site-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">
+				Open knowledge
+			</a>
+		</div>
+	</section>
+</MainLayout>

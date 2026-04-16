@@ -32,6 +32,9 @@ function createRunnerClient(
 	fetchImpl?: typeof fetch,
 ) {
 	if (!config.marketBaseUrl || !config.runnerToken) {
+		if (process.env.TREESEED_LOCAL_DEV_MODE?.trim()) {
+			return null;
+		}
 		throw new Error(
 			'Remote runner requires TREESEED_MARKET_API_BASE_URL (or TREESEED_API_BASE_URL) and TREESEED_PROJECT_RUNNER_TOKEN.',
 		);
@@ -56,6 +59,9 @@ export async function runRemoteRunnerCycle(options: {
 	const config = options.config ?? resolveRemoteRunnerConfig();
 	const sdk = options.sdk ?? createServiceSdk();
 	const runner = createRunnerClient(config, options.fetchImpl);
+	if (!runner) {
+		return { ok: true, processed: 0, idle: true, reason: 'registration_unconfigured' };
+	}
 	const pulled = await runner.pull(config.projectId, {
 		limit: config.batchSize,
 		runnerId: config.runnerId,

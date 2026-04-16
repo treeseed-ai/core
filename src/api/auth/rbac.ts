@@ -7,7 +7,8 @@ export const CONTENT_RESOURCES = [
 	'agents',
 	'books',
 	'templates',
-	'knowledge_downloads',
+	'knowledge_packs',
+	'workdays',
 ] as const;
 
 export const PLATFORM_RESOURCES = [
