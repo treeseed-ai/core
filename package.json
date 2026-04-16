@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -69,7 +69,7 @@
     "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
   },
   "dependencies": {
-    "@treeseed/sdk": "^0.4.12",
+    "@treeseed/sdk": "^0.4.13",
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "3.7.0",

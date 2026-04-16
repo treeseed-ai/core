@@ -35,6 +35,9 @@ export function detectTreeseedBootstrapMode(startRoot = process.cwd()) {
 			missing: packages.filter((entry) => !entry.present),
 		};
 	}
+	if (forcedMode && forcedMode !== 'auto') {
+		throw new Error(`Unsupported TREESEED_BOOTSTRAP_MODE "${forcedMode}". Expected auto, workspace, or registry.`);
+	}
 	const packages = requiredPackages.map((entry) => packageState(root, entry));
 	const present = packages.filter((entry) => entry.present);
 	const partial = present.length > 0 && present.length < packages.length;

@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { detectTreeseedBootstrapMode } from '../../scripts/workspace-bootstrap.ts';
 
 const packageDirs = ['sdk', 'core', 'cli'];
@@ -21,6 +21,10 @@ function writePackage(root: string, dirName: string) {
 }
 
 describe('Treeseed workspace bootstrap mode detection', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	it('uses registry mode when no package submodules are checked out', () => {
 		const root = makeRoot();
 		const state = detectTreeseedBootstrapMode(root);
@@ -54,5 +58,17 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 
 		expect(state.mode).toBe('partial');
 		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/cli');
+	});
+
+	it('accepts auto mode and still resolves workspace from the checkout', () => {
+		const root = makeRoot();
+		for (const dirName of packageDirs) {
+			writePackage(root, dirName);
+		}
+		vi.stubEnv('TREESEED_BOOTSTRAP_MODE', 'auto');
+
+		const state = detectTreeseedBootstrapMode(root);
+
+		expect(state.mode).toBe('workspace');
 	});
 });
