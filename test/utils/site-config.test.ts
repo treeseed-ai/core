@@ -14,7 +14,7 @@ import {
 	applyQuestionModelDefaults,
 } from '../../src/utils/site-config';
 import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
-import { tenantModelRendered } from '../../../sdk/src/platform/tenant-config.ts';
+import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
 import { buildTenantThemeCss } from '../../src/utils/theme.ts';
 

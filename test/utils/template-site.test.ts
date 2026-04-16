@@ -53,6 +53,7 @@ describe('template site resolution', () => {
 	it('prefers catalog-backed template listings when a provider returns items', async () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
+		vi.resetModules();
 		const { listSiteTemplates } = await import('../../src/templates.ts');
 
 		const listing = await listSiteTemplates({
@@ -127,6 +128,7 @@ describe('template site resolution', () => {
 	it('falls back to local content entries for template detail resolution', async () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
+		vi.resetModules();
 		const { resolveSiteTemplate } = await import('../../src/templates.ts');
 
 		const resolved = await resolveSiteTemplate('starter', {
@@ -177,12 +179,17 @@ describe('template site resolution', () => {
 		await rm(tenantRoot, { recursive: true, force: true });
 	});
 
-	it('respects manifest-driven template rendering switches', async () => {
-		const tenantRoot = await createTenantRoot(`
-    templates:
-      rendered: false
-`);
+	it('respects hidden template models from the site model visibility helper', async () => {
+		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
+		vi.resetModules();
+		vi.doMock('../../src/utils/site-models.ts', async () => {
+			const actual = await vi.importActual<typeof import('../../src/utils/site-models.ts')>('../../src/utils/site-models.ts');
+			return {
+				...actual,
+				siteModelRendered: () => false,
+			};
+		});
 		const { listSiteTemplates } = await import('../../src/templates.ts');
 
 		const listing = await listSiteTemplates();
