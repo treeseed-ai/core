@@ -11,6 +11,7 @@ coverage/
 *.tgz
 scripts/.ts-run-*.mjs
 npm-debug.log*
+src/content/workdays/
 public/books/*.md
 public/books/*.json
 public/__treeseed/*.json

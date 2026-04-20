@@ -148,6 +148,7 @@ describe('published content helpers', () => {
 		});
 
 		process.chdir(tenantRoot);
+		resetTreeseedDeployConfigForTests();
 
 		const runtime = await loadHostedBookRuntime({
 			runtime: {
@@ -157,6 +158,7 @@ describe('published content helpers', () => {
 				},
 			},
 		} as App.Locals);
+		expect(runtime).not.toBeNull();
 		const sidebar = buildStarlightSidebarEntriesFromRuntime(runtime!, '/knowledge/operations/');
 
 		expect(runtime?.BOOKS[0]?.title).toBe('Operations');
