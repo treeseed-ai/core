@@ -13,29 +13,131 @@ import BookList from '../components/site/BookList.astro';
 import {
 	getPublishedAgents,
 	getPublishedBooks,
+	getPublishedDecisions,
 	getPublishedNotes,
 	getPublishedObjectives,
 	getPublishedPeople,
+	getPublishedProposals,
 	getPublishedQuestions,
 	resolveContributorsForEntries,
 } from '../utils/hub-content';
+import {
+	isPublishedRuntimeContentMode,
+	loadPublishedCollection,
+	loadPublishedEntry,
+	metadataFromPublishedContent,
+	resolvePublishedContributor,
+} from '../utils/site-content-runtime';
 import { siteModelRendered } from '../utils/site-models.ts';
 
 const notesRendered = siteModelRendered('notes');
 const questionsRendered = siteModelRendered('questions');
 const objectivesRendered = siteModelRendered('objectives');
+const proposalsRendered = siteModelRendered('proposals');
+const decisionsRendered = siteModelRendered('decisions');
 const peopleRendered = siteModelRendered('people');
 const agentsRendered = siteModelRendered('agents');
 const booksRendered = siteModelRendered('books');
 
-const notes = notesRendered ? (await getPublishedNotes()).slice(0, 3) : [];
-const questions = questionsRendered ? (await getPublishedQuestions()).slice(0, 2) : [];
-const objectives = objectivesRendered ? (await getPublishedObjectives()).slice(0, 2) : [];
-const questionContributors = await resolveContributorsForEntries(questions);
-const objectiveContributors = await resolveContributorsForEntries(objectives);
-const people = peopleRendered ? (await getPublishedPeople()).slice(0, 2) : [];
-const agents = agentsRendered ? (await getPublishedAgents()).slice(0, 2) : [];
-const books = booksRendered ? await getPublishedBooks() : [];
+const publishedRuntime = isPublishedRuntimeContentMode();
+const notes = notesRendered
+	? (
+		publishedRuntime
+			? (await loadPublishedCollection(Astro.locals, 'notes')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+			: await getPublishedNotes()
+	).slice(0, 3)
+	: [];
+const questions = questionsRendered
+	? (
+		publishedRuntime
+			? (await loadPublishedCollection(Astro.locals, 'questions')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+			: await getPublishedQuestions()
+	).slice(0, 2)
+	: [];
+const objectives = objectivesRendered
+	? (
+		publishedRuntime
+			? (await loadPublishedCollection(Astro.locals, 'objectives')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+			: await getPublishedObjectives()
+	).slice(0, 2)
+	: [];
+const proposals = proposalsRendered
+	? (
+		publishedRuntime
+			? (await loadPublishedCollection(Astro.locals, 'proposals')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+			: await getPublishedProposals()
+	).slice(0, 2)
+	: [];
+const decisions = decisionsRendered
+	? (
+		publishedRuntime
+			? (await loadPublishedCollection(Astro.locals, 'decisions')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+			: await getPublishedDecisions()
+	).slice(0, 2)
+	: [];
+const questionContributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			questions.map(async (question) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'questions', question.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [question.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(questions);
+const objectiveContributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			objectives.map(async (objective) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'objectives', objective.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [objective.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(objectives);
+const proposalContributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			proposals.map(async (proposal) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'proposals', proposal.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [proposal.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(proposals);
+const decisionContributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			decisions.map(async (decision) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'decisions', decision.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [decision.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(decisions);
+const people = peopleRendered ? (publishedRuntime ? (await loadPublishedCollection(Astro.locals, 'people')) : await getPublishedPeople()).slice(0, 2) : [];
+const agents = agentsRendered ? (publishedRuntime ? (await loadPublishedCollection(Astro.locals, 'agents')) : await getPublishedAgents()).slice(0, 2) : [];
+const books = booksRendered
+	? publishedRuntime
+		? (await loadPublishedCollection(Astro.locals, 'books')).sort((a, b) => Number(a.data.order ?? 0) - Number(b.data.order ?? 0))
+		: await getPublishedBooks()
+	: [];
 const ctaPrimaryHref = questionsRendered ? '/questions/' : objectivesRendered ? '/objectives/' : '/status/';
 const ctaPrimaryLabel = questionsRendered ? 'Browse questions' : objectivesRendered ? 'Browse objectives' : 'View status';
 const ctaSecondaryHref = booksRendered ? '/books/' : notesRendered ? '/notes/' : '/vision/';
@@ -62,7 +164,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 					TreeSeed works best when contributors can understand the package, inspect the
 					tenant surface, and verify real workflows without reconstructing everything from
 					source code alone. This fixture keeps those paths visible by combining pages,
-					questions, objectives, books, agents, and forms in one generic working site.
+					questions, objectives, proposals, decisions, books, agents, and forms in one generic working site.
 				</p>
 			</div>
 			<div slot="actions">
@@ -72,7 +174,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 			<div slot="aside" class="space-y-4">
 				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Right now</p>
 				<ul class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
-					<li>A full TreeSeed content surface with pages, notes, questions, objectives, people, agents, books, and docs.</li>
+					<li>A full TreeSeed content surface with pages, notes, questions, objectives, proposals, decisions, people, agents, books, and docs.</li>
 					<li>Package defaults exercised through a realistic tenant instead of isolated unit tests alone.</li>
 					<li>Forms, book exports, and navigation paths that participate in release verification.</li>
 					<li>A documentation-first example meant to stay easy to inspect and easy to maintain.</li>
@@ -117,10 +219,10 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
 					<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Content commitments</h2>
 					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--site-text-muted)]">
-						<li>Questions and objectives stay visible instead of disappearing into process notes.</li>
+						<li>Questions, objectives, proposals, and decisions stay visible instead of disappearing into process notes.</li>
 						<li>Books and docs remain queryable content, not only navigation configuration.</li>
 						<li>People and agents are explicit contributors rather than invisible supporting actors.</li>
-						<li>Notes provide a lightweight place to explain decisions as the site changes.</li>
+						<li>Notes can still capture evidence and rationale without replacing proposal and decision records.</li>
 					</ul>
 				</div>
 				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
@@ -145,7 +247,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 				<div class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
 					<p>
 						The current fixture demonstrates the full TreeSeed surface: pages, notes, questions,
-						objectives, people, agents, books, docs, and forms. That gives package changes a
+						objectives, proposals, decisions, people, agents, books, docs, and forms. That gives package changes a
 						tenant-level target instead of relying on isolated examples.
 					</p>
 					<p>
@@ -206,12 +308,12 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 		</section>
 		)}
 
-		{(questionsRendered || objectivesRendered || peopleRendered || agentsRendered || booksRendered) && (
+		{(questionsRendered || objectivesRendered || proposalsRendered || decisionsRendered || peopleRendered || agentsRendered || booksRendered) && (
 		<section class="space-y-8 border-t border-[color:var(--site-border)] pt-10">
 			<SectionIntro
 				eyebrow="TreeSeed"
-				title="Questions, objectives, contributors, and books form one connected working surface"
-				description="The fixture shows how humans and agents can publish questions, anchor them to objectives, and connect that work to books and contributor profiles."
+				title="Questions, objectives, proposals, decisions, contributors, and books form one connected working surface"
+				description="The fixture shows how humans and agents can publish questions, anchor them to objectives, turn them into proposals, and record decisions without losing the surrounding context."
 			/>
 			<div class="grid gap-10 lg:grid-cols-2">
 				{questionsRendered && (
@@ -250,6 +352,48 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 							date: objective.data.date,
 							meta: objectiveContributors.get(objective.id)?.data.name,
 							tags: objective.data.tags,
+						}))}
+					/>
+				</div>
+				)}
+			</div>
+			<div class="grid gap-10 lg:grid-cols-2">
+				{proposalsRendered && (
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Proposals"
+						title="Suggested change"
+						description="Proposals make the next suggested move explicit instead of leaving it scattered across notes or implied by workstream activity."
+					/>
+					<ChronicleList
+						items={proposals.map((proposal) => ({
+							href: `/proposals/${proposal.id}/`,
+							title: proposal.data.title,
+							summary: proposal.data.summary,
+							status: proposal.data.status,
+							date: proposal.data.date,
+							meta: proposalContributors.get(proposal.id)?.data.name,
+							tags: proposal.data.tags,
+						}))}
+					/>
+				</div>
+				)}
+				{decisionsRendered && (
+				<div class="space-y-6">
+					<SectionIntro
+						eyebrow="Decisions"
+						title="Chosen path"
+						description="Decisions record what was actually accepted, deferred, rejected, or superseded so the site can accumulate institutional memory instead of only discussion."
+					/>
+					<ChronicleList
+						items={decisions.map((decision) => ({
+							href: `/decisions/${decision.id}/`,
+							title: decision.data.title,
+							summary: decision.data.summary,
+							status: decision.data.status,
+							date: decision.data.date,
+							meta: decisionContributors.get(decision.id)?.data.name,
+							tags: decision.data.tags,
 						}))}
 					/>
 				</div>

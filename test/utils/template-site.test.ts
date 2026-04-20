@@ -21,6 +21,8 @@ content:
   notes: ./src/content/notes
   questions: ./src/content/questions
   objectives: ./src/content/objectives
+  proposals: ./src/content/proposals
+  decisions: ./src/content/decisions
   people: ./src/content/people
   agents: ./src/content/agents
   books: ./src/content/books
@@ -31,6 +33,8 @@ content:
 features:
   docs: true
   books: true
+  proposals: true
+  decisions: true
 site:
   models:
 ${siteModels}`,

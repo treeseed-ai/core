@@ -2,24 +2,34 @@
 import { getCollection, render } from 'astro:content';
 import ProfileLayout from '../../layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { isPublishedRuntimeContentMode, loadPublishedEntry, metadataFromPublishedContent, resolvePublishedReferences } from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const agents = await getCollection('agents');
-const agent = agents.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const agents = publishedRuntime ? [] : await getCollection('agents');
+const localAgent = publishedRuntime ? null : agents.find((candidate) => candidate.id === slug) ?? null;
+const publishedAgent = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'agents', slug) : null;
+const agent = publishedRuntime ? publishedAgent?.entry ?? null : localAgent;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedAgent?.content) : null;
 if (!agent) {
 	Astro.response.status = 404;
 }
-const rendered = agent ? await render(agent) : null;
+const rendered = !publishedRuntime && localAgent ? await render(localAgent) : null;
 const Content = rendered?.Content ?? null;
-const relatedQuestions = agent ? await resolveReferences(agent.data.relatedQuestions) : [];
-const relatedObjectives = agent ? await resolveReferences(agent.data.relatedObjectives) : [];
+const relatedQuestions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)
+	: agent ? await resolveReferences(agent.data.relatedQuestions) : [];
+const relatedObjectives = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'objectives', metadata?.relatedObjectives)
+	: agent ? await resolveReferences(agent.data.relatedObjectives) : [];
 ---
 
 {
-	!agent || !Content ? (
+	!agent || (!Content && !publishedAgent?.html) ? (
 		<RouteNotFound title="Agent not found" description="The requested agent profile could not be found in this Treeseed." currentPath="/agents/" />
 	) : (
 		<ProfileLayout
@@ -30,7 +40,7 @@ const relatedObjectives = agent ? await resolveReferences(agent.data.relatedObje
 			relatedQuestions={relatedQuestions}
 			relatedObjectives={relatedObjectives}
 		>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedAgent?.html ?? ''} /> : <Content />}
 		</ProfileLayout>
 	)
 }

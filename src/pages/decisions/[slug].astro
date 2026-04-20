@@ -1,0 +1,73 @@
+---
+import { getCollection, render } from 'astro:content';
+import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
+import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import {
+	isPublishedRuntimeContentMode,
+	loadPublishedEntry,
+	metadataFromPublishedContent,
+	resolvePublishedContributor,
+	resolvePublishedReferences,
+} from '../../utils/site-content-runtime';
+
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const publishedRuntime = isPublishedRuntimeContentMode();
+const decisions = publishedRuntime ? [] : await getCollection('decisions', ({ data }) => !data.draft);
+const localDecision = publishedRuntime ? null : decisions.find((candidate) => candidate.id === slug) ?? null;
+const publishedDecision = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'decisions', slug) : null;
+const decision = publishedRuntime ? publishedDecision?.entry ?? null : localDecision;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedDecision?.content) : null;
+if (!decision) {
+	Astro.response.status = 404;
+}
+const rendered = !publishedRuntime && localDecision ? await render(localDecision) : null;
+const Content = rendered?.Content ?? null;
+const contributor = publishedRuntime
+	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)
+	: decision ? await resolveContributor(decision.data.primaryContributor) : null;
+const relatedObjectives = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'objectives', metadata?.relatedObjectives)
+	: decision ? await resolveReferences(decision.data.relatedObjectives) : [];
+const relatedQuestions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)
+	: decision ? await resolveReferences(decision.data.relatedQuestions) : [];
+const relatedNotes = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'notes', metadata?.relatedNotes)
+	: decision ? await resolveReferences(decision.data.relatedNotes) : [];
+const relatedProposals = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'proposals', metadata?.relatedProposals)
+	: decision ? await resolveReferences(decision.data.relatedProposals) : [];
+const relatedBooks = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'books', metadata?.relatedBooks)
+	: decision ? await resolveReferences(decision.data.relatedBooks) : [];
+const supersededDecisions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'decisions', metadata?.supersedes)
+	: decision ? await resolveReferences(decision.data.supersedes) : [];
+---
+
+{
+	!decision || (!Content && !publishedDecision?.html) ? (
+		<RouteNotFound title="Decision not found" description="The requested decision could not be found in this Treeseed." currentPath="/decisions/" />
+	) : (
+		<AuthoredEntryLayout
+			entry={decision.data}
+			currentPath="/decisions/"
+			contributor={contributor}
+			metaLabel="Decision type"
+			metaValue={String(decision.data.decisionType ?? '')}
+			introText={`${decision.data.rationale ?? ''} Authority: ${decision.data.authority ?? ''}.`}
+			relatedObjectives={relatedObjectives}
+			relatedQuestions={relatedQuestions}
+			relatedNotes={relatedNotes}
+			relatedProposals={relatedProposals}
+			relatedDecisions={supersededDecisions}
+			relatedBooks={relatedBooks}
+		>
+			{publishedRuntime ? <PublishedContentBody html={publishedDecision?.html ?? ''} /> : <Content />}
+		</AuthoredEntryLayout>
+	)
+}

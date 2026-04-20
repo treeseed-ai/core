@@ -3,8 +3,11 @@ import { getCollection } from 'astro:content';
 import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import BookList from '../../components/site/BookList.astro';
+import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/site-content-runtime';
 
-const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const books = isPublishedRuntimeContentMode()
+	? (await loadPublishedCollection(Astro.locals, 'books')).sort((a, b) => Number(a.data.order ?? 0) - Number(b.data.order ?? 0))
+	: (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
 ---
 
 <MainLayout title="Books" description="Queryable book metadata for the TreeSeed working site." currentPath="/books/">

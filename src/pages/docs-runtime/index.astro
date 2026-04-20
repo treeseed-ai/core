@@ -1,0 +1,89 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { loadHostedBookRuntime, loadHostedDocsTree } from '../../utils/published-content';
+import { loadPublishedEntry } from '../../utils/site-content-runtime';
+
+const runtime = await loadHostedBookRuntime(Astro.locals);
+const docsTree = await loadHostedDocsTree(Astro.locals);
+const document = await loadPublishedEntry(Astro.locals, 'docs', 'knowledge');
+
+const pathStartsWith = (candidate, prefix) =>
+	String(candidate ?? '').replace(/\/+$/u, '').startsWith(String(prefix ?? '').replace(/\/+$/u, ''));
+
+const bookGroups = runtime?.BOOKS.map((book) => ({
+	book,
+	entries: (docsTree ?? []).filter((entry) => pathStartsWith(entry.path, book.basePath)),
+})) ?? [];
+
+const ungroupedEntries = (docsTree ?? []).filter((entry) =>
+	!bookGroups.some((group) => group.entries.some((candidate) => candidate.path === entry.path)),
+);
+---
+
+{
+	!document ? (
+		<RouteNotFound
+			title="Knowledge home not found"
+			description="The knowledge hub home page is not available in published runtime content."
+			currentPath="/knowledge/"
+		/>
+	) : (
+		<MainLayout
+			title={document.entry.data.title ?? 'Knowledge'}
+			description={document.entry.data.summary ?? 'Published knowledge hub'}
+			currentPath="/knowledge/"
+		>
+			<div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
+				<aside class="space-y-6 border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+					<div class="space-y-3">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Knowledge hub</p>
+						{runtime?.TREESEED_LIBRARY_DOWNLOAD && (
+							<a
+								href={runtime.TREESEED_LIBRARY_DOWNLOAD.downloadHref}
+								class="inline-flex border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]"
+							>
+								{runtime.TREESEED_LIBRARY_DOWNLOAD.downloadTitle}
+							</a>
+						)}
+					</div>
+					{bookGroups.map((group) => (
+						<div class="space-y-3">
+							<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">{group.book.sectionLabel}</p>
+							<ul class="space-y-2 text-sm text-[color:var(--site-text-muted)]">
+								{group.entries.map((entry) => (
+									<li><a href={entry.path} class="hover:text-[color:var(--site-text)]">{entry.title ?? entry.slug}</a></li>
+								))}
+							</ul>
+						</div>
+					))}
+					{ungroupedEntries.length > 0 && (
+						<div class="space-y-3">
+							<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">More knowledge</p>
+							<ul class="space-y-2 text-sm text-[color:var(--site-text-muted)]">
+								{ungroupedEntries.map((entry) => (
+									<li><a href={entry.path} class="hover:text-[color:var(--site-text)]">{entry.title ?? entry.slug}</a></li>
+								))}
+							</ul>
+						</div>
+					)}
+				</aside>
+				<article class="space-y-6">
+					<header class="space-y-4 border-b border-[color:var(--site-border)] pb-6">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Published docs</p>
+						<h1 class="font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">
+							{document.entry.data.title ?? 'Knowledge'}
+						</h1>
+						{document.entry.data.summary && (
+							<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{document.entry.data.summary}</p>
+						)}
+					</header>
+					<div class="prose-karyon max-w-none">
+						<PublishedContentBody html={document.html} />
+					</div>
+				</article>
+			</div>
+		</MainLayout>
+	)
+}

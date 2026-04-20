@@ -3,9 +3,26 @@ import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import ChronicleList from '../../components/site/ChronicleList.astro';
 import { getPublishedObjectives, resolveContributorsForEntries } from '../../utils/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
 
-const objectives = await getPublishedObjectives();
-const contributors = await resolveContributorsForEntries(objectives);
+const publishedRuntime = isPublishedRuntimeContentMode();
+const objectives = publishedRuntime
+	? (await loadPublishedCollection(Astro.locals, 'objectives')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	: await getPublishedObjectives();
+const contributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			objectives.map(async (objective) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'objectives', objective.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [objective.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(objectives);
 ---
 
 <MainLayout title="Objectives" description="Strategic objectives guiding the TreeSeed working site." currentPath="/objectives/">

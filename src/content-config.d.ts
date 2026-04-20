@@ -3,6 +3,8 @@ export declare function createTreeseedTenantCollections(manifestPath?: string): 
 	notes: any;
 	questions: any;
 	objectives: any;
+	proposals: any;
+	decisions: any;
 	people: any;
 	agents: any;
 	books: any;

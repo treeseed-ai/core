@@ -14,6 +14,7 @@ import { buildTenantBookRuntime } from '@treeseed/sdk/platform/books-data';
 import { getStarlightSidebarConfigFromRuntime } from './utils/starlight-nav';
 import { buildTenantThemeCss } from './utils/theme.ts';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { getTreeseedContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import type { TreeseedContentCollection } from '@treeseed/sdk/platform/contracts';
 import {
@@ -70,8 +71,12 @@ const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resou
 	{ pattern: '/notes/[slug]', resourcePath: 'pages/notes/[slug].astro', model: 'notes' },
 	{ pattern: '/objectives', resourcePath: 'pages/objectives/index.astro', model: 'objectives' },
 	{ pattern: '/objectives/[slug]', resourcePath: 'pages/objectives/[slug].astro', model: 'objectives' },
+	{ pattern: '/proposals', resourcePath: 'pages/proposals/index.astro', model: 'proposals' },
+	{ pattern: '/proposals/[slug]', resourcePath: 'pages/proposals/[slug].astro', model: 'proposals' },
 	{ pattern: '/people', resourcePath: 'pages/people/index.astro', model: 'people' },
 	{ pattern: '/people/[slug]', resourcePath: 'pages/people/[slug].astro', model: 'people' },
+	{ pattern: '/decisions', resourcePath: 'pages/decisions/index.astro', model: 'decisions' },
+	{ pattern: '/decisions/[slug]', resourcePath: 'pages/decisions/[slug].astro', model: 'decisions' },
 	{ pattern: '/questions', resourcePath: 'pages/questions/index.astro', model: 'questions' },
 	{ pattern: '/questions/[slug]', resourcePath: 'pages/questions/[slug].astro', model: 'questions' },
 ];
@@ -293,9 +298,6 @@ export function createTreeseedSite(
 		siteConfig,
 		deployConfig,
 	});
-	const resolvedRoutes = [...PACKAGE_ROUTE_ENTRIES, ...siteExtensions.routes].map((route) =>
-		resolveRouteEntry(route, siteLayers),
-	);
 	const injectedTenantConfig = JSON.stringify(tenantConfig);
 	const injectedProjectRoot = JSON.stringify(projectRoot);
 	const injectedSiteConfig = JSON.stringify(siteConfig);
@@ -303,6 +305,16 @@ export function createTreeseedSite(
 	const resolvedGlobalCss = resolveTreeseedStyleEntrypoint(siteLayers, 'styles/global.css');
 	const serverRendered =
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
+	const publishedRuntime = getTreeseedContentServingMode() === 'published_runtime';
+	const packageRoutes = [
+		...PACKAGE_ROUTE_ENTRIES,
+		...(docsRendered && publishedRuntime
+			? [
+				{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro', model: 'docs' as const },
+				{ pattern: '/knowledge/[...slug]', resourcePath: 'pages/docs-runtime/[...slug].astro', model: 'docs' as const },
+			]
+			: []),
+	];
 
 	return defineConfig({
 		adapter: serverRendered
@@ -368,8 +380,11 @@ export function createTreeseedSite(
 			},
 		},
 		integrations: [
-			createTreeseedRoutesIntegration(tenantConfig, resolvedRoutes),
-			...(docsRendered ? [starlight({
+			createTreeseedRoutesIntegration(tenantConfig, [
+				...packageRoutes.map((route) => resolveRouteEntry(route, siteLayers)),
+				...siteExtensions.routes.map((route) => resolveRouteEntry(route, siteLayers)),
+			]),
+			...(docsRendered && !publishedRuntime ? [starlight({
 				prerender: !serverRendered,
 				pagefind: !serverRendered,
 				disable404Route: true,

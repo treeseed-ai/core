@@ -1,26 +1,31 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BookLayout from '../../layouts/BookLayout.astro';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
-const book = books.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const books = publishedRuntime ? [] : (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const localBook = publishedRuntime ? null : books.find((candidate) => candidate.id === slug) ?? null;
+const publishedBook = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'books', slug) : null;
+const book = publishedRuntime ? publishedBook?.entry ?? null : localBook;
 if (!book) {
 	Astro.response.status = 404;
 }
-const rendered = book ? await render(book) : null;
+const rendered = !publishedRuntime && localBook ? await render(localBook) : null;
 const Content = rendered?.Content ?? null;
 ---
 
 {
-	!book || !Content ? (
+	!book || (!Content && !publishedBook?.html) ? (
 		<RouteNotFound title="Book not found" description="The requested book could not be found in this Treeseed." currentPath="/books/" />
 	) : (
 		<BookLayout entry={book.data} currentPath="/books/">
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedBook?.html ?? ''} /> : <Content />}
 		</BookLayout>
 	)
 }

@@ -5,12 +5,14 @@ import { join, resolve } from 'node:path';
 import {
 	applyAgentModelDefaults,
 	applyBookModelDefaults,
+	applyDecisionModelDefaults,
 	applyObjectiveModelDefaults,
 	SITE_CONFIG,
 	applyDocsModelDefaults,
 	applyNoteModelDefaults,
 	applyPeopleModelDefaults,
 	applyPageModelDefaults,
+	applyProposalModelDefaults,
 	applyQuestionModelDefaults,
 } from '../../src/utils/site-config';
 import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
@@ -77,6 +79,12 @@ models: {}
 		const objective = applyObjectiveModelDefaults({
 			status: 'in progress',
 		});
+		const proposal = applyProposalModelDefaults({
+			status: 'planned',
+		});
+		const decision = applyDecisionModelDefaults({
+			status: 'live',
+		});
 		const person = applyPeopleModelDefaults({});
 		const agent = applyAgentModelDefaults({});
 		const book = applyBookModelDefaults({});
@@ -92,6 +100,10 @@ models: {}
 		expect(question.tags).toEqual(SITE_CONFIG.models.questions.defaults.tags);
 		expect(objective.draft).toBe(SITE_CONFIG.models.objectives.defaults.draft);
 		expect(objective.tags).toEqual(SITE_CONFIG.models.objectives.defaults.tags);
+		expect(proposal.draft).toBe(SITE_CONFIG.models.proposals.defaults.draft);
+		expect(proposal.tags).toEqual(SITE_CONFIG.models.proposals.defaults.tags);
+		expect(decision.draft).toBe(SITE_CONFIG.models.decisions.defaults.draft);
+		expect(decision.tags).toEqual(SITE_CONFIG.models.decisions.defaults.tags);
 		expect(person.status).toBe(SITE_CONFIG.models.people.defaults.status);
 		expect(person.tags).toEqual(SITE_CONFIG.models.people.defaults.tags);
 		expect(agent.tags).toEqual(SITE_CONFIG.models.agents.defaults.tags);
@@ -315,6 +327,8 @@ content:
   notes_root: ./src/content/notes
   questions_root: ./src/content/questions
   objectives_root: ./src/content/objectives
+  proposals_root: ./src/content/proposals
+  decisions_root: ./src/content/decisions
   people_root: ./src/content/people
   agents_root: ./src/content/agents
   books_root: ./src/content/books
@@ -353,6 +367,8 @@ content:
   notes: ./src/content/notes
   questions: ./src/content/questions
   objectives: ./src/content/objectives
+  proposals: ./src/content/proposals
+  decisions: ./src/content/decisions
   people: ./src/content/people
   agents: ./src/content/agents
   books: ./src/content/books
@@ -361,11 +377,15 @@ content:
 features:
   docs: true
   notes: true
+  proposals: true
+  decisions: true
 site:
   models:
     workdays:
       rendered: false
     notes:
+      rendered: false
+    proposals:
       rendered: false
 `,
 			'utf8',
@@ -378,6 +398,7 @@ site:
 			expect(manifest.site?.models?.workdays?.rendered).toBe(false);
 			expect(tenantModelRendered(manifest, 'workdays')).toBe(false);
 			expect(tenantModelRendered(manifest, 'notes')).toBe(false);
+			expect(tenantModelRendered(manifest, 'proposals')).toBe(false);
 			expect(tenantModelRendered(manifest, 'people')).toBe(true);
 		} finally {
 			if (previousRoot === undefined) {

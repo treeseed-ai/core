@@ -4,6 +4,8 @@ import { siteModelRendered } from './site-models.ts';
 export type ContributorEntry = CollectionEntry<'people'> | CollectionEntry<'agents'>;
 export type HubQuestionEntry = CollectionEntry<'questions'>;
 export type HubObjectiveEntry = CollectionEntry<'objectives'>;
+export type HubProposalEntry = CollectionEntry<'proposals'>;
+export type HubDecisionEntry = CollectionEntry<'decisions'>;
 export type HubBookEntry = CollectionEntry<'books'>;
 
 export function sortEntriesByDateDescending<T extends { data: { date: Date } }>(entries: T[]) {
@@ -37,6 +39,20 @@ export async function getPublishedObjectives() {
 		return [];
 	}
 	return sortEntriesByDateDescending(await getCollection('objectives', ({ data }) => !data.draft));
+}
+
+export async function getPublishedProposals() {
+	if (!siteModelRendered('proposals')) {
+		return [];
+	}
+	return sortEntriesByDateDescending(await getCollection('proposals', ({ data }) => !data.draft));
+}
+
+export async function getPublishedDecisions() {
+	if (!siteModelRendered('decisions')) {
+		return [];
+	}
+	return sortEntriesByDateDescending(await getCollection('decisions', ({ data }) => !data.draft));
 }
 
 export async function getPublishedNotes() {

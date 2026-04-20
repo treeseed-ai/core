@@ -108,8 +108,22 @@ function createSdkStub() {
 		}),
 		listPriorityOverrides: vi.fn(async () => ({ payload: [] })),
 		listAgentSpecs: vi.fn(async () => ([
-			{ slug: 'market-curator', triggers: [{ type: 'startup' }] },
+			{
+				slug: 'planner-agent',
+				handler: 'planner',
+				enabled: true,
+				persona: 'Plans and coordinates work.',
+				systemPrompt: 'Plan the next useful unit of work.',
+				permissions: [],
+				triggers: [{ type: 'startup', name: 'startup' }],
+				execution: { cooldownSeconds: 0, leaseSeconds: 120 },
+				triggerPolicy: { maxRunsPerCycle: 1 },
+			},
 		])),
+		getCursor: vi.fn(async () => ({ payload: null })),
+		scopeForAgent: vi.fn(function scopeForAgent() {
+			return this;
+		}),
 		searchTasks: vi.fn(async (request) => {
 			const states = Array.isArray(request.state) ? request.state : request.state ? [request.state] : [];
 			const filtered = tasks.filter((task) =>
@@ -263,6 +277,7 @@ describe('manager service', () => {
 		expect((sdk.startWorkDay as any).mock.calls).toHaveLength(1);
 		expect((sdk.createPrioritySnapshot as any).mock.calls.length).toBeGreaterThan(0);
 		expect((sdk.createTask as any).mock.calls.length).toBeGreaterThan(0);
+		expect((sdk.createTask as any).mock.calls.map((call) => call[0]?.type)).toContain('agent_trigger');
 		expect((sdk.recordTaskCredits as any).mock.calls.length).toBeGreaterThan(0);
 		expect(result.seededTasks.length).toBeGreaterThan(0);
 		expect(result.desiredWorkers).toBeGreaterThan(0);
@@ -275,6 +290,63 @@ describe('manager service', () => {
 			poolName: config.poolName,
 		});
 		expect((reporter.reportScaleDecision as any).mock.calls).toHaveLength(1);
+	});
+
+	it('holds manager scale-down during cooldown', async () => {
+		const sdk = createSdkStub();
+		const reporter = createReporter();
+		const scaler = createScaler();
+		(sdk.listAgentSpecs as any).mockResolvedValue([]);
+		(sdk.getLatestScaleDecision as any).mockResolvedValue({
+			payload: {
+				id: 'scale-prev',
+				projectId: 'project-1',
+				environment: 'staging',
+				poolName: 'project-1-staging',
+				workDayId: 'workday-1',
+				desiredWorkers: 2,
+				observedQueueDepth: 3,
+				observedActiveLeases: 0,
+				reason: 'reconcile',
+				metadata: {},
+				createdAt: '2026-04-15T12:59:30.000Z',
+			},
+		});
+		const config = {
+			...resolveManagerServiceConfig(),
+			mode: 'reconcile' as const,
+			projectId: 'project-1',
+			teamId: 'team-1',
+			environment: 'staging' as const,
+			defaultSchedule: {
+				timezone: 'UTC',
+				windows: [{ days: [3], startTime: '00:00', endTime: '23:59' }],
+			},
+			dailyTaskCreditBudget: 1,
+			maxQueuedTasks: 0,
+			maxQueuedCredits: 0,
+			priorityModels: ['objective'],
+			autoscale: {
+				minWorkers: 0,
+				maxWorkers: 3,
+				targetQueueDepth: 1,
+				cooldownSeconds: 120,
+			},
+		};
+
+		const result = await runManagerCycle({
+			sdk: sdk as any,
+			reporter: reporter as any,
+			scaler: scaler as any,
+			config,
+			now: new Date('2026-04-15T13:00:00.000Z'),
+		});
+
+		expect(result.desiredWorkers).toBe(2);
+		expect((sdk.recordScaleDecision as any).mock.calls[0]?.[0]).toMatchObject({
+			desiredWorkers: 2,
+			reason: 'cooldown_hold',
+		});
 	});
 
 	it('writes an immutable workday content snapshot when generating a workday report', async () => {

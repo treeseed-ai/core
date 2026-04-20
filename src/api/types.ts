@@ -141,6 +141,11 @@ export interface TrustedUserAssertionClaims {
 	userId: string;
 	sessionId: string;
 	identityId?: string | null;
+	teamId?: string | null;
+	projectId?: string | null;
+	membershipId?: string | null;
+	teamRoles?: string[];
+	teamCapabilities?: string[];
 	authTime: string;
 	expiresAt: string;
 	nonce: string;
@@ -187,6 +192,7 @@ export interface ApiResolvedSettings {
 		sdk: boolean;
 		agent: boolean;
 		operations: boolean;
+		project: boolean;
 	};
 	scopes: {
 		authMe: ApiScope;
@@ -214,6 +220,7 @@ export interface ApiServerOptions {
 		sdk: boolean;
 		agent: boolean;
 		operations: boolean;
+		project: boolean;
 	}>;
 	scopes?: Partial<{
 		authMe: ApiScope;

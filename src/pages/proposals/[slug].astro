@@ -1,0 +1,72 @@
+---
+import { getCollection, render } from 'astro:content';
+import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
+import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import {
+	isPublishedRuntimeContentMode,
+	loadPublishedEntry,
+	metadataFromPublishedContent,
+	resolvePublishedContributor,
+	resolvePublishedReferences,
+} from '../../utils/site-content-runtime';
+
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? '');
+const publishedRuntime = isPublishedRuntimeContentMode();
+const proposals = publishedRuntime ? [] : await getCollection('proposals', ({ data }) => !data.draft);
+const localProposal = publishedRuntime ? null : proposals.find((candidate) => candidate.id === slug) ?? null;
+const publishedProposal = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'proposals', slug) : null;
+const proposal = publishedRuntime ? publishedProposal?.entry ?? null : localProposal;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedProposal?.content) : null;
+if (!proposal) {
+	Astro.response.status = 404;
+}
+const rendered = !publishedRuntime && localProposal ? await render(localProposal) : null;
+const Content = rendered?.Content ?? null;
+const contributor = publishedRuntime
+	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)
+	: proposal ? await resolveContributor(proposal.data.primaryContributor) : null;
+const relatedObjectives = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'objectives', metadata?.relatedObjectives)
+	: proposal ? await resolveReferences(proposal.data.relatedObjectives) : [];
+const relatedQuestions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)
+	: proposal ? await resolveReferences(proposal.data.relatedQuestions) : [];
+const relatedNotes = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'notes', metadata?.relatedNotes)
+	: proposal ? await resolveReferences(proposal.data.relatedNotes) : [];
+const relatedBooks = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'books', metadata?.relatedBooks)
+	: proposal ? await resolveReferences(proposal.data.relatedBooks) : [];
+const relatedDecisions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'decisions', metadata?.decision ? [String(metadata.decision)] : [])
+	: proposal?.data.decision ? await resolveReferences([proposal.data.decision]) : [];
+const supersededProposals = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'proposals', metadata?.supersedes)
+	: proposal ? await resolveReferences(proposal.data.supersedes) : [];
+---
+
+{
+	!proposal || (!Content && !publishedProposal?.html) ? (
+		<RouteNotFound title="Proposal not found" description="The requested proposal could not be found in this Treeseed." currentPath="/proposals/" />
+	) : (
+		<AuthoredEntryLayout
+			entry={proposal.data}
+			currentPath="/proposals/"
+			contributor={contributor}
+			metaLabel="Proposal type"
+			metaValue={String(proposal.data.proposalType ?? '')}
+			relatedObjectives={relatedObjectives}
+			relatedQuestions={relatedQuestions}
+			relatedNotes={relatedNotes}
+			relatedDecisions={relatedDecisions}
+			relatedProposals={supersededProposals}
+			relatedBooks={relatedBooks}
+		>
+			{publishedRuntime ? <PublishedContentBody html={publishedProposal?.html ?? ''} /> : <Content />}
+		</AuthoredEntryLayout>
+	)
+}

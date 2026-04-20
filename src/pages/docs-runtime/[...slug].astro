@@ -1,0 +1,102 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
+import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { loadHostedBookRuntime, loadHostedDocsTree } from '../../utils/published-content';
+import { loadPublishedEntry } from '../../utils/site-content-runtime';
+
+const slug = String(Astro.params.slug ?? '').replace(/^\/+|\/+$/gu, '');
+const publishedSlug = slug ? `knowledge/${slug}` : 'knowledge';
+const currentPath = slug ? `/knowledge/${slug}/` : '/knowledge/';
+const runtime = await loadHostedBookRuntime(Astro.locals);
+const docsTree = await loadHostedDocsTree(Astro.locals);
+const document = await loadPublishedEntry(Astro.locals, 'docs', publishedSlug);
+
+const pathStartsWith = (candidate, prefix) =>
+	String(candidate ?? '').replace(/\/+$/u, '').startsWith(String(prefix ?? '').replace(/\/+$/u, ''));
+
+const activeBook = runtime?.BOOKS.find((book) => pathStartsWith(currentPath, book.basePath)) ?? null;
+const sidebarEntries = activeBook
+	? (docsTree ?? []).filter((entry) => pathStartsWith(entry.path, activeBook.basePath))
+	: docsTree ?? [];
+const download = activeBook
+	? {
+		title: activeBook.downloadTitle,
+		href: activeBook.downloadHref,
+	}
+	: runtime?.TREESEED_LIBRARY_DOWNLOAD
+		? {
+			title: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadTitle,
+			href: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadHref,
+		}
+		: null;
+---
+
+{
+	!document ? (
+		<RouteNotFound
+			title="Knowledge page not found"
+			description="The requested knowledge page is not available in published runtime content."
+			currentPath={currentPath}
+		/>
+	) : (
+		<MainLayout
+			title={document.entry.data.title ?? 'Knowledge page'}
+			description={document.entry.data.summary ?? 'Published knowledge page'}
+			currentPath={currentPath}
+		>
+			<div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
+				<aside class="space-y-6 border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+					<div class="space-y-3">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">
+							{activeBook?.sectionLabel ?? 'Knowledge'}
+						</p>
+						<a href="/knowledge/" class="block text-sm font-medium text-[color:var(--site-text-muted)] hover:text-[color:var(--site-text)]">Knowledge home</a>
+						{activeBook?.landingPath && (
+							<a href={activeBook.landingPath} class="block text-sm font-medium text-[color:var(--site-text-muted)] hover:text-[color:var(--site-text)]">Open book landing page</a>
+						)}
+						{download && (
+							<a
+								href={download.href}
+								class="inline-flex border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]"
+							>
+								{download.title}
+							</a>
+						)}
+					</div>
+					<ul class="space-y-2 text-sm text-[color:var(--site-text-muted)]">
+						{sidebarEntries.map((entry) => (
+							<li>
+								<a
+									href={entry.path}
+									class:list={[
+										'hover:text-[color:var(--site-text)]',
+										entry.path === currentPath && 'font-semibold text-[color:var(--site-text)]',
+									]}
+								>
+									{entry.title ?? entry.slug}
+								</a>
+							</li>
+						))}
+					</ul>
+				</aside>
+				<article class="space-y-6">
+					<header class="space-y-4 border-b border-[color:var(--site-border)] pb-6">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">
+							{activeBook?.sectionLabel ?? 'Knowledge'}
+						</p>
+						<h1 class="font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">
+							{document.entry.data.title ?? document.entry.slug}
+						</h1>
+						{document.entry.data.summary && (
+							<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{document.entry.data.summary}</p>
+						)}
+					</header>
+					<div class="prose-karyon max-w-none">
+						<PublishedContentBody html={document.html} />
+					</div>
+				</article>
+			</div>
+		</MainLayout>
+	)
+}

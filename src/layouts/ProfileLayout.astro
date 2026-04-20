@@ -1,7 +1,11 @@
 ---
 import MainLayout from './MainLayout.astro';
 import StatusBadge from '../components/content/StatusBadge.astro';
-import type { CollectionEntry } from 'astro:content';
+import type { RuntimeReferenceEntry } from '../utils/site-content-runtime';
+
+function entryTitle(entry: RuntimeReferenceEntry) {
+	return entry.data.title ?? entry.data.name ?? entry.id;
+}
 
 const {
 	entry,
@@ -22,8 +26,8 @@ const {
 	currentPath: string;
 	metaLabel: string;
 	metaValue: string;
-	relatedQuestions?: CollectionEntry<'questions'>[];
-	relatedObjectives?: CollectionEntry<'objectives'>[];
+	relatedQuestions?: RuntimeReferenceEntry[];
+	relatedObjectives?: RuntimeReferenceEntry[];
 };
 ---
 
@@ -60,7 +64,7 @@ const {
 						<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Questions</p>
 						<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
 							{relatedQuestions.map((question) => (
-								<li><a href={`/questions/${question.id}/`} class="hover:text-[color:var(--site-text)]">{question.data.title}</a></li>
+								<li><a href={`/questions/${question.id}/`} class="hover:text-[color:var(--site-text)]">{entryTitle(question)}</a></li>
 							))}
 						</ul>
 					</div>
@@ -70,7 +74,7 @@ const {
 						<p class="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--site-blue-strong)]">Objectives</p>
 						<ul class="mt-3 space-y-2 text-[color:var(--site-text-muted)]">
 							{relatedObjectives.map((objective) => (
-								<li><a href={`/objectives/${objective.id}/`} class="hover:text-[color:var(--site-text)]">{objective.data.title}</a></li>
+								<li><a href={`/objectives/${objective.id}/`} class="hover:text-[color:var(--site-text)]">{entryTitle(objective)}</a></li>
 							))}
 						</ul>
 					</div>

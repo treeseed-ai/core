@@ -2,31 +2,35 @@
 import { getCollection, render } from 'astro:content';
 import ContentLayout from '../layouts/ContentLayout.astro';
 import BridgeLayout from '../layouts/BridgeLayout.astro';
+import PublishedContentBody from '../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../components/site/RouteNotFound.astro';
+import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const entries = await getCollection('pages');
-const entry = entries.find((candidate) => candidate.data.slug === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const localEntry = publishedRuntime ? null : (await getCollection('pages')).find((candidate) => candidate.data.slug === slug) ?? null;
+const publishedEntry = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'pages', slug) : null;
+const entry = publishedRuntime ? publishedEntry?.entry ?? null : localEntry;
 if (!entry) {
 	Astro.response.status = 404;
 }
-const rendered = entry ? await render(entry) : null;
+const rendered = !publishedRuntime && localEntry ? await render(localEntry) : null;
 const Content = rendered?.Content ?? null;
 const currentPath = Astro.url.pathname;
 ---
 
 {
-	!entry || !Content ? (
+	!entry || (!Content && !publishedEntry?.html) ? (
 		<RouteNotFound title="Page not found" description="The requested page is not available in this Treeseed." currentPath={currentPath} />
 	) : entry.data.pageLayout === 'bridge' ? (
 		<BridgeLayout entry={entry.data} currentPath={currentPath}>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedEntry?.html ?? ''} /> : <Content />}
 		</BridgeLayout>
 	) : (
 		<ContentLayout entry={entry.data} currentPath={currentPath}>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedEntry?.html ?? ''} /> : <Content />}
 		</ContentLayout>
 	)
 }

@@ -1,0 +1,47 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ChronicleList from '../../components/site/ChronicleList.astro';
+import { getPublishedProposals, resolveContributorsForEntries } from '../../utils/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
+
+const publishedRuntime = isPublishedRuntimeContentMode();
+const proposals = publishedRuntime
+	? (await loadPublishedCollection(Astro.locals, 'proposals')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	: await getPublishedProposals();
+const contributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			proposals.map(async (proposal) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'proposals', proposal.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [proposal.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(proposals);
+---
+
+<MainLayout title="Proposals" description="Proposals that move Treeseed from context to an explicit suggested change." currentPath="/proposals/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Proposals"
+			title="Suggested changes made explicit"
+			description="Proposals are where TreeSeed turns observations and open questions into a concrete suggested change, policy, implementation, or research move."
+		/>
+		<ChronicleList
+			items={proposals.map((proposal) => ({
+				href: `/proposals/${proposal.id}/`,
+				title: proposal.data.title,
+				summary: proposal.data.summary,
+				status: proposal.data.status,
+				date: proposal.data.date,
+				meta: contributors.get(proposal.id)?.data.name,
+				tags: proposal.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

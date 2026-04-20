@@ -1,0 +1,47 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import SectionIntro from '../../components/site/SectionIntro.astro';
+import ChronicleList from '../../components/site/ChronicleList.astro';
+import { getPublishedDecisions, resolveContributorsForEntries } from '../../utils/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
+
+const publishedRuntime = isPublishedRuntimeContentMode();
+const decisions = publishedRuntime
+	? (await loadPublishedCollection(Astro.locals, 'decisions')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	: await getPublishedDecisions();
+const contributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			decisions.map(async (decision) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'decisions', decision.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [decision.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(decisions);
+---
+
+<MainLayout title="Decisions" description="Decisions that record what was chosen, authorized, deferred, or rejected." currentPath="/decisions/">
+	<div class="space-y-10">
+		<SectionIntro
+			eyebrow="Decisions"
+			title="Institutional memory for chosen paths"
+			description="Decisions close the loop. They record what was accepted, rejected, deferred, or superseded so the site can move from context to action without losing the rationale."
+		/>
+		<ChronicleList
+			items={decisions.map((decision) => ({
+				href: `/decisions/${decision.id}/`,
+				title: decision.data.title,
+				summary: decision.data.summary,
+				status: decision.data.status,
+				date: decision.data.date,
+				meta: contributors.get(decision.id)?.data.name,
+				tags: decision.data.tags,
+			}))}
+		/>
+	</div>
+</MainLayout>

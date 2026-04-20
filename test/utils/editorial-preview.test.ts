@@ -29,7 +29,7 @@ describe('editorial preview middleware helper', () => {
 		const token = signEditorialPreviewToken({
 			teamId: 'team-1',
 			previewId: 'preview-1',
-			expiresAt: '2026-04-17T00:00:00.000Z',
+			expiresAt: '2099-04-17T00:00:00.000Z',
 		}, secret);
 		const { context, cookies } = createContext(`https://example.com/?preview=${encodeURIComponent(token)}`);
 

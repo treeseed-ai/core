@@ -75,3 +75,28 @@ export async function loadHostedBookRuntime(
 
 	return provider.getObject<TreeseedBookRuntime>(pointer);
 }
+
+export type HostedDocsTreeEntry = {
+	id: string;
+	slug: string;
+	title?: string;
+	summary?: string;
+	path: string;
+};
+
+export async function loadHostedDocsTree(
+	locals: App.Locals | Record<string, unknown> | undefined | null,
+): Promise<HostedDocsTreeEntry[] | null> {
+	const provider = resolveHostedContentRuntimeProvider(locals);
+	if (!provider) {
+		return null;
+	}
+
+	const manifest = await provider.getManifest();
+	const pointer = manifest.runtime?.docsTree;
+	if (!pointer) {
+		return null;
+	}
+
+	return provider.getObject<HostedDocsTreeEntry[]>(pointer);
+}

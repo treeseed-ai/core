@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
+import type { AgentRuntimeSpec } from '@treeseed/sdk/types/agents';
 import {
 	createControlPlaneReporter,
 	type ControlPlaneReporter,
@@ -14,7 +15,16 @@ import {
 	type WorkerPoolScaleResult,
 	type WorkerPoolScaler,
 } from '@treeseed/sdk';
+import { loadActiveAgentSpecs } from '../agents/spec-loader.ts';
+import { followCursorKey, resolveTriggerDecision } from '../agents/kernel/trigger-resolver.ts';
+import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
 import { createQueuePushClient, createServiceSdk, queueEnvelopeForTask, resolveManagerConfig } from './common.ts';
+import {
+	applyInteractiveWakeUpOverride,
+	applyScaleCooldown,
+	collectTaskMetrics,
+	computeDesiredWorkerCount,
+} from './worker-capacity.ts';
 import { writeWorkdayContentSnapshot, type WorkdayContentReleaseRecord, type WorkdayContentTaskSummary } from './workday-content.ts';
 import { createWorkerPoolScaler, type WorkerPoolScalerKind } from './worker-pool-scaler.ts';
 
@@ -212,6 +222,10 @@ function readDate(record: Record<string, unknown>, ...keys: string[]) {
 	}
 	const parsed = new Date(raw);
 	return Number.isFinite(parsed.valueOf()) ? parsed : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return typeof value === 'object' && value !== null ? value as unknown as Record<string, unknown> : {};
 }
 
 function parseJsonString(value: unknown, fallback: Record<string, unknown> = {}) {
@@ -599,35 +613,6 @@ async function openWorkday(
 	return created.payload;
 }
 
-async function collectTaskMetrics(sdk: ManagerSdk, workDayId?: string | null) {
-	const [queuedEnvelope, activeEnvelope] = await Promise.all([
-		sdk.searchTasks({
-			workDayId: workDayId ?? undefined,
-			limit: 500,
-			state: ['pending', 'queued'],
-		}),
-		sdk.searchTasks({
-			workDayId: workDayId ?? undefined,
-			limit: 500,
-			state: ['claimed', 'running'],
-		}),
-	]);
-	const queuedTasks = asRecords(queuedEnvelope.payload);
-	const activeTasks = asRecords(activeEnvelope.payload);
-	const queuedCredits = queuedTasks.reduce((total, task) => {
-		const payload = parseJson<Record<string, unknown>>(String(task.payloadJson ?? '{}'), {});
-		const credits = readNumber(payload, 'estimatedCredits') ?? 1;
-		return total + credits;
-	}, 0);
-	return {
-		queuedTasks,
-		activeTasks,
-		queuedCount: queuedTasks.length,
-		activeLeases: activeTasks.length,
-		queuedCredits,
-	};
-}
-
 function remainingCredits(workDay: WorkDayRecord | null, policy: WorkdayPolicy) {
 	if (!workDay) {
 		return policy.dailyTaskCreditBudget;
@@ -641,7 +626,9 @@ function chooseAgentId(agentSpecs: Array<Record<string, unknown>>) {
 	const preferred = agentSpecs.find((spec) => {
 		const triggers = Array.isArray(spec.triggers) ? spec.triggers : [];
 		return triggers.some((trigger) => {
-			const type = typeof trigger === 'string' ? trigger : readString(trigger as Record<string, unknown>, 'type');
+			const type = typeof trigger === 'string'
+				? trigger
+				: readString(asRecord(trigger), 'type');
 			return type === 'startup' || type === 'schedule';
 		});
 	});
@@ -766,43 +753,118 @@ async function topUpQueuedTasks(
 	};
 }
 
-function desiredWorkersForSnapshot(
-	policy: WorkdayPolicy,
-	metrics: { queuedCount: number; activeLeases: number },
-) {
-	const { minWorkers, maxWorkers, targetQueueDepth } = policy.autoscale;
-	if (metrics.queuedCount <= 0 && metrics.activeLeases <= 0) {
-		return minWorkers;
+function parseCursorTimestamp(value: unknown) {
+	if (typeof value !== 'string' || !value.trim()) {
+		return undefined;
 	}
-
-	const requiredByQueue = Math.ceil(metrics.queuedCount / Math.max(1, targetQueueDepth));
-	const minimumActive = metrics.activeLeases > 0 ? 1 : 0;
-	return Math.max(minWorkers, Math.min(maxWorkers, Math.max(requiredByQueue, minimumActive)));
+	const timestamp = new Date(value).valueOf();
+	return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
-function applyScaleCooldown(
-	policy: WorkdayPolicy,
-	latestDecision: ScaleDecision | null,
-	nextDesired: number,
+function triggerPriority(invocation: AgentTriggerInvocation) {
+	switch (invocation.kind) {
+		case 'message':
+			return 90;
+		case 'follow':
+			return 80;
+		case 'startup':
+			return 70;
+		case 'schedule':
+		case 'manual':
+		default:
+			return 60;
+	}
+}
+
+function triggerTaskIdempotencyKey(workDayId: string, agent: AgentRuntimeSpec, invocation: AgentTriggerInvocation) {
+	if (invocation.kind === 'message' && invocation.message?.id) {
+		return `${workDayId}:trigger:${agent.slug}:message:${invocation.message.id}`;
+	}
+	if (invocation.kind === 'follow') {
+		return `${workDayId}:trigger:${agent.slug}:follow:${followCursorKey(invocation.followModels)}:${invocation.cursorValue ?? 'none'}`;
+	}
+	const triggerKey = readString(
+		asRecord(invocation.trigger),
+		'name',
+		'type',
+	) || invocation.kind;
+	return `${workDayId}:trigger:${agent.slug}:${invocation.kind}:${triggerKey}`;
+}
+
+async function materializeAgentTriggerTasks(
+	sdk: ManagerSdk,
+	workDay: WorkDayRecord,
 	now: Date,
 ) {
-	if (!latestDecision) {
-		return nextDesired;
+	const workDayId = String(workDay.id ?? '');
+	if (!workDayId) {
+		return [] as TaskRecord[];
 	}
-	if (nextDesired >= latestDecision.desiredWorkers) {
-		return nextDesired;
+	const [{ specs, diagnostics }, existingTasksEnvelope] = await Promise.all([
+		loadActiveAgentSpecs(sdk),
+		sdk.searchTasks({ workDayId, limit: 1000 }),
+	]);
+	const errors = diagnostics.filter((entry) => entry.severity === 'error');
+	if (errors.length > 0) {
+		throw new Error(
+			`Agent spec validation failed: ${errors.map((entry) => `${entry.slug}:${entry.field}:${entry.message}`).join(' | ')}`,
+		);
 	}
-	const cooldownMs = Math.max(0, policy.autoscale.cooldownSeconds) * 1000;
-	if (cooldownMs === 0) {
-		return nextDesired;
+	const existingKeys = new Set(
+		asRecords(existingTasksEnvelope.payload).map((task) => readString(task, 'idempotencyKey', 'idempotency_key')),
+	);
+	const createdTasks: TaskRecord[] = [];
+
+	for (const agent of [...specs].sort((left, right) => left.slug.localeCompare(right.slug))) {
+		const scopedSdk = sdk.scopeForAgent(agent);
+		const lastRunAt = parseCursorTimestamp((await sdk.getCursor({
+			agentSlug: agent.slug,
+			cursorKey: 'last_run_at',
+		})).payload);
+		const runsThisCycle = agent.triggerPolicy?.maxRunsPerCycle ?? 1;
+
+		for (let index = 0; index < runsThisCycle; index += 1) {
+			const decision = await resolveTriggerDecision({
+				agent,
+				mode: 'auto',
+				isRunning: false,
+				lastRunAt,
+				sdk: scopedSdk,
+			});
+			if (decision.kind !== 'ready' || !decision.invocation) {
+				break;
+			}
+			const invocation = decision.invocation;
+			const idempotencyKey = triggerTaskIdempotencyKey(workDayId, agent, invocation);
+			if (existingKeys.has(idempotencyKey)) {
+				continue;
+			}
+
+			const created = await sdk.createTask({
+				workDayId,
+				agentId: agent.slug,
+				type: 'agent_trigger',
+				priority: triggerPriority(invocation),
+				idempotencyKey,
+				payload: {
+					executionKind: 'agent_trigger',
+					agentSlug: agent.slug,
+					invocation,
+					createdAt: now.toISOString(),
+				},
+				graphVersion: typeof workDay.graphVersion === 'string' ? workDay.graphVersion : null,
+				actor: 'manager',
+			});
+			if (!created.payload) {
+				continue;
+			}
+			await maybeEnqueueTask(sdk, created.payload as TaskRecord);
+			createdTasks.push(created.payload as TaskRecord);
+			existingKeys.add(idempotencyKey);
+		}
 	}
-	const lastChangedAt = new Date(latestDecision.createdAt);
-	if (!Number.isFinite(lastChangedAt.valueOf())) {
-		return nextDesired;
-	}
-	return (now.valueOf() - lastChangedAt.valueOf()) < cooldownMs
-		? latestDecision.desiredWorkers
-		: nextDesired;
+
+	return createdTasks;
 }
 
 async function registerHeartbeat(
@@ -1064,13 +1126,27 @@ async function reconcileManager(options: {
 	if (activeWorkDay && insideWorkWindow && seedResult.remainingCredits > 0) {
 		seedResult = await topUpQueuedTasks(sdk, config, policy, activeWorkDay, currentSnapshot, now);
 	}
+	if (activeWorkDay && insideWorkWindow) {
+		const triggerTasks = await materializeAgentTriggerTasks(sdk, activeWorkDay, now);
+		if (triggerTasks.length > 0) {
+			seedResult = {
+				...seedResult,
+				createdTasks: [...seedResult.createdTasks, ...triggerTasks],
+			};
+		}
+	}
 
 	const metrics = await collectTaskMetrics(sdk, activeWorkDay ? String(activeWorkDay.id ?? '') : null);
 	const rawDesiredWorkers = activeWorkDay
-		? desiredWorkersForSnapshot(policy, metrics)
+		? computeDesiredWorkerCount(policy.autoscale, metrics)
 		: 0;
 	const latestScaleDecision = await sdk.getLatestScaleDecision(config.projectId, config.environment, config.poolName);
-	const desiredWorkers = applyScaleCooldown(policy, latestScaleDecision.payload, rawDesiredWorkers, now);
+	const desiredWorkers = applyInteractiveWakeUpOverride({
+		priorityClass: 'background',
+		queuedCount: metrics.queuedCount,
+		currentWorkers: Number(latestScaleDecision.payload?.desiredWorkers ?? 0),
+		desiredWorkers: applyScaleCooldown(policy.autoscale, latestScaleDecision.payload, rawDesiredWorkers, now),
+	});
 	const scaleDecision = {
 		projectId: config.projectId,
 		environment: config.environment,

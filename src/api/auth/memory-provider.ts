@@ -272,6 +272,11 @@ export class MemoryDeviceCodeAuthProvider implements ApiAuthProvider {
 			metadata: {
 				sessionId: claims.sessionId,
 				identityId: claims.identityId,
+				teamId: claims.teamId ?? null,
+				projectId: claims.projectId ?? null,
+				membershipId: claims.membershipId ?? null,
+				teamRoles: claims.teamRoles ?? [],
+				teamCapabilities: claims.teamCapabilities ?? [],
 			},
 		};
 		const expiresAt = nowSeconds() + this.config.accessTokenTtlSeconds;

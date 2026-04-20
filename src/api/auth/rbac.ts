@@ -3,6 +3,8 @@ export const CONTENT_RESOURCES = [
 	'notes',
 	'questions',
 	'objectives',
+	'proposals',
+	'decisions',
 	'people',
 	'agents',
 	'books',

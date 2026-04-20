@@ -15,7 +15,7 @@ export const TREESEED_DEFAULT_API_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_API_PORT = 3000;
 export const TREESEED_DEFAULT_MANAGER_PORT = 3100;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | 'api' | 'manager' | 'worker' | 'agents';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | 'api' | 'manager' | 'worker';
 
 export type TreeseedIntegratedDevOptions = {
 	surface?: TreeseedIntegratedDevSurface;
@@ -34,7 +34,7 @@ export type TreeseedIntegratedDevOptions = {
 };
 
 export type TreeseedIntegratedDevCommand = {
-	id: 'web' | 'api' | 'manager' | 'worker' | 'agents';
+	id: 'web' | 'api' | 'manager' | 'worker';
 	label: string;
 	command: string;
 	args: string[];
@@ -160,12 +160,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		'src/services/worker.ts',
 		'dist/services/worker.js',
 	);
-	const agentsEntrypoint = resolveNodeEntrypoint(
-		packageRoot,
-		'src/services/agents.ts',
-		'dist/services/agents.js',
-	);
-
 	const watchPaths = [
 		resolve(packageRoot, existsSync(resolve(packageRoot, 'src')) ? 'src' : 'dist'),
 		resolve(tenantRoot, 'src'),
@@ -234,17 +228,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			label: 'Worker',
 			command: workerEntrypoint.command,
 			args: watch ? withWatchArgs(workerEntrypoint.args, watchPaths) : workerEntrypoint.args,
-			cwd: tenantRoot,
-			env: sharedEnv,
-		});
-	}
-
-	if (includeServices || surface === 'agents') {
-		commands.push({
-			id: 'agents',
-			label: 'Agents',
-			command: agentsEntrypoint.command,
-			args: watch ? withWatchArgs(agentsEntrypoint.args, watchPaths) : agentsEntrypoint.args,
 			cwd: tenantRoot,
 			env: sharedEnv,
 		});

@@ -1,26 +1,31 @@
 ---
 import { getCollection, render } from 'astro:content';
 import NoteLayout from '../../layouts/NoteLayout.astro';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const notes = await getCollection('notes', ({ data }) => !data.draft);
-const note = notes.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const notes = publishedRuntime ? [] : await getCollection('notes', ({ data }) => !data.draft);
+const localNote = publishedRuntime ? null : notes.find((candidate) => candidate.id === slug) ?? null;
+const publishedNote = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'notes', slug) : null;
+const note = publishedRuntime ? publishedNote?.entry ?? null : localNote;
 if (!note) {
 	Astro.response.status = 404;
 }
-const rendered = note ? await render(note) : null;
+const rendered = !publishedRuntime && localNote ? await render(localNote) : null;
 const Content = rendered?.Content ?? null;
 ---
 
 {
-	!note || !Content ? (
+	!note || (!Content && !publishedNote?.html) ? (
 		<RouteNotFound title="Note not found" description="The requested note could not be found in this Treeseed." currentPath="/notes/" />
 	) : (
 		<NoteLayout note={note.data}>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedNote?.html ?? ''} /> : <Content />}
 		</NoteLayout>
 	)
 }

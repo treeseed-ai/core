@@ -3,9 +3,26 @@ import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import ChronicleList from '../../components/site/ChronicleList.astro';
 import { getPublishedQuestions, resolveContributorsForEntries } from '../../utils/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
 
-const questions = await getPublishedQuestions();
-const contributors = await resolveContributorsForEntries(questions);
+const publishedRuntime = isPublishedRuntimeContentMode();
+const questions = publishedRuntime
+	? (await loadPublishedCollection(Astro.locals, 'questions')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	: await getPublishedQuestions();
+const contributors = publishedRuntime
+	? new Map(
+		await Promise.all(
+			questions.map(async (question) => {
+				const detail = await loadPublishedEntry(Astro.locals, 'questions', question.id);
+				const contributor = await resolvePublishedContributor(
+					Astro.locals,
+					metadataFromPublishedContent(detail?.content)?.primaryContributor,
+				);
+				return [question.id, contributor ?? null] as const;
+			}),
+		),
+	)
+	: await resolveContributorsForEntries(questions);
 ---
 
 <MainLayout title="Questions" description="Open questions guiding the TreeSeed working site." currentPath="/questions/">

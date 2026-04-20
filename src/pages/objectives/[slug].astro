@@ -2,25 +2,43 @@
 import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import {
+	isPublishedRuntimeContentMode,
+	loadPublishedEntry,
+	metadataFromPublishedContent,
+	resolvePublishedContributor,
+	resolvePublishedReferences,
+} from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const objectives = await getCollection('objectives', ({ data }) => !data.draft);
-const objective = objectives.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const objectives = publishedRuntime ? [] : await getCollection('objectives', ({ data }) => !data.draft);
+const localObjective = publishedRuntime ? null : objectives.find((candidate) => candidate.id === slug) ?? null;
+const publishedObjective = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'objectives', slug) : null;
+const objective = publishedRuntime ? publishedObjective?.entry ?? null : localObjective;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedObjective?.content) : null;
 if (!objective) {
 	Astro.response.status = 404;
 }
-const rendered = objective ? await render(objective) : null;
+const rendered = !publishedRuntime && localObjective ? await render(localObjective) : null;
 const Content = rendered?.Content ?? null;
-const contributor = objective ? await resolveContributor(objective.data.primaryContributor) : null;
-const relatedQuestions = objective ? await resolveReferences(objective.data.relatedQuestions) : [];
-const relatedBooks = objective ? await resolveReferences(objective.data.relatedBooks) : [];
+const contributor = publishedRuntime
+	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)
+	: objective ? await resolveContributor(objective.data.primaryContributor) : null;
+const relatedQuestions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)
+	: objective ? await resolveReferences(objective.data.relatedQuestions) : [];
+const relatedBooks = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'books', metadata?.relatedBooks)
+	: objective ? await resolveReferences(objective.data.relatedBooks) : [];
 ---
 
 {
-	!objective || !Content ? (
+	!objective || (!Content && !publishedObjective?.html) ? (
 		<RouteNotFound title="Objective not found" description="The requested objective could not be found in this Treeseed." currentPath="/objectives/" />
 	) : (
 		<AuthoredEntryLayout
@@ -28,11 +46,11 @@ const relatedBooks = objective ? await resolveReferences(objective.data.relatedB
 			currentPath="/objectives/"
 			contributor={contributor}
 			metaLabel="Time horizon"
-			metaValue={objective.data.timeHorizon}
+			metaValue={String(objective.data.timeHorizon ?? '')}
 			relatedQuestions={relatedQuestions}
 			relatedBooks={relatedBooks}
 		>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedObjective?.html ?? ''} /> : <Content />}
 		</AuthoredEntryLayout>
 	)
 }

@@ -7,6 +7,7 @@ import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
 import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { getTreeseedContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
 import {
 	AGENT_MODEL_DEFAULTS,
 	BOOK_MODEL_DEFAULTS,
@@ -15,13 +16,17 @@ import {
 	OBJECTIVE_MODEL_DEFAULTS,
 	PAGE_MODEL_DEFAULTS,
 	PEOPLE_MODEL_DEFAULTS,
+	PROPOSAL_MODEL_DEFAULTS,
 	QUESTION_MODEL_DEFAULTS,
+	DECISION_MODEL_DEFAULTS,
 } from './utils/site-config';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
 const questionTypeValues = ['research', 'implementation', 'strategy', 'evaluation'] as const;
+const proposalTypeValues = ['strategy', 'policy', 'implementation', 'research'] as const;
+const decisionTypeValues = ['approved', 'rejected', 'deferred', 'superseded'] as const;
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
 const agentTriggerTypeValues = ['schedule', 'message', 'follow', 'startup'] as const;
@@ -123,6 +128,7 @@ function resolveDocsCollectionProvider(
 }
 
 export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { docsLoader, docsSchema }: DocsDependencies) {
+	const publishedRuntime = getTreeseedContentServingMode() === 'published_runtime';
 	const pageFieldAliases: TreeseedFieldAliasRegistry = {
 		pageLayout: { key: 'pageLayout', aliases: ['page_layout'] },
 		seoTitle: { key: 'seoTitle', aliases: ['seo_title'] },
@@ -139,6 +145,25 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
 		relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
 		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+	};
+	const proposalFieldAliases: TreeseedFieldAliasRegistry = {
+		proposalType: { key: 'proposalType', aliases: ['proposal_type'] },
+		primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
+		relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },
+		relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
+		relatedNotes: { key: 'relatedNotes', aliases: ['related_notes'] },
+		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+		canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
+	};
+	const decisionFieldAliases: TreeseedFieldAliasRegistry = {
+		decisionType: { key: 'decisionType', aliases: ['decision_type'] },
+		primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
+		relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },
+		relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
+		relatedNotes: { key: 'relatedNotes', aliases: ['related_notes'] },
+		relatedProposals: { key: 'relatedProposals', aliases: ['related_proposals'] },
+		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+		canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
 	};
 	const agentFieldAliases: TreeseedFieldAliasRegistry = {
 		runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
@@ -220,6 +245,48 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		primaryContributor: contributorReference,
 		relatedQuestions: z.array(reference('questions')).default([]),
 		relatedBooks: z.array(reference('books')).default([]),
+	}));
+
+	const proposalSchema = z.preprocess((value) => preprocessAliasedRecord(proposalFieldAliases, value), z.object({
+		title: z.string(),
+		description: z.string(),
+		date: z.coerce.date(),
+		status: withOptionalDefault(z.enum(statusValues), PROPOSAL_MODEL_DEFAULTS.status),
+		tags: z.array(z.string()).default(PROPOSAL_MODEL_DEFAULTS.tags ?? []),
+		summary: z.string(),
+		draft: z.boolean().default(PROPOSAL_MODEL_DEFAULTS.draft ?? false),
+		proposalType: z.enum(proposalTypeValues),
+		motivation: z.string(),
+		primaryContributor: contributorReference,
+		relatedObjectives: z.array(reference('objectives')).default([]),
+		relatedQuestions: z.array(reference('questions')).default([]),
+		relatedNotes: z.array(reference('notes')).default([]),
+		relatedBooks: z.array(reference('books')).default([]),
+		decision: reference('decisions').optional(),
+		supersedes: z.array(reference('proposals')).default([]),
+		canonicalRoute: z.string().optional(),
+	}));
+
+	const decisionSchema = z.preprocess((value) => preprocessAliasedRecord(decisionFieldAliases, value), z.object({
+		title: z.string(),
+		description: z.string(),
+		date: z.coerce.date(),
+		status: withOptionalDefault(z.enum(statusValues), DECISION_MODEL_DEFAULTS.status),
+		tags: z.array(z.string()).default(DECISION_MODEL_DEFAULTS.tags ?? []),
+		summary: z.string(),
+		draft: z.boolean().default(DECISION_MODEL_DEFAULTS.draft ?? false),
+		decisionType: z.enum(decisionTypeValues),
+		rationale: z.string(),
+		authority: z.string(),
+		primaryContributor: contributorReference,
+		relatedObjectives: z.array(reference('objectives')).default([]),
+		relatedQuestions: z.array(reference('questions')).default([]),
+		relatedNotes: z.array(reference('notes')).default([]),
+		relatedProposals: z.array(reference('proposals')).default([]),
+		relatedBooks: z.array(reference('books')).default([]),
+		supersedes: z.array(reference('decisions')).default([]),
+		implements: z.array(z.string()).default([]),
+		canonicalRoute: z.string().optional(),
 	}));
 
 	const profileLinkSchema = z.object({ label: z.string(), href: z.string() });
@@ -447,16 +514,21 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 	});
 
 	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
+	const markdownLoader = (base: string) => publishedRuntime
+		? optionalMarkdownGlob(base)
+		: glob({ pattern: '**/*.{md,mdx}', base });
 	const collections: Record<string, any> = {
-		pages: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.pages }), schema: pageSchema }),
-		notes: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.notes }), schema: noteSchema }),
-		questions: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.questions }), schema: questionSchema }),
-		objectives: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.objectives }), schema: objectiveSchema }),
-		people: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.people }), schema: peopleSchema }),
-		agents: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.agents }), schema: agentSchema }),
-		books: defineCollection({ loader: glob({ pattern: '**/*.{md,mdx}', base: tenantConfig.content.books }), schema: bookSchema }),
+		pages: defineCollection({ loader: markdownLoader(tenantConfig.content.pages), schema: pageSchema }),
+		notes: defineCollection({ loader: markdownLoader(tenantConfig.content.notes), schema: noteSchema }),
+		questions: defineCollection({ loader: markdownLoader(tenantConfig.content.questions), schema: questionSchema }),
+		objectives: defineCollection({ loader: markdownLoader(tenantConfig.content.objectives), schema: objectiveSchema }),
+		proposals: defineCollection({ loader: markdownLoader(tenantConfig.content.proposals), schema: proposalSchema }),
+		decisions: defineCollection({ loader: markdownLoader(tenantConfig.content.decisions), schema: decisionSchema }),
+		people: defineCollection({ loader: markdownLoader(tenantConfig.content.people), schema: peopleSchema }),
+		agents: defineCollection({ loader: markdownLoader(tenantConfig.content.agents), schema: agentSchema }),
+		books: defineCollection({ loader: markdownLoader(tenantConfig.content.books), schema: bookSchema }),
 		docs: defineCollection({
-			loader: docsCollectionProvider.loader as any,
+			loader: (publishedRuntime ? optionalMarkdownGlob(tenantConfig.content.docs) : docsCollectionProvider.loader) as any,
 			schema: docsCollectionProvider.schema as any,
 		}),
 	};

@@ -41,6 +41,8 @@ export const PAGE_MODEL_DEFAULTS = SITE_CONFIG.models.pages.defaults;
 export const NOTE_MODEL_DEFAULTS = SITE_CONFIG.models.notes.defaults;
 export const QUESTION_MODEL_DEFAULTS = SITE_CONFIG.models.questions.defaults;
 export const OBJECTIVE_MODEL_DEFAULTS = SITE_CONFIG.models.objectives.defaults;
+export const PROPOSAL_MODEL_DEFAULTS = SITE_CONFIG.models.proposals.defaults;
+export const DECISION_MODEL_DEFAULTS = SITE_CONFIG.models.decisions.defaults;
 export const PEOPLE_MODEL_DEFAULTS = SITE_CONFIG.models.people.defaults;
 export const AGENT_MODEL_DEFAULTS = SITE_CONFIG.models.agents.defaults;
 export const BOOK_MODEL_DEFAULTS = SITE_CONFIG.models.books.defaults;
@@ -101,6 +103,34 @@ export function applyObjectiveModelDefaults<
 		...OBJECTIVE_MODEL_DEFAULTS,
 		...value,
 		tags: value.tags ?? OBJECTIVE_MODEL_DEFAULTS.tags ?? [],
+	};
+}
+
+export function applyProposalModelDefaults<
+	T extends Partial<{
+		draft: boolean;
+		tags: string[];
+		status: string;
+	}>,
+>(value: T) {
+	return {
+		...PROPOSAL_MODEL_DEFAULTS,
+		...value,
+		tags: value.tags ?? PROPOSAL_MODEL_DEFAULTS.tags ?? [],
+	};
+}
+
+export function applyDecisionModelDefaults<
+	T extends Partial<{
+		draft: boolean;
+		tags: string[];
+		status: string;
+	}>,
+>(value: T) {
+	return {
+		...DECISION_MODEL_DEFAULTS,
+		...value,
+		tags: value.tags ?? DECISION_MODEL_DEFAULTS.tags ?? [],
 	};
 }
 

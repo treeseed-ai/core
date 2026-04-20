@@ -2,25 +2,43 @@
 import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import {
+	isPublishedRuntimeContentMode,
+	loadPublishedEntry,
+	metadataFromPublishedContent,
+	resolvePublishedContributor,
+	resolvePublishedReferences,
+} from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const questions = await getCollection('questions', ({ data }) => !data.draft);
-const question = questions.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const questions = publishedRuntime ? [] : await getCollection('questions', ({ data }) => !data.draft);
+const localQuestion = publishedRuntime ? null : questions.find((candidate) => candidate.id === slug) ?? null;
+const publishedQuestion = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'questions', slug) : null;
+const question = publishedRuntime ? publishedQuestion?.entry ?? null : localQuestion;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedQuestion?.content) : null;
 if (!question) {
 	Astro.response.status = 404;
 }
-const rendered = question ? await render(question) : null;
+const rendered = !publishedRuntime && localQuestion ? await render(localQuestion) : null;
 const Content = rendered?.Content ?? null;
-const contributor = question ? await resolveContributor(question.data.primaryContributor) : null;
-const relatedObjectives = question ? await resolveReferences(question.data.relatedObjectives) : [];
-const relatedBooks = question ? await resolveReferences(question.data.relatedBooks) : [];
+const contributor = publishedRuntime
+	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)
+	: question ? await resolveContributor(question.data.primaryContributor) : null;
+const relatedObjectives = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'objectives', metadata?.relatedObjectives)
+	: question ? await resolveReferences(question.data.relatedObjectives) : [];
+const relatedBooks = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'books', metadata?.relatedBooks)
+	: question ? await resolveReferences(question.data.relatedBooks) : [];
 ---
 
 {
-	!question || !Content ? (
+	!question || (!Content && !publishedQuestion?.html) ? (
 		<RouteNotFound title="Question not found" description="The requested question could not be found in this Treeseed." currentPath="/questions/" />
 	) : (
 		<AuthoredEntryLayout
@@ -28,11 +46,11 @@ const relatedBooks = question ? await resolveReferences(question.data.relatedBoo
 			currentPath="/questions/"
 			contributor={contributor}
 			metaLabel="Question type"
-			metaValue={question.data.questionType}
+			metaValue={String(question.data.questionType ?? '')}
 			relatedObjectives={relatedObjectives}
 			relatedBooks={relatedBooks}
 		>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedQuestion?.html ?? ''} /> : <Content />}
 		</AuthoredEntryLayout>
 	)
 }

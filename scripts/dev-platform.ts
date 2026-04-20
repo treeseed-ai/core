@@ -22,7 +22,6 @@ function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
 		|| value === 'api'
 		|| value === 'manager'
 		|| value === 'worker'
-		|| value === 'agents'
 		|| value === 'services'
 		|| value === 'integrated'
 	) {

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseTemplateCatalogResponse } from '@treeseed/sdk';
 import type { D1DatabaseLike, D1PreparedStatementLike } from '@treeseed/sdk/types/cloudflare';
 import { createTreeseedApiApp } from '../../src/api/app.ts';
@@ -501,6 +501,397 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 		expect(payload.operation).toBe('status');
 		expect(payload.ok).toBe(true);
 		expect(payload.payload).toMatchObject({ mode: 'stubbed-test' });
+	});
+
+	it('queues remote-job workflow operations and reports warm worker capacity', async () => {
+		vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'cf-test-account');
+		vi.stubEnv('TREESEED_QUEUE_ID', 'queue-123');
+		vi.stubEnv('TREESEED_QUEUE_PUSH_TOKEN', 'queue-secret');
+		vi.stubEnv('TREESEED_WORKER_POOL_SCALER', 'railway');
+		vi.stubEnv('TREESEED_RAILWAY_WORKER_SERVICE_ID', 'svc-worker');
+		vi.stubEnv('TREESEED_RAILWAY_ENVIRONMENT_ID', 'env-test');
+		vi.stubEnv('RAILWAY_API_TOKEN', 'railway-token');
+		const fetchMock = vi.fn(async (input: string | URL) => {
+			const url = String(input);
+			if (url.endsWith('/messages')) {
+				return new Response(JSON.stringify({ success: true, result: {} }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			}
+			return new Response(JSON.stringify({
+				data: {
+					serviceInstanceUpdate: {
+						id: 'svc-inst-1',
+					},
+				},
+			}), {
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const sdk = {
+			createTask: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-1',
+					type: 'workflow_dispatch',
+					state: 'pending',
+				},
+			})),
+			get: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-1',
+					workDayId: '',
+					agentId: 'workflow-dispatch',
+					type: 'workflow_dispatch',
+					idempotencyKey: 'workflow:verify:test',
+					attemptCount: 0,
+					graphVersion: null,
+				},
+			})),
+			searchTasks: vi.fn(async (request) => ({
+				payload: Array.isArray(request.state) && request.state.includes('queued')
+					? [{
+						id: 'task-remote-1',
+						state: 'queued',
+						payloadJson: JSON.stringify({ estimatedCredits: 1 }),
+					}]
+					: [],
+			})),
+			getLatestScaleDecision: vi.fn(async () => ({
+				payload: {
+					id: 'scale-prev',
+					projectId: 'treeseed-market',
+					environment: 'local',
+					poolName: 'treeseed-market-local',
+					workDayId: null,
+					desiredWorkers: 1,
+					observedQueueDepth: 0,
+					observedActiveLeases: 0,
+					reason: 'reconcile',
+					metadata: {},
+					createdAt: '2026-04-15T12:59:00.000Z',
+				},
+			})),
+			recordScaleDecision: vi.fn(async (request) => ({ payload: { id: 'scale-1', ...request, createdAt: '2026-04-15T13:00:00.000Z' } })),
+			recordTaskProgress: vi.fn(async () => ({ payload: { id: 'task-remote-1', state: 'queued' } })),
+		};
+		try {
+			const app = createTestApp({
+				sdk: sdk as any,
+				workflowExecutor: async () => {
+					throw new Error('remote job should not execute inline');
+				},
+			});
+			const started = await json(await app.request('/auth/device/start', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ scopes: ['operations', 'auth:me'] }),
+			}));
+			await app.request('/auth/device/approve', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					userCode: started.userCode,
+					principalId: 'ops-user',
+					scopes: ['operations', 'auth:me'],
+				}),
+			});
+			const tokenPayload = await json(await app.request('/auth/device/poll', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceCode: started.deviceCode }),
+			}));
+
+			const response = await app.request('/operations/save', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					authorization: `Bearer ${tokenPayload.accessToken}`,
+				},
+				body: JSON.stringify({
+					input: { message: 'checkpoint' },
+				}),
+			});
+
+			expect(response.status).toBe(202);
+			expect(await json(response)).toMatchObject({
+				ok: true,
+				mode: 'task',
+				operation: 'save',
+				workerState: 'warm',
+				capacity: {
+					desiredWorkers: 1,
+					scaleApplied: true,
+					reason: 'interactive_enqueue',
+				},
+				payload: {
+					id: 'task-remote-1',
+					type: 'workflow_dispatch',
+				},
+			});
+			expect(sdk.createTask).toHaveBeenCalledWith(expect.objectContaining({
+				type: 'workflow_dispatch',
+				agentId: 'workflow-dispatch',
+				payload: expect.objectContaining({
+					executionKind: 'workflow_dispatch',
+					namespace: 'workflow',
+					operation: 'save',
+					input: { message: 'checkpoint' },
+				}),
+			}));
+			expect(sdk.recordTaskProgress).toHaveBeenCalledWith(expect.objectContaining({
+				id: 'task-remote-1',
+				state: 'queued',
+			}));
+			expect(sdk.recordScaleDecision).toHaveBeenCalledWith(expect.objectContaining({
+				desiredWorkers: 1,
+				reason: 'interactive_enqueue',
+			}));
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.unstubAllEnvs();
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('queues remote-job workflow operations and reports cold-starting worker capacity', async () => {
+		vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'cf-test-account');
+		vi.stubEnv('TREESEED_QUEUE_ID', 'queue-123');
+		vi.stubEnv('TREESEED_QUEUE_PUSH_TOKEN', 'queue-secret');
+		vi.stubEnv('TREESEED_WORKER_POOL_SCALER', 'railway');
+		vi.stubEnv('TREESEED_RAILWAY_WORKER_SERVICE_ID', 'svc-worker');
+		vi.stubEnv('TREESEED_RAILWAY_ENVIRONMENT_ID', 'env-test');
+		vi.stubEnv('RAILWAY_API_TOKEN', 'railway-token');
+		const fetchMock = vi.fn(async (input: string | URL) => {
+			const url = String(input);
+			if (url.endsWith('/messages')) {
+				return new Response(JSON.stringify({ success: true, result: {} }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			}
+			return new Response(JSON.stringify({
+				data: {
+					serviceInstanceUpdate: {
+						id: 'svc-inst-1',
+					},
+				},
+			}), {
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const sdk = {
+			createTask: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-cold',
+					type: 'workflow_dispatch',
+					state: 'pending',
+				},
+			})),
+			get: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-cold',
+					workDayId: '',
+					agentId: 'workflow-dispatch',
+					type: 'workflow_dispatch',
+					idempotencyKey: 'workflow:verify:cold',
+					attemptCount: 0,
+					graphVersion: null,
+				},
+			})),
+			searchTasks: vi.fn(async (request) => ({
+				payload: Array.isArray(request.state) && request.state.includes('queued')
+					? [{
+						id: 'task-remote-cold',
+						state: 'queued',
+						payloadJson: JSON.stringify({ estimatedCredits: 1 }),
+					}]
+					: [],
+			})),
+			getLatestScaleDecision: vi.fn(async () => ({
+				payload: {
+					id: 'scale-prev',
+					projectId: 'treeseed-market',
+					environment: 'local',
+					poolName: 'treeseed-market-local',
+					workDayId: null,
+					desiredWorkers: 0,
+					observedQueueDepth: 0,
+					observedActiveLeases: 0,
+					reason: 'cooldown_hold',
+					metadata: {},
+					createdAt: '2026-04-15T12:59:50.000Z',
+				},
+			})),
+			recordScaleDecision: vi.fn(async (request) => ({ payload: { id: 'scale-2', ...request, createdAt: '2026-04-15T13:00:00.000Z' } })),
+			recordTaskProgress: vi.fn(async () => ({ payload: { id: 'task-remote-cold', state: 'queued' } })),
+		};
+		try {
+			const app = createTestApp({
+				sdk: sdk as any,
+				workflowExecutor: async () => {
+					throw new Error('remote job should not execute inline');
+				},
+			});
+			const started = await json(await app.request('/auth/device/start', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ scopes: ['operations', 'auth:me'] }),
+			}));
+			await app.request('/auth/device/approve', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					userCode: started.userCode,
+					principalId: 'ops-user',
+					scopes: ['operations', 'auth:me'],
+				}),
+			});
+			const tokenPayload = await json(await app.request('/auth/device/poll', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceCode: started.deviceCode }),
+			}));
+
+			const response = await app.request('/operations/save', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					authorization: `Bearer ${tokenPayload.accessToken}`,
+				},
+				body: JSON.stringify({
+					input: { message: 'cold-start' },
+				}),
+			});
+
+			expect(response.status).toBe(202);
+			expect(await json(response)).toMatchObject({
+				ok: true,
+				mode: 'task',
+				operation: 'save',
+				workerState: 'cold_starting',
+				capacity: {
+					desiredWorkers: 1,
+					scaleApplied: true,
+					reason: 'interactive_cold_start',
+				},
+				payload: {
+					id: 'task-remote-cold',
+				},
+			});
+			expect(sdk.recordScaleDecision).toHaveBeenCalledWith(expect.objectContaining({
+				desiredWorkers: 1,
+				reason: 'interactive_cold_start',
+			}));
+		} finally {
+			vi.unstubAllEnvs();
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('accepts remote-job workflow operations even when scaling is unapplied', async () => {
+		vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'cf-test-account');
+		vi.stubEnv('TREESEED_QUEUE_ID', 'queue-123');
+		vi.stubEnv('TREESEED_QUEUE_PUSH_TOKEN', 'queue-secret');
+		const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true, result: {} }), {
+			status: 200,
+			headers: { 'content-type': 'application/json' },
+		}));
+		vi.stubGlobal('fetch', fetchMock);
+		const sdk = {
+			createTask: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-no-scale',
+					type: 'workflow_dispatch',
+					state: 'pending',
+				},
+			})),
+			get: vi.fn(async () => ({
+				payload: {
+					id: 'task-remote-no-scale',
+					workDayId: '',
+					agentId: 'workflow-dispatch',
+					type: 'workflow_dispatch',
+					idempotencyKey: 'workflow:verify:no-scale',
+					attemptCount: 0,
+					graphVersion: null,
+				},
+			})),
+			searchTasks: vi.fn(async (request) => ({
+				payload: Array.isArray(request.state) && request.state.includes('queued')
+					? [{
+						id: 'task-remote-no-scale',
+						state: 'queued',
+						payloadJson: JSON.stringify({ estimatedCredits: 1 }),
+					}]
+					: [],
+			})),
+			getLatestScaleDecision: vi.fn(async () => ({ payload: null })),
+			recordScaleDecision: vi.fn(async (request) => ({ payload: { id: 'scale-3', ...request, createdAt: '2026-04-15T13:00:00.000Z' } })),
+			recordTaskProgress: vi.fn(async () => ({ payload: { id: 'task-remote-no-scale', state: 'queued' } })),
+		};
+		try {
+			const app = createTestApp({
+				sdk: sdk as any,
+				workflowExecutor: async () => {
+					throw new Error('remote job should not execute inline');
+				},
+			});
+			const started = await json(await app.request('/auth/device/start', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ scopes: ['operations', 'auth:me'] }),
+			}));
+			await app.request('/auth/device/approve', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					userCode: started.userCode,
+					principalId: 'ops-user',
+					scopes: ['operations', 'auth:me'],
+				}),
+			});
+			const tokenPayload = await json(await app.request('/auth/device/poll', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceCode: started.deviceCode }),
+			}));
+
+			const response = await app.request('/operations/save', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					authorization: `Bearer ${tokenPayload.accessToken}`,
+				},
+				body: JSON.stringify({
+					input: { message: 'accepted' },
+				}),
+			});
+
+			expect(response.status).toBe(202);
+			expect(await json(response)).toMatchObject({
+				ok: true,
+				mode: 'task',
+				operation: 'save',
+				workerState: 'cold_starting',
+				capacity: {
+					desiredWorkers: 1,
+					scaleApplied: false,
+					reason: 'interactive_cold_start',
+				},
+				payload: {
+					id: 'task-remote-no-scale',
+				},
+			});
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.unstubAllEnvs();
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it('exposes the agent surface on the main api app', async () => {

@@ -1,12 +1,95 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'node:url';
-import { buildTaskContext, createQueueClient, createServiceSdk, resolveWorkerConfig } from './common.ts';
+import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
+import { AgentKernel } from '../agents/kernel/agent-kernel.ts';
+import { buildTaskContext, createQueueClient, createServiceSdk, resolveServiceRepoRoot, resolveWorkerConfig } from './common.ts';
+
+function parseTaskPayload(task: Record<string, unknown> | null) {
+	const raw = typeof task?.payloadJson === 'string' ? task.payloadJson : '{}';
+	try {
+		return JSON.parse(raw) as Record<string, unknown>;
+	} catch {
+		return {};
+	}
+}
+
+async function executeQueuedTask(options: {
+	sdk: ReturnType<typeof createServiceSdk>;
+	kernel: AgentKernel;
+	taskId: string;
+	workerId: string;
+	queueAttempt: number;
+}) {
+	const context = await buildTaskContext(options.sdk, options.taskId);
+	const task = context.task as Record<string, unknown> | null;
+	const payload = parseTaskPayload(task);
+	const executionKind = typeof payload.executionKind === 'string' ? payload.executionKind : null;
+
+	if (executionKind === 'workflow_dispatch' || executionKind === 'sdk_dispatch') {
+		const namespace = typeof payload.namespace === 'string' ? payload.namespace : 'workflow';
+		const operation = typeof payload.operation === 'string' ? payload.operation : '';
+		if (!operation) {
+			throw new Error(`Task ${options.taskId} does not define a dispatch operation.`);
+		}
+		const input = payload.input && typeof payload.input === 'object' ? payload.input as Record<string, unknown> : {};
+		const result = await options.sdk.dispatch({
+			namespace: namespace as 'sdk' | 'workflow',
+			operation,
+			input,
+			preferredMode: 'prefer_local',
+		});
+		return {
+			workerId: options.workerId,
+			queueAttempt: options.queueAttempt,
+			executionKind,
+			namespace,
+			operation,
+			result,
+			summary: {
+				status: 'completed',
+				workerId: options.workerId,
+				summary: `Executed ${namespace}:${operation}`,
+			},
+		};
+	}
+
+	const agentSlug =
+		typeof payload.agentSlug === 'string' && payload.agentSlug
+			? payload.agentSlug
+			: typeof context.agent?.slug === 'string' && context.agent.slug
+				? context.agent.slug
+				: typeof task?.agentId === 'string' && task.agentId
+					? task.agentId
+					: typeof task?.agent_id === 'string' && task.agent_id
+						? task.agent_id
+						: '';
+	if (!agentSlug) {
+		throw new Error(`Task ${options.taskId} does not resolve to an agent slug.`);
+	}
+	const invocation =
+		payload.invocation && typeof payload.invocation === 'object'
+			? payload.invocation as AgentTriggerInvocation
+			: null;
+	const agentResult = await options.kernel.runAgent(agentSlug, invocation ? 'manual' : 'auto', invocation);
+	return {
+		workerId: options.workerId,
+		queueAttempt: options.queueAttempt,
+		agentSlug,
+		result: agentResult,
+		summary: {
+			status: agentResult.status,
+			workerId: options.workerId,
+			summary: agentResult.summary,
+		},
+	};
+}
 
 export async function runWorkerCycle() {
 	const sdk = createServiceSdk();
 	const queue = createQueueClient();
 	const config = resolveWorkerConfig();
+	const kernel = new AgentKernel(sdk, resolveServiceRepoRoot());
 	if (!queue) {
 		if (process.env.TREESEED_LOCAL_DEV_MODE?.trim()) {
 			return { ok: true, processed: 0, idle: true, reason: 'queue_unconfigured' };
@@ -32,12 +115,6 @@ export async function runWorkerCycle() {
 				actor: 'worker',
 			});
 
-			const context = await buildTaskContext(sdk, message.body.taskId);
-			const task = context.task as Record<string, unknown> | null;
-			const payload = task && typeof task.payloadJson === 'string'
-				? JSON.parse(task.payloadJson)
-				: {};
-
 			await sdk.recordTaskProgress({
 				id: message.body.taskId,
 				workerId: config.workerId,
@@ -49,17 +126,18 @@ export async function runWorkerCycle() {
 				actor: 'worker',
 			});
 
+			const output = await executeQueuedTask({
+				sdk,
+				kernel,
+				taskId: message.body.taskId,
+				workerId: config.workerId,
+				queueAttempt: message.attempts,
+			});
+
 			await sdk.completeTask({
 				id: message.body.taskId,
-				output: {
-					workerId: config.workerId,
-					queueAttempt: message.attempts,
-					payload,
-				},
-				summary: {
-					status: 'completed',
-					workerId: config.workerId,
-				},
+				output,
+				summary: output.summary,
 				actor: 'worker',
 			});
 

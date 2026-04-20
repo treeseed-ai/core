@@ -1,8 +1,19 @@
 ---
-import type { CollectionEntry } from 'astro:content';
 import ChronicleList from './ChronicleList.astro';
 
-const { notes } = Astro.props as { notes: CollectionEntry<'notes'>[] };
+type NoteListEntry = {
+	id: string;
+	data: {
+		title: string;
+		summary: string;
+		status: 'live' | 'in progress' | 'exploratory' | 'planned' | 'speculative';
+		date: Date;
+		author?: string;
+		tags: string[];
+	};
+};
+
+const { notes } = Astro.props as { notes: NoteListEntry[] };
 ---
 
 <ChronicleList

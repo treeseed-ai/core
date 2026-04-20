@@ -6,6 +6,7 @@ import { resolveApiConfig } from './config.ts';
 import { bearerTokenFromRequest, jsonError, requirePermission, requireScope } from './http.ts';
 import { registerOperationRoutes } from './operations-routes.ts';
 import { resolveApiRuntimeProviders } from './providers.ts';
+import { registerProjectRoutes } from './project-routes.ts';
 import { registerSdkRoutes } from './sdk-routes.ts';
 import { loadTemplateCatalog } from './templates.ts';
 import type { ApiPrincipal, ApiServerOptions, AppVariables } from './types.ts';
@@ -31,6 +32,7 @@ function mergeApiOptions(options: ApiServerOptions) {
 			sdk: true,
 			agent: true,
 			operations: true,
+			project: true,
 			...(options.surfaces ?? {}),
 		},
 		scopes: {
@@ -334,9 +336,18 @@ export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 
 	if (resolved.surfaces.operations) {
 		registerOperationRoutes(app, {
+			config: resolved.config,
 			scope: resolved.scopes.operations,
 			prefix: internalPrefix,
+			sdk: sharedSdk,
 			executeOperation: options.workflowExecutor,
+		});
+	}
+
+	if (resolved.surfaces.project) {
+		registerProjectRoutes(app, {
+			config: resolved.config,
+			sharedSdk,
 		});
 	}
 

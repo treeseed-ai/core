@@ -3,8 +3,9 @@ import { getCollection } from 'astro:content';
 import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import ProfileList from '../../components/site/ProfileList.astro';
+import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/site-content-runtime';
 
-const agents = await getCollection('agents');
+const agents = isPublishedRuntimeContentMode() ? await loadPublishedCollection(Astro.locals, 'agents') : await getCollection('agents');
 ---
 
 <MainLayout title="Agents" description="Software contributors participating in the TreeSeed working site." currentPath="/agents/">

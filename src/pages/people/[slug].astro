@@ -2,24 +2,34 @@
 import { getCollection, render } from 'astro:content';
 import ProfileLayout from '../../layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
+import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import { isPublishedRuntimeContentMode, loadPublishedEntry, metadataFromPublishedContent, resolvePublishedReferences } from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
-const people = await getCollection('people');
-const person = people.find((candidate) => candidate.id === slug) ?? null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const people = publishedRuntime ? [] : await getCollection('people');
+const localPerson = publishedRuntime ? null : people.find((candidate) => candidate.id === slug) ?? null;
+const publishedPerson = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'people', slug) : null;
+const person = publishedRuntime ? publishedPerson?.entry ?? null : localPerson;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedPerson?.content) : null;
 if (!person) {
 	Astro.response.status = 404;
 }
-const rendered = person ? await render(person) : null;
+const rendered = !publishedRuntime && localPerson ? await render(localPerson) : null;
 const Content = rendered?.Content ?? null;
-const relatedQuestions = person ? await resolveReferences(person.data.relatedQuestions) : [];
-const relatedObjectives = person ? await resolveReferences(person.data.relatedObjectives) : [];
+const relatedQuestions = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)
+	: person ? await resolveReferences(person.data.relatedQuestions) : [];
+const relatedObjectives = publishedRuntime
+	? await resolvePublishedReferences(Astro.locals, 'objectives', metadata?.relatedObjectives)
+	: person ? await resolveReferences(person.data.relatedObjectives) : [];
 ---
 
 {
-	!person || !Content ? (
+	!person || (!Content && !publishedPerson?.html) ? (
 		<RouteNotFound title="Profile not found" description="The requested person profile could not be found in this Treeseed." currentPath="/people/" />
 	) : (
 		<ProfileLayout
@@ -30,7 +40,7 @@ const relatedObjectives = person ? await resolveReferences(person.data.relatedOb
 			relatedQuestions={relatedQuestions}
 			relatedObjectives={relatedObjectives}
 		>
-			<Content />
+			{publishedRuntime ? <PublishedContentBody html={publishedPerson?.html ?? ''} /> : <Content />}
 		</ProfileLayout>
 	)
 }
