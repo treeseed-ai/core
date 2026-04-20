@@ -15,7 +15,7 @@ export default defineConfig({
 				},
 				{
 					find: /^@treeseed\/sdk\/(.*)$/,
-					replacement: resolve(workspaceSdkRoot, 'src/$1.ts'),
+					replacement: resolve(workspaceSdkRoot, 'src/$1'),
 				},
 			],
 		}
