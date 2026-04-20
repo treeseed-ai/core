@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -20,6 +20,7 @@
   "files": [
     "README.md",
     "dist",
+    "scripts/verify-driver.mjs",
     "tsconfigs",
     "templates",
     "style",
@@ -57,9 +58,9 @@
     "test": "npm run test:unit",
     "lint": "npm run fixtures:check && npm run starlight:patch && npm run build:dist",
     "verify:direct": "npm run release:verify",
-    "verify:local": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='direct'; await import('@treeseed/sdk/scripts/verify-driver')\"",
-    "verify:action": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='act'; await import('@treeseed/sdk/scripts/verify-driver')\"",
-    "verify": "node --input-type=module -e \"await import('@treeseed/sdk/scripts/verify-driver')\"",
+    "verify:local": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='direct'; await import('./scripts/verify-driver.mjs')\"",
+    "verify:action": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='act'; await import('./scripts/verify-driver.mjs')\"",
+    "verify": "node --input-type=module -e \"await import('./scripts/verify-driver.mjs')\"",
     "test:smoke": "node ./scripts/run-ts.mjs ./scripts/test-smoke.ts",
     "fixtures:resolve": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts resolve",
     "fixtures:check": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts check",
