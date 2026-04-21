@@ -42,6 +42,8 @@ type DocsCollectionProvider = {
 	schema: unknown;
 };
 
+const treeseedDocsExtensions = ['markdown', 'mdown', 'mkdn', 'mkd', 'mdwn', 'md', 'mdx'];
+
 function hasMarkdownContent(base: string): boolean {
 	if (!existsSync(base)) {
 		return false;
@@ -54,8 +56,18 @@ function hasMarkdownContent(base: string): boolean {
 	return false;
 }
 
-function optionalMarkdownGlob(base: string): Loader {
-	const delegate = glob({ pattern: '**/*.{md,mdx}', base });
+function optionalMarkdownGlob(
+	base: string,
+	options: {
+		pattern?: string;
+		generateId?: (args: { entry: string; data: Record<string, unknown> }) => string;
+	} = {},
+): Loader {
+	const delegate = glob({
+		pattern: options.pattern ?? '**/*.{md,mdx}',
+		base,
+		generateId: options.generateId,
+	});
 	return {
 		name: `treeseed-optional-markdown-glob:${base}`,
 		async load(context) {
@@ -99,7 +111,10 @@ function resolveDocsCollectionProvider(
 
 	if (selectedId === 'default') {
 		return {
-			loader: dependencies.docsLoader({ generateId: createKnowledgeDocId }),
+			loader: optionalMarkdownGlob(tenantConfig.content.docs, {
+				pattern: `**/[^_]*.{${treeseedDocsExtensions.join(',')}}`,
+				generateId: createKnowledgeDocId,
+			}),
 			schema: dependencies.docsSchema({
 				extend: z.object({
 					tags: z.array(z.string()).default(TREESEED_MODEL_DEFAULTS.tags ?? []),
