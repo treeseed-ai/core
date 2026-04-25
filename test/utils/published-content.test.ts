@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resetTreeseedDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
-import { loadCliDeployConfig } from '@treeseed/sdk/operations/services/runtime-tools';
+import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { buildStarlightSidebarEntriesFromRuntime } from '../../src/utils/starlight-nav';
 import { loadHostedBookRuntime } from '../../src/utils/published-content';
 
@@ -46,6 +46,7 @@ class MemoryR2Bucket {
 afterEach(() => {
 	process.chdir(originalCwd);
 	vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', originalDeployConfig);
+	vi.unstubAllEnvs();
 	resetTreeseedDeployConfigForTests();
 });
 
@@ -152,7 +153,7 @@ describe('published content helpers', () => {
 
 		process.chdir(tenantRoot);
 		vi.stubEnv('TREESEED_CONTENT_BUCKET_BINDING', 'TREESEED_CONTENT_BUCKET');
-		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadCliDeployConfig(tenantRoot));
+		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadTreeseedDeployConfig('treeseed.site.yaml'));
 		resetTreeseedDeployConfigForTests();
 
 		const runtime = await loadHostedBookRuntime({
