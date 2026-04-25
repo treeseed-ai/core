@@ -21,6 +21,20 @@ async function listRegisteredHandlers() {
 	return listCoreRegisteredAgentHandlers();
 }
 
+async function safeListRegisteredHandlers() {
+	try {
+		return {
+			handlers: await listRegisteredHandlers(),
+			error: null,
+		};
+	} catch (error) {
+		return {
+			handlers: [],
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
 function withPrefix(prefix: string, path: string) {
 	return `${prefix}${path}`.replace(/\/{2,}/g, '/');
 }
@@ -47,11 +61,16 @@ export function registerAgentRoutes(
 	const prefix = options.prefix ?? '/agent';
 	const defaultActor = options.defaultActor ?? 'api';
 
-	app.get(withPrefix(prefix, '/healthz'), async (c) => c.json({
-		ok: true,
-		service: 'treeseed-agent-api',
-		handlerCount: (await listRegisteredHandlers()).length,
-	}));
+	app.get(withPrefix(prefix, '/healthz'), async (c) => {
+		const registration = await safeListRegisteredHandlers();
+
+		return c.json({
+			ok: true,
+			service: 'treeseed-agent-api',
+			handlerCount: registration.handlers.length,
+			registrationError: registration.error,
+		});
+	});
 
 	app.get(withPrefix(prefix, '/specs'), async (c) => {
 		const unauthorized = authorizeRequest(c as ApiContext, options);

@@ -1,7 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
-import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../utils/site-config-schema.js';
 
 declare const __TREESEED_TENANT_CONFIG__: TreeseedTenantConfig | undefined;
@@ -15,27 +12,46 @@ const injectedProjectRoot =
 const injectedSiteConfig =
 	typeof __TREESEED_SITE_CONFIG__ !== 'undefined' ? __TREESEED_SITE_CONFIG__ : null;
 
-export const RUNTIME_PROJECT_ROOT = injectedProjectRoot ?? process.cwd();
+function getNodeBuiltin<T>(name: string): T | null {
+	const getBuiltinModule = (globalThis as { process?: { getBuiltinModule?: (name: string) => T } }).process
+		?.getBuiltinModule;
+
+	return getBuiltinModule?.(name) ?? null;
+}
+
+function getCwd() {
+	const cwd = (globalThis as { process?: { cwd?: () => string } }).process?.cwd;
+
+	return cwd?.() ?? '.';
+}
+
+function resolveRuntimePath(projectRoot: string, path: string) {
+	const pathModule = getNodeBuiltin<{ resolve: (...paths: string[]) => string }>('path');
+
+	return pathModule?.resolve(projectRoot, path) ?? `${projectRoot.replace(/\/$/, '')}/${path}`;
+}
+
+export const RUNTIME_PROJECT_ROOT = injectedProjectRoot ?? getCwd();
 
 function fallbackTenantConfig(projectRoot: string): TreeseedTenantConfig {
 	return {
 		id: 'treeseed-runtime',
-		siteConfigPath: resolve(projectRoot, 'treeseed.site.yaml'),
+		siteConfigPath: resolveRuntimePath(projectRoot, 'treeseed.site.yaml'),
 		content: {
-			pages: resolve(projectRoot, 'src/content/pages'),
-			notes: resolve(projectRoot, 'src/content/notes'),
-			questions: resolve(projectRoot, 'src/content/questions'),
-			objectives: resolve(projectRoot, 'src/content/objectives'),
-			proposals: resolve(projectRoot, 'src/content/proposals'),
-			decisions: resolve(projectRoot, 'src/content/decisions'),
-				people: resolve(projectRoot, 'src/content/people'),
-				agents: resolve(projectRoot, 'src/content/agents'),
-				books: resolve(projectRoot, 'src/content/books'),
-				docs: resolve(projectRoot, 'src/content/knowledge'),
-				templates: resolve(projectRoot, 'src/content/templates'),
-				knowledge_packs: resolve(projectRoot, 'src/content/knowledge-packs'),
-				workdays: resolve(projectRoot, 'src/content/workdays'),
-			},
+			pages: resolveRuntimePath(projectRoot, 'src/content/pages'),
+			notes: resolveRuntimePath(projectRoot, 'src/content/notes'),
+			questions: resolveRuntimePath(projectRoot, 'src/content/questions'),
+			objectives: resolveRuntimePath(projectRoot, 'src/content/objectives'),
+			proposals: resolveRuntimePath(projectRoot, 'src/content/proposals'),
+			decisions: resolveRuntimePath(projectRoot, 'src/content/decisions'),
+			people: resolveRuntimePath(projectRoot, 'src/content/people'),
+			agents: resolveRuntimePath(projectRoot, 'src/content/agents'),
+			books: resolveRuntimePath(projectRoot, 'src/content/books'),
+			docs: resolveRuntimePath(projectRoot, 'src/content/knowledge'),
+			templates: resolveRuntimePath(projectRoot, 'src/content/templates'),
+			knowledge_packs: resolveRuntimePath(projectRoot, 'src/content/knowledge-packs'),
+			workdays: resolveRuntimePath(projectRoot, 'src/content/workdays'),
+		},
 		features: {
 			docs: true,
 			books: true,
@@ -52,18 +68,20 @@ export const RUNTIME_TENANT = (() => {
 	if (injectedTenantConfig) {
 		return injectedTenantConfig;
 	}
-	try {
-		return loadTreeseedManifest();
-	} catch {
-		return fallbackTenantConfig(RUNTIME_PROJECT_ROOT);
-	}
+
+	return fallbackTenantConfig(RUNTIME_PROJECT_ROOT);
 })();
 
 export const RUNTIME_SITE_CONFIG =
 	injectedSiteConfig
 	?? (() => {
+		const fs = getNodeBuiltin<{ readFileSync: (path: string, encoding: 'utf8') => string }>('fs');
+		if (!fs) {
+			return null;
+		}
+
 		try {
-			return parseSiteConfig(readFileSync(RUNTIME_TENANT.siteConfigPath, 'utf8'));
+			return parseSiteConfig(fs.readFileSync(RUNTIME_TENANT.siteConfigPath, 'utf8'));
 		} catch {
 			return null;
 		}

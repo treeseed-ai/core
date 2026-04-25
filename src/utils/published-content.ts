@@ -1,5 +1,5 @@
 import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
-import { getTreeseedDeployConfig } from '@treeseed/sdk/platform/plugins';
+import { getTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-runtime';
 import {
 	createTeamScopedR2OverlayContentRuntimeProvider,
 	isTeamScopedR2ContentEnabled,

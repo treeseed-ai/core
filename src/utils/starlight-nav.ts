@@ -1,12 +1,6 @@
 import type { SidebarEntry, SidebarGroup, SidebarLink } from '@astrojs/starlight/route-data';
 import type { TreeseedBookDefinition } from '@treeseed/sdk/platform/contracts';
 import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
-import {
-	BOOKS,
-	BOOKS_LINK,
-	TREESEED_LIBRARY_DOWNLOAD,
-	TREESEED_LINKS,
-} from '@treeseed/sdk/platform/books-data';
 
 interface DocsDownload {
 	downloadFileName: string;
@@ -114,7 +108,19 @@ export function getDocsDownloadForPathFromRuntime(runtime: StarlightRuntime, pat
 	};
 }
 
-export { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS };
+export const BOOKS: TreeseedBookRuntime['BOOKS'] = [];
+export const BOOKS_LINK: TreeseedBookRuntime['BOOKS_LINK'] = {
+	label: 'Books',
+	link: '/knowledge/',
+};
+export const TREESEED_LIBRARY_DOWNLOAD: TreeseedBookRuntime['TREESEED_LIBRARY_DOWNLOAD'] = {
+	downloadFileName: 'treeseed-knowledge.md',
+	downloadHref: '/books/treeseed-knowledge.md',
+	downloadTitle: 'TreeSeed Knowledge Library',
+};
+export const TREESEED_LINKS: TreeseedBookRuntime['TREESEED_LINKS'] = {
+	home: '/knowledge/',
+};
 
 const runtime: StarlightRuntime = { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS };
 

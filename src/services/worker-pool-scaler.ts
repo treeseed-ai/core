@@ -53,7 +53,7 @@ export class RailwayWorkerPoolScaler implements WorkerPoolScaler {
 	private readonly mutation: string;
 
 	constructor(options: RailwayWorkerPoolScalerOptions = {}) {
-		this.apiToken = options.apiToken?.trim() || envValue('RAILWAY_API_TOKEN') || envValue('RAILWAY_TOKEN') || null;
+		this.apiToken = options.apiToken?.trim() || envValue('RAILWAY_API_TOKEN') || null;
 		this.apiUrl = options.apiUrl?.trim() || envValue('TREESEED_RAILWAY_API_URL') || DEFAULT_RAILWAY_API_URL;
 		this.serviceId = options.serviceId?.trim()
 			|| envValue('TREESEED_RAILWAY_WORKER_SERVICE_ID')
