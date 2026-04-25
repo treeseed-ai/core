@@ -1,12 +1,14 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resetTreeseedDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
+import { loadCliDeployConfig } from '@treeseed/sdk/operations/services/runtime-tools';
 import { buildStarlightSidebarEntriesFromRuntime } from '../../src/utils/starlight-nav';
 import { loadHostedBookRuntime } from '../../src/utils/published-content';
 
 const originalCwd = process.cwd();
+const originalDeployConfig = (globalThis as { __TREESEED_DEPLOY_CONFIG__?: unknown }).__TREESEED_DEPLOY_CONFIG__;
 
 class MemoryR2Object {
 	constructor(private readonly value: unknown) {}
@@ -43,6 +45,7 @@ class MemoryR2Bucket {
 
 afterEach(() => {
 	process.chdir(originalCwd);
+	vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', originalDeployConfig);
 	resetTreeseedDeployConfigForTests();
 });
 
@@ -148,6 +151,8 @@ describe('published content helpers', () => {
 		});
 
 		process.chdir(tenantRoot);
+		vi.stubEnv('TREESEED_CONTENT_BUCKET_BINDING', 'TREESEED_CONTENT_BUCKET');
+		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadCliDeployConfig(tenantRoot));
 		resetTreeseedDeployConfigForTests();
 
 		const runtime = await loadHostedBookRuntime({

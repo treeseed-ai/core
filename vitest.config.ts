@@ -23,5 +23,6 @@ export default defineConfig({
 	test: {
 		include: ['test/**/*.test.ts'],
 		exclude: ['test/utils/agents/e2e/**'],
+		setupFiles: ['test/setup-runtime.ts'],
 	},
 });
