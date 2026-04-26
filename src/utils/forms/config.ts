@@ -1,7 +1,6 @@
 import {
 	TREESEED_FORM_TOKEN_SECRET,
 	TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS,
-	TREESEED_FORMS_LOCAL_BYPASS_TURNSTILE,
 	TREESEED_FORMS_LOCAL_USE_MAILPIT,
 	TREESEED_LOCAL_DEV_MODE,
 	TREESEED_MAILPIT_SMTP_HOST,
@@ -60,10 +59,6 @@ export function getLocalDevMode(): LocalDevMode | null {
 	}
 
 	return null;
-}
-
-export function shouldBypassTurnstileByEnv() {
-	return TREESEED_FORMS_LOCAL_BYPASS_TURNSTILE;
 }
 
 export function shouldBypassCloudflareGuardsByEnv() {

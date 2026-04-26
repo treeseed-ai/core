@@ -4,7 +4,6 @@ interface RuntimeInputs {
 	isCloudflareRuntime: boolean;
 	localDevMode: LocalDevMode | null;
 	isDevServer: boolean;
-	bypassTurnstile: boolean | undefined;
 	bypassCloudflareGuards: boolean | undefined;
 	useMailpit: boolean;
 	formsMode: FormRuntimeCapabilities['formsMode'];
@@ -19,11 +18,11 @@ export function deriveFormRuntimeCapabilities(input: RuntimeInputs): FormRuntime
 		isCloudflareRuntime: input.isCloudflareRuntime,
 		isLocalMode,
 		localDevMode: input.localDevMode ?? 'production',
-		bypassTurnstile: isLocalMode ? (input.bypassTurnstile ?? false) : false,
+		bypassTurnstile: isLocalMode ? true : false,
 		bypassCloudflareGuards: isLocalMode ? (input.bypassCloudflareGuards ?? false) : false,
 		useMailpit: isLocalMode ? input.useMailpit : false,
 		formsMode: input.formsMode,
 		smtpEnabled: input.smtpEnabled || (isLocalMode ? input.useMailpit : false),
-		turnstileEnabled: input.turnstileEnabled,
+		turnstileEnabled: isLocalMode ? false : input.turnstileEnabled,
 	};
 }

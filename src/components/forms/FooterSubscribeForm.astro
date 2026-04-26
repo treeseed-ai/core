@@ -1,6 +1,5 @@
 ---
 import {
-	TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE,
 	TREESEED_PUBLIC_TURNSTILE_SITE_KEY,
 } from 'astro:env/client';
 import { FORM_CODE_PARAM, FORM_SUCCESS_PARAM, SUBSCRIBE_ANCHOR_ID } from '../../utils/forms/constants';
@@ -8,7 +7,7 @@ import { SITE_FORMS } from '../../utils/site-config';
 
 const { currentPath = '/' } = Astro.props as { currentPath?: string };
 const redirectTarget = `${currentPath}#${SUBSCRIBE_ANCHOR_ID}`;
-const shouldBypassTurnstile = TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE ?? import.meta.env.DEV;
+const shouldBypassTurnstile = import.meta.env.DEV;
 const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 ---
 

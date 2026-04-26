@@ -353,7 +353,6 @@ export function createTreeseedSite(
 		env: {
 			schema: {
 				TREESEED_PUBLIC_TURNSTILE_SITE_KEY: envField.string({ context: 'client', access: 'public', optional: true }),
-				TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE: envField.boolean({ context: 'client', access: 'public', optional: true }),
 				TREESEED_PUBLIC_DEV_WATCH_RELOAD: envField.boolean({ context: 'client', access: 'public', optional: true }),
 				TREESEED_TURNSTILE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_SMTP_HOST: envField.string({ context: 'server', access: 'secret', optional: true }),
@@ -371,7 +370,6 @@ export function createTreeseedSite(
 				TREESEED_CONTENT_MANIFEST_KEY_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_PREVIEW_ROOT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare'], context: 'server', access: 'secret', optional: true }),
-				TREESEED_FORMS_LOCAL_BYPASS_TURNSTILE: envField.boolean({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS: envField.boolean({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_FORMS_LOCAL_USE_MAILPIT: envField.boolean({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_MAILPIT_SMTP_HOST: envField.string({ context: 'server', access: 'secret', optional: true }),

@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { deriveFormRuntimeCapabilities } from '../../../src/utils/forms/runtime-core';
 
 describe('form runtime capabilities', () => {
-	it('keeps Cloudflare local mode strict unless bypass flags are explicitly enabled', () => {
+	it('always bypasses Turnstile in Cloudflare local mode', () => {
 		const runtime = deriveFormRuntimeCapabilities({
 			isCloudflareRuntime: true,
 			localDevMode: 'cloudflare',
 			isDevServer: false,
-			bypassTurnstile: undefined,
 			bypassCloudflareGuards: undefined,
 			useMailpit: false,
 			formsMode: 'store_only',
@@ -16,7 +15,7 @@ describe('form runtime capabilities', () => {
 		});
 
 		expect(runtime.isLocalMode).toBe(true);
-		expect(runtime.bypassTurnstile).toBe(false);
+		expect(runtime.bypassTurnstile).toBe(true);
 		expect(runtime.bypassCloudflareGuards).toBe(false);
 		expect(runtime.useMailpit).toBe(false);
 		expect(runtime.formsMode).toBe('store_only');
@@ -24,12 +23,11 @@ describe('form runtime capabilities', () => {
 		expect(runtime.turnstileEnabled).toBe(false);
 	});
 
-	it('honors explicit local Cloudflare toggles', () => {
+	it('honors explicit local Cloudflare toggles except Turnstile', () => {
 		const runtime = deriveFormRuntimeCapabilities({
 			isCloudflareRuntime: true,
 			localDevMode: 'cloudflare',
 			isDevServer: false,
-			bypassTurnstile: true,
 			bypassCloudflareGuards: true,
 			useMailpit: true,
 			formsMode: 'notify_admin',
@@ -43,7 +41,7 @@ describe('form runtime capabilities', () => {
 		expect(runtime.useMailpit).toBe(true);
 		expect(runtime.formsMode).toBe('notify_admin');
 		expect(runtime.smtpEnabled).toBe(true);
-		expect(runtime.turnstileEnabled).toBe(true);
+		expect(runtime.turnstileEnabled).toBe(false);
 	});
 
 	it('disables all local behavior in production mode', () => {
@@ -51,7 +49,6 @@ describe('form runtime capabilities', () => {
 			isCloudflareRuntime: true,
 			localDevMode: null,
 			isDevServer: false,
-			bypassTurnstile: true,
 			bypassCloudflareGuards: true,
 			useMailpit: true,
 			formsMode: 'full_email',

@@ -1,6 +1,5 @@
 ---
 import {
-	TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE,
 	TREESEED_PUBLIC_TURNSTILE_SITE_KEY,
 } from 'astro:env/client';
 import { CONTACT_TYPE_LABELS } from '../../utils/forms/constants';
@@ -25,7 +24,7 @@ const messages: Record<string, string> = {
 };
 
 const statusMessage = code ? messages[code] ?? null : null;
-const shouldBypassTurnstile = TREESEED_PUBLIC_FORMS_LOCAL_BYPASS_TURNSTILE ?? import.meta.env.DEV;
+const shouldBypassTurnstile = import.meta.env.DEV;
 const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 ---
 

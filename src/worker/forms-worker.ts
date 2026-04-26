@@ -29,7 +29,6 @@ interface WorkerEnv {
 	TREESEED_SMTP_FROM?: string;
 	TREESEED_SMTP_REPLY_TO?: string;
 	TREESEED_LOCAL_DEV_MODE?: string;
-	TREESEED_FORMS_LOCAL_BYPASS_TURNSTILE?: string;
 	TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS?: string;
 	TREESEED_FORMS_LOCAL_USE_MAILPIT?: string;
 	TREESEED_MAILPIT_SMTP_HOST?: string;
@@ -114,7 +113,6 @@ function buildRuntime(env: WorkerEnv) {
 		isCloudflareRuntime: true,
 		localDevMode: env.TREESEED_LOCAL_DEV_MODE === 'cloudflare' ? 'cloudflare' : null,
 		isDevServer: false,
-		bypassTurnstile: envBoolean(env.TREESEED_FORMS_LOCAL_BYPASS_TURNSTILE),
 		bypassCloudflareGuards: envBoolean(env.TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS),
 		useMailpit: envBoolean(env.TREESEED_FORMS_LOCAL_USE_MAILPIT),
 		formsMode: __TREESEED_DEPLOY_CONFIG__.providers?.forms ?? 'store_only',
