@@ -6,7 +6,6 @@ const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const packageJsonPath = resolve(packageRoot, 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 const packageVersion = packageJson.version;
-const legacyPrefix = 'treeseed-core-v';
 
 const tagName = process.argv[2] || process.env.GITHUB_REF_NAME;
 
@@ -15,13 +14,14 @@ if (!tagName) {
 	process.exit(1);
 }
 
-const taggedVersion = tagName.startsWith(legacyPrefix)
-	? tagName.slice(legacyPrefix.length)
-	: tagName;
+if (!/^\d+\.\d+\.\d+$/.test(tagName)) {
+	console.error(`Release tag "${tagName}" must use plain semver format "x.y.z".`);
+	process.exit(1);
+}
 
-if (taggedVersion !== packageVersion) {
+if (tagName !== packageVersion) {
 	console.error(
-		`Release tag version "${taggedVersion}" does not match @treeseed/core version "${packageVersion}".`,
+		`Release tag version "${tagName}" does not match @treeseed/core version "${packageVersion}".`,
 	);
 	process.exit(1);
 }
