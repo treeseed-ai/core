@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.6.10-dev.staging.20260427T192627Z",
+  "version": "0.6.10-dev.staging.20260427T194440Z",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -76,7 +76,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#0.6.8-dev.staging.20260427T192229Z",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#0.6.8-dev.staging.20260427T194146Z",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "hono": "^4.8.2",
