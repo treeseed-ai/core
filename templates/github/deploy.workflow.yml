@@ -148,7 +148,7 @@ jobs:
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Verify workspace
         shell: bash
@@ -239,7 +239,7 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Provision Treeseed platform
         shell: bash
@@ -328,7 +328,7 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Deploy Treeseed platform
         shell: bash
@@ -408,7 +408,7 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Publish Treeseed content
         shell: bash
@@ -468,7 +468,7 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Report Treeseed deployment state
         shell: bash
