@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { fixtureRoot, packageRoot } from './paths.ts';
 
 const [command, ...rest] = process.argv.slice(2);
@@ -65,7 +66,9 @@ const result = spawnSync('npx', ['astro', command, '--root', fixtureRoot, ...res
 	stdio: 'inherit',
 	env: {
 		...process.env,
+		ASTRO_TELEMETRY_DISABLED: process.env.ASTRO_TELEMETRY_DISABLED ?? '1',
 		TREESEED_TENANT_ROOT: fixtureRoot,
+		XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME ?? resolve(tmpdir(), 'treeseed-core-xdg-config'),
 	},
 	shell: process.platform === 'win32',
 });
