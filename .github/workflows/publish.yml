@@ -38,12 +38,6 @@ jobs:
           npm ci
           git checkout -- package.json
 
-      - name: Prepare SDK dependency
-        run: |
-          if test -f ./node_modules/@treeseed/sdk/package.json; then
-            npm run build:dist --prefix ./node_modules/@treeseed/sdk
-          fi
-
       - name: Validate release tag version
         if: startsWith(github.ref, 'refs/tags/')
         run: npm run release:check-tag -- "${GITHUB_REF_NAME}"
