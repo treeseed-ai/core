@@ -38,8 +38,17 @@ describe('Treeseed integrated dev orchestration', () => {
 		});
 
 		expect(plan.surface).toBe('integrated');
+		expect(plan.setupMode).toBe('auto');
+		expect(plan.feedbackMode).toBe('live');
+		expect(plan.openMode).toBe('auto');
+		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
 		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.setupSteps.map((step) => step.id)).toEqual(
+			expect.arrayContaining(['workspace-links', 'wrangler', 'starlight-patch', 'books', 'worker-bundle', 'mailpit']),
+		);
+		expect(plan.readyChecks.map((check) => check.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
 		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
@@ -62,13 +71,54 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(apiCommand?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
 	});
 
+	it('lets explicit API and manager ports override loaded local env values', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			apiPort: 4401,
+			managerPort: 4402,
+			env: {
+				TREESEED_API_BASE_URL: 'https://override.example.com',
+				PORT: '4400',
+				TREESEED_MANAGER_BASE_URL: 'https://manager.example.com',
+			},
+		});
+
+		const apiCommand = plan.commands.find((command) => command.id === 'api');
+		const managerCommand = plan.commands.find((command) => command.id === 'manager');
+		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:4401');
+		expect(apiCommand?.env.PORT).toBe('4401');
+		expect(managerCommand?.env.PORT).toBe('4402');
+		expect(managerCommand?.env.TREESEED_MANAGER_BASE_URL).toBe('http://127.0.0.1:4402');
+	});
+
+	it('emits a structured plan and exits without spawning services', async () => {
+		const output: string[] = [];
+		const exitCode = await runTreeseedIntegratedDev(
+			{ cwd: tenantRoot, plan: true, json: true, setupMode: 'off' },
+			{
+				spawn() {
+					throw new Error('plan mode should not spawn child processes');
+				},
+				prepareEnvironment() {},
+				write(line) {
+					output.push(line);
+				},
+			},
+		);
+
+		expect(exitCode).toBe(0);
+		const parsed = JSON.parse(output.join(''));
+		expect(parsed.kind).toBe('treeseed.dev.plan');
+		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+	});
+
 	it('starts both child processes and stops the sibling when one exits with failure', async () => {
 		const spawns: Array<{ command: string; args: string[]; options: SpawnOptions }> = [];
 		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 		const promise = runTreeseedIntegratedDev(
-			{ cwd: tenantRoot },
+			{ cwd: tenantRoot, setupMode: 'off', feedbackMode: 'off', openMode: 'off' },
 			{
 				spawn(command, args, options) {
 					spawns.push({ command, args, options });
@@ -79,6 +129,7 @@ describe('Treeseed integrated dev orchestration', () => {
 					return () => signalHandlers.delete(signal);
 				},
 				prepareEnvironment() {},
+				fetch: async () => ({ ok: true }) as Response,
 			},
 		);
 
@@ -97,7 +148,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 		const promise = runTreeseedIntegratedDev(
-			{ cwd: tenantRoot },
+			{ cwd: tenantRoot, setupMode: 'off', feedbackMode: 'off', openMode: 'off' },
 			{
 				spawn() {
 					spawnCount += 1;
@@ -108,6 +159,7 @@ describe('Treeseed integrated dev orchestration', () => {
 					return () => signalHandlers.delete(signal);
 				},
 				prepareEnvironment() {},
+				fetch: async () => ({ ok: true }) as Response,
 			},
 		);
 
