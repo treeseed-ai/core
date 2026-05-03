@@ -989,7 +989,7 @@ export async function runTreeseedIntegratedDev(
 						? 143
 						: code ?? 0;
 				const required = requiredSurfaceIds.has(command.id);
-				if (!readinessComplete || required) {
+				if (required) {
 					emitEvent(options, write, {
 						type: 'error',
 						surface: command.id,
@@ -1000,14 +1000,17 @@ export async function runTreeseedIntegratedDev(
 					finalize(exitCode === 0 ? 1 : exitCode);
 					return;
 				}
+				const status = exitCode === 0 ? 'idle' : 'degraded';
 				emitEvent(options, write, {
 					type: 'error',
 					surface: command.id,
 					exitCode,
 					signal,
-					status: 'degraded',
-					message: `${command.label} exited with ${signal ?? exitCode}; continuing because it is not a required surface.`,
-				}, 'stderr');
+					status,
+					message: readinessComplete
+						? `${command.label} exited with ${signal ?? exitCode}; continuing because it is not a required surface.`
+						: `${command.label} exited during startup with ${signal ?? exitCode}; continuing because it is not a required surface.`,
+				}, status === 'idle' ? 'stdout' : 'stderr');
 				void stopManagedProcess(managed, 'SIGTERM', killProcess, 0).finally(() => {
 					children.delete(command.id);
 				});

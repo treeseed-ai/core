@@ -160,6 +160,54 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(signalHandlers.size).toBe(0);
 	});
 
+	it('keeps running when an optional worker exits cleanly during startup', async () => {
+		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const output: string[] = [];
+		let spawnCount = 0;
+		let settled = false;
+
+		const promise = runTreeseedIntegratedDev(
+			{
+				cwd: tenantRoot,
+				setupMode: 'off',
+				feedbackMode: 'off',
+				openMode: 'off',
+				processReadyGraceMs: 0,
+				shutdownGraceMs: 0,
+			},
+			{
+				spawn() {
+					spawnCount += 1;
+					return children[spawnCount - 1] as never;
+				},
+				onSignal(signal, handler) {
+					signalHandlers.set(signal, handler);
+					return () => signalHandlers.delete(signal);
+				},
+				prepareEnvironment() {},
+				fetch: async () => ({ ok: true }) as Response,
+				write(line) {
+					output.push(line);
+				},
+			},
+		);
+		promise.then(() => {
+			settled = true;
+		});
+
+		expect(spawnCount).toBe(4);
+		children[3]?.exit(0);
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
+
+		expect(settled).toBe(false);
+		expect(output.join('')).toContain('Worker exited during startup with 0; continuing because it is not a required surface.');
+		expect(output.join('')).toContain('Worker is degraded.');
+
+		signalHandlers.get('SIGINT')?.();
+		await expect(promise).resolves.toBe(130);
+	});
+
 	it('shuts down children on parent signals', async () => {
 		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
 		let spawnCount = 0;
