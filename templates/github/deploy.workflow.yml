@@ -148,7 +148,27 @@ jobs:
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci --ignore-scripts; then
+              break
+            fi
+            if test "${attempt}" = "3"; then
+              exit 1
+            fi
+            echo "npm ci failed; retrying (${attempt}/3)."
+            sleep $((attempt * 10))
+          done
+
+      - name: Build workspace package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/sdk packages/core packages/cli; do
+            if test -f "${dir}/package.json"; then
+              npm --prefix "${dir}" run build:dist
+            fi
+          done
 
       - name: Verify workspace
         shell: bash
@@ -239,7 +259,27 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci --ignore-scripts; then
+              break
+            fi
+            if test "${attempt}" = "3"; then
+              exit 1
+            fi
+            echo "npm ci failed; retrying (${attempt}/3)."
+            sleep $((attempt * 10))
+          done
+
+      - name: Build workspace package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/sdk packages/core packages/cli; do
+            if test -f "${dir}/package.json"; then
+              npm --prefix "${dir}" run build:dist
+            fi
+          done
 
       - name: Provision Treeseed platform
         shell: bash
@@ -328,7 +368,27 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci --ignore-scripts; then
+              break
+            fi
+            if test "${attempt}" = "3"; then
+              exit 1
+            fi
+            echo "npm ci failed; retrying (${attempt}/3)."
+            sleep $((attempt * 10))
+          done
+
+      - name: Build workspace package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/sdk packages/core packages/cli; do
+            if test -f "${dir}/package.json"; then
+              npm --prefix "${dir}" run build:dist
+            fi
+          done
 
       - name: Deploy Treeseed platform
         shell: bash
@@ -408,7 +468,27 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci --ignore-scripts; then
+              break
+            fi
+            if test "${attempt}" = "3"; then
+              exit 1
+            fi
+            echo "npm ci failed; retrying (${attempt}/3)."
+            sleep $((attempt * 10))
+          done
+
+      - name: Build workspace package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/sdk packages/core packages/cli; do
+            if test -f "${dir}/package.json"; then
+              npm --prefix "${dir}" run build:dist
+            fi
+          done
 
       - name: Publish Treeseed content
         shell: bash
@@ -468,7 +548,27 @@ __WORKING_DIRECTORY_BLOCK__
           node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const path = 'package.json'; const pkg = JSON.parse(readFileSync(path, 'utf8')); if (pkg.workspaces) { delete pkg.workspaces; writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n'); console.log('Suppressed root workspaces for deployment install.'); }"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci --ignore-scripts; then
+              break
+            fi
+            if test "${attempt}" = "3"; then
+              exit 1
+            fi
+            echo "npm ci failed; retrying (${attempt}/3)."
+            sleep $((attempt * 10))
+          done
+
+      - name: Build workspace package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/sdk packages/core packages/cli; do
+            if test -f "${dir}/package.json"; then
+              npm --prefix "${dir}" run build:dist
+            fi
+          done
 
       - name: Report Treeseed deployment state
         shell: bash
