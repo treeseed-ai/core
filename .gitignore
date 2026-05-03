@@ -10,6 +10,7 @@ coverage/
 *.log
 *.tgz
 scripts/.ts-run-*.mjs
+src/**/.ts-run-*.mjs
 npm-debug.log*
 src/content/workdays/
 public/books/*.md

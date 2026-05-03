@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { dirname, relative, resolve, sep } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
@@ -12,6 +12,12 @@ import {
 	findNearestTreeseedWorkspaceRoot,
 	resolveTreeseedToolBinary,
 } from '@treeseed/sdk/workflow-support';
+import {
+	startPollingWatch,
+	type TreeseedDevWatchController,
+	type TreeseedDevWatchEntry,
+	type TreeseedDevWatchStarter,
+} from './dev-watch';
 
 const require = createRequire(import.meta.url);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,10 +29,10 @@ export const TREESEED_DEFAULT_API_PORT = 3000;
 export const TREESEED_DEFAULT_MANAGER_PORT = 3100;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
-const WATCH_INTERVAL_MS = 900;
-const WATCH_DEBOUNCE_MS = 350;
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
+const DEFAULT_SHUTDOWN_GRACE_MS = 2_500;
+const DEFAULT_KILL_GRACE_MS = 500;
 
 export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | 'api' | 'manager' | 'worker';
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
@@ -54,6 +60,7 @@ export type TreeseedIntegratedDevOptions = {
 	teamId?: string;
 	readinessTimeoutMs?: number;
 	processReadyGraceMs?: number;
+	shutdownGraceMs?: number;
 };
 
 export type TreeseedIntegratedDevCommand = {
@@ -65,10 +72,7 @@ export type TreeseedIntegratedDevCommand = {
 	env: NodeJS.ProcessEnv;
 };
 
-export type TreeseedIntegratedDevWatchEntry = {
-	kind: 'tenant' | 'package' | 'sdk';
-	root: string;
-};
+export type TreeseedIntegratedDevWatchEntry = TreeseedDevWatchEntry;
 
 export type TreeseedIntegratedDevSetupStep = {
 	id: string;
@@ -108,18 +112,9 @@ type SpawnSyncLike = typeof spawnSync;
 type SignalRegistrar = (signal: NodeJS.Signals, handler: () => void) => () => void;
 type ProcessLike = Pick<ChildProcess, 'kill' | 'on'> & Partial<Pick<ChildProcess, 'stdout' | 'stderr' | 'pid' | 'unref'>>;
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
-type WatchChange = {
-	changedPaths: string[];
-	tenantChanged: boolean;
-	packageChanged: boolean;
-	sdkChanged: boolean;
-};
-type WatchStarter = (
-	input: {
-		watchEntries: TreeseedIntegratedDevWatchEntry[];
-		onChange: (change: WatchChange) => void | Promise<void>;
-	},
-) => () => void;
+type ProcessKiller = (pid: number, signal: NodeJS.Signals) => void;
+type WatchController = TreeseedDevWatchController;
+type WatchStarter = TreeseedDevWatchStarter;
 
 type TreeseedIntegratedDevDependencies = {
 	spawn: SpawnLike;
@@ -127,6 +122,7 @@ type TreeseedIntegratedDevDependencies = {
 	onSignal: SignalRegistrar;
 	prepareEnvironment: (tenantRoot: string) => void;
 	fetch: FetchLike;
+	killProcess: ProcessKiller;
 	write: (line: string, stream: 'stdout' | 'stderr') => void;
 	openBrowser: (url: string) => void | Promise<void>;
 	startWatch: WatchStarter;
@@ -231,10 +227,6 @@ function resolveTenantApiEntrypoint(tenantRoot: string, runTsPath: string) {
 	return null;
 }
 
-function withWatchArgs(args: string[], watchPaths: string[]) {
-	return watchPaths.flatMap((watchPath) => ['--watch-path', watchPath]).concat(args);
-}
-
 function normalizePort(value: number | undefined, fallback: number) {
 	return Number.isInteger(value) && Number(value) > 0 ? Number(value) : fallback;
 }
@@ -262,22 +254,31 @@ function webUrlFor(host: string, port: number) {
 function createWatchEntries(tenantRoot: string, sdkPackageRoot: string): TreeseedIntegratedDevWatchEntry[] {
 	const entries: TreeseedIntegratedDevWatchEntry[] = [
 		{ kind: 'tenant', root: resolve(tenantRoot, 'src') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'content') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'public') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'astro.config.ts') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'astro.config.mjs') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'treeseed.site.yaml') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'treeseed.config.ts') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'package.json') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'tsconfig.json') },
 	];
 
 	if (!packageRoot.split(sep).includes('node_modules')) {
 		entries.push(
 			{ kind: 'package', root: resolve(packageRoot, 'src') },
-			{ kind: 'package', root: resolve(packageRoot, 'scripts') },
+			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'dev-platform.ts') },
+			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'build-tenant-worker.ts') },
+			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'run-ts.mjs') },
 			{ kind: 'package', root: resolve(packageRoot, 'package.json') },
 		);
 	}
 	if (!sdkPackageRoot.split(sep).includes('node_modules')) {
 		entries.push(
 			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'src') },
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts') },
+			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'tenant-astro-command.ts') },
+			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'tenant-d1-migrate-local.ts') },
+			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'run-ts.mjs') },
 			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'package.json') },
 		);
 	}
@@ -410,13 +411,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		'dist/services/worker.js',
 	);
 	const watchEntries = watch ? createWatchEntries(tenantRoot, sdkPackageRoot) : [];
-	const watchPaths = [
-		resolve(packageRoot, existsSync(resolve(packageRoot, 'src')) ? 'src' : 'dist'),
-		resolve(tenantRoot, 'src'),
-		resolve(tenantRoot, 'public'),
-		resolve(tenantRoot, 'treeseed.site.yaml'),
-		resolve(tenantRoot, 'astro.config.ts'),
-	];
 
 	const sharedEnv: NodeJS.ProcessEnv = {
 		...mergedEnv,
@@ -452,7 +446,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			id: 'api',
 			label: 'Hono API',
 			command: apiEntrypoint.command,
-			args: watch ? withWatchArgs(apiEntrypoint.args, watchPaths) : apiEntrypoint.args,
+			args: apiEntrypoint.args,
 			cwd: tenantRoot,
 			env: {
 				...sharedEnv,
@@ -466,7 +460,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			id: 'manager',
 			label: 'Manager',
 			command: managerEntrypoint.command,
-			args: watch ? withWatchArgs(managerEntrypoint.args, watchPaths) : managerEntrypoint.args,
+			args: managerEntrypoint.args,
 			cwd: tenantRoot,
 			env: {
 				...sharedEnv,
@@ -483,7 +477,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			id: 'worker',
 			label: 'Worker',
 			command: workerEntrypoint.command,
-			args: watch ? withWatchArgs(workerEntrypoint.args, watchPaths) : workerEntrypoint.args,
+			args: workerEntrypoint.args,
 			cwd: tenantRoot,
 			env: sharedEnv,
 		});
@@ -544,14 +538,81 @@ function defaultPrepareEnvironment(tenantRoot: string) {
 	assertTreeseedCommandEnvironment({ tenantRoot, scope: 'local', purpose: 'dev' });
 }
 
-function stopChildProcess(child: ProcessLike | null | undefined, signal: NodeJS.Signals = 'SIGTERM') {
-	if (!child || typeof child.kill !== 'function') {
+function defaultKillProcess(pid: number, signal: NodeJS.Signals) {
+	process.kill(pid, signal);
+}
+
+type ManagedDevProcess = {
+	id: TreeseedIntegratedDevCommand['id'];
+	command: TreeseedIntegratedDevCommand;
+	child: ProcessLike;
+	pid: number | null;
+	exited: boolean;
+	intentionalStop: boolean;
+	exitCode: number | null;
+	exitSignal: NodeJS.Signals | null;
+	resolveExit: () => void;
+	exitPromise: Promise<void>;
+};
+
+function createManagedDevProcess(command: TreeseedIntegratedDevCommand, child: ProcessLike): ManagedDevProcess {
+	let resolveExit: () => void = () => {};
+	const exitPromise = new Promise<void>((resolvePromise) => {
+		resolveExit = resolvePromise;
+	});
+	return {
+		id: command.id,
+		command,
+		child,
+		pid: typeof child.pid === 'number' ? child.pid : null,
+		exited: false,
+		intentionalStop: false,
+		exitCode: null,
+		exitSignal: null,
+		resolveExit,
+		exitPromise,
+	};
+}
+
+function signalManagedProcess(
+	managed: ManagedDevProcess,
+	signal: NodeJS.Signals,
+	killProcess: ProcessKiller,
+) {
+	if (managed.pid != null && process.platform !== 'win32') {
+		try {
+			killProcess(-managed.pid, signal);
+			return;
+		} catch {
+			// Fall through to the child handle for environments that do not expose the group.
+		}
+	}
+	if (typeof managed.child.kill !== 'function') {
 		return;
 	}
 	try {
-		child.kill(signal);
+		managed.child.kill(signal);
 	} catch {
 		// Ignore shutdown races from already-exited child processes.
+	}
+}
+
+async function stopManagedProcess(
+	managed: ManagedDevProcess,
+	signal: NodeJS.Signals,
+	killProcess: ProcessKiller,
+	graceMs: number,
+) {
+	managed.intentionalStop = true;
+	signalManagedProcess(managed, signal, killProcess);
+	if (!managed.exited) {
+		await Promise.race([managed.exitPromise, delay(Math.max(0, graceMs))]);
+	}
+	if (signal !== 'SIGKILL') {
+		signalManagedProcess(managed, 'SIGKILL', killProcess);
+		if (!managed.exited) {
+			await Promise.race([managed.exitPromise, delay(DEFAULT_KILL_GRACE_MS)]);
+		}
 	}
 }
 
@@ -570,159 +631,6 @@ function writeDevReloadStamp(projectRoot: string) {
 		)}\n`,
 		'utf8',
 	);
-}
-
-function shouldIgnoreWatchPath(filePath: string, rootPath: string) {
-	const rel = relative(rootPath, filePath);
-	if (!rel || rel.startsWith(`..${sep}`) || rel === '..') {
-		return false;
-	}
-	const normalized = rel.split(sep).join('/');
-	return (
-		normalized === '.git' ||
-		normalized.startsWith('.git/') ||
-		normalized === 'node_modules' ||
-		normalized.startsWith('node_modules/') ||
-		normalized === '.astro' ||
-		normalized.startsWith('.astro/') ||
-		normalized === '.wrangler' ||
-		normalized.startsWith('.wrangler/') ||
-		normalized === '.local' ||
-		normalized.startsWith('.local/') ||
-		normalized === '.treeseed' ||
-		normalized.startsWith('.treeseed/') ||
-		normalized === 'dist' ||
-		normalized.startsWith('dist/') ||
-		normalized === 'coverage' ||
-		normalized.startsWith('coverage/') ||
-		normalized.startsWith('public/books/') ||
-		normalized.startsWith('public/__treeseed/')
-	);
-}
-
-function collectRootSnapshot(rootPath: string, snapshot: Map<string, string>) {
-	if (!existsSync(rootPath)) {
-		return;
-	}
-	const stats = statSync(rootPath);
-	if (stats.isFile()) {
-		snapshot.set(rootPath, `${stats.mtimeMs}:${stats.size}`);
-		return;
-	}
-	for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
-		const fullPath = resolve(rootPath, entry.name);
-		if (shouldIgnoreWatchPath(fullPath, rootPath)) {
-			continue;
-		}
-		if (entry.isDirectory()) {
-			collectDirectorySnapshot(fullPath, rootPath, snapshot);
-			continue;
-		}
-		const entryStats = statSync(fullPath);
-		snapshot.set(fullPath, `${entryStats.mtimeMs}:${entryStats.size}`);
-	}
-}
-
-function collectDirectorySnapshot(directoryPath: string, rootPath: string, snapshot: Map<string, string>) {
-	if (shouldIgnoreWatchPath(directoryPath, rootPath)) {
-		return;
-	}
-	for (const entry of readdirSync(directoryPath, { withFileTypes: true })) {
-		const fullPath = resolve(directoryPath, entry.name);
-		if (shouldIgnoreWatchPath(fullPath, rootPath)) {
-			continue;
-		}
-		if (entry.isDirectory()) {
-			collectDirectorySnapshot(fullPath, rootPath, snapshot);
-			continue;
-		}
-		const stats = statSync(fullPath);
-		snapshot.set(fullPath, `${stats.mtimeMs}:${stats.size}`);
-	}
-}
-
-function collectSnapshot(entries: TreeseedIntegratedDevWatchEntry[]) {
-	const snapshot = new Map<string, string>();
-	for (const entry of entries) {
-		collectRootSnapshot(entry.root, snapshot);
-	}
-	return snapshot;
-}
-
-function diffSnapshots(previousSnapshot: Map<string, string>, nextSnapshot: Map<string, string>) {
-	const changed = new Set<string>();
-	for (const [filePath, signature] of nextSnapshot.entries()) {
-		if (previousSnapshot.get(filePath) !== signature) {
-			changed.add(filePath);
-		}
-	}
-	for (const filePath of previousSnapshot.keys()) {
-		if (!nextSnapshot.has(filePath)) {
-			changed.add(filePath);
-		}
-	}
-	return [...changed];
-}
-
-function classifyChanges(changedPaths: string[], watchEntries: TreeseedIntegratedDevWatchEntry[]): WatchChange {
-	function matchesEntry(filePath: string, entry: TreeseedIntegratedDevWatchEntry) {
-		return filePath === entry.root || filePath.startsWith(`${entry.root}${sep}`);
-	}
-	return {
-		changedPaths,
-		sdkChanged: changedPaths.some((filePath) =>
-			watchEntries.some((entry) => entry.kind === 'sdk' && matchesEntry(filePath, entry)),
-		),
-		packageChanged: changedPaths.some((filePath) =>
-			watchEntries.some((entry) => entry.kind === 'package' && matchesEntry(filePath, entry)),
-		),
-		tenantChanged: changedPaths.some((filePath) =>
-			watchEntries.some((entry) => entry.kind === 'tenant' && matchesEntry(filePath, entry)),
-		),
-	};
-}
-
-function startPollingWatch({ watchEntries, onChange }: Parameters<WatchStarter>[0]) {
-	let previousSnapshot = collectSnapshot(watchEntries);
-	let queuedPaths: string[] = [];
-	let debounceTimer: NodeJS.Timeout | null = null;
-	let running = false;
-	const intervalId = setInterval(() => {
-		const nextSnapshot = collectSnapshot(watchEntries);
-		const changedPaths = diffSnapshots(previousSnapshot, nextSnapshot);
-		previousSnapshot = nextSnapshot;
-		if (changedPaths.length === 0) {
-			return;
-		}
-		queuedPaths.push(...changedPaths);
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
-		debounceTimer = setTimeout(() => {
-			void flush();
-		}, WATCH_DEBOUNCE_MS);
-	}, WATCH_INTERVAL_MS);
-
-	async function flush() {
-		if (running || queuedPaths.length === 0) {
-			return;
-		}
-		const changedPaths = [...new Set(queuedPaths)];
-		queuedPaths = [];
-		running = true;
-		try {
-			await onChange(classifyChanges(changedPaths, watchEntries));
-		} finally {
-			running = false;
-		}
-	}
-
-	return () => {
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
-		clearInterval(intervalId);
-	};
 }
 
 function defaultWrite(line: string, stream: 'stdout' | 'stderr') {
@@ -972,6 +880,7 @@ export async function runTreeseedIntegratedDev(
 	const spawnSyncProcess = deps.spawnSync ?? spawnSync;
 	const onSignal = deps.onSignal ?? defaultSignalRegistrar;
 	const fetchFn = deps.fetch ?? globalThis.fetch.bind(globalThis);
+	const killProcess = deps.killProcess ?? defaultKillProcess;
 	const openBrowser = deps.openBrowser ?? defaultOpenBrowser;
 	const startWatch = deps.startWatch ?? startPollingWatch;
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
@@ -998,12 +907,15 @@ export async function runTreeseedIntegratedDev(
 		return 1;
 	}
 
-	const children = new Map<TreeseedIntegratedDevCommand['id'], ProcessLike>();
+	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
+	const requiredSurfaceIds = new Set(plan.readyChecks.filter((check) => check.required).map((check) => check.id));
 	const exited = new Map<string, { code: number | null; signal: NodeJS.Signals | null }>();
-	let stopWatching: (() => void) | null = null;
+	let watchController: WatchController | null = null;
 	let settled = false;
-	let restarting = false;
+	let readinessComplete = false;
+	let restartInProgress = false;
+	const shutdownGraceMs = options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS;
 
 	return await new Promise<number>((resolveExitCode) => {
 		const disposers = [
@@ -1011,24 +923,37 @@ export async function runTreeseedIntegratedDev(
 			onSignal('SIGTERM', () => finalize(143)),
 		];
 
-		function finalize(exitCode: number, originId?: string) {
+		function stopWatching() {
+			if (!watchController) {
+				return;
+			}
+			watchController.stop();
+			watchController = null;
+		}
+
+		function finalize(exitCode: number) {
 			if (settled) {
 				return;
 			}
 			settled = true;
-			if (stopWatching) {
-				stopWatching();
-				stopWatching = null;
-			}
-			for (const [childId, child] of children.entries()) {
-				if (childId !== originId) {
-					stopChildProcess(child);
-				}
-			}
+			void finalizeAsync(exitCode);
+		}
+
+		async function finalizeAsync(exitCode: number) {
+			stopWatching();
+			await Promise.all(
+				[...children.values()].map((managed) => stopManagedProcess(managed, 'SIGTERM', killProcess, shutdownGraceMs)),
+			);
+			children.clear();
 			for (const dispose of disposers) {
 				dispose();
 			}
-			emitEvent(options, write, { type: 'shutdown', exitCode, message: `Dev runtime stopped with exit code ${exitCode}.` }, exitCode === 0 ? 'stdout' : 'stderr');
+			emitEvent(
+				options,
+				write,
+				{ type: 'shutdown', exitCode, message: `Dev runtime stopped with exit code ${exitCode}.` },
+				exitCode === 0 ? 'stdout' : 'stderr',
+			);
 			resolveExitCode(exitCode);
 		}
 
@@ -1043,15 +968,19 @@ export async function runTreeseedIntegratedDev(
 			const child = spawnProcess(command.command, command.args, {
 				cwd: command.cwd,
 				env: command.env,
-				stdio: options.stdio ?? ['inherit', 'pipe', 'pipe'],
-				detached: false,
+				stdio: options.stdio ?? ['ignore', 'pipe', 'pipe'],
+				detached: true,
 			});
-			children.set(command.id, child);
+			const managed = createManagedDevProcess(command, child);
+			children.set(command.id, managed);
 			attachPrefixedLogReader(child, command.id, options, write);
 			child.on('exit', (code, signal) => {
-				children.delete(command.id);
+				managed.exited = true;
+				managed.exitCode = code;
+				managed.exitSignal = signal;
+				managed.resolveExit();
 				exited.set(command.id, { code, signal });
-				if (restarting || settled) {
+				if (managed.intentionalStop || settled) {
 					return;
 				}
 				const exitCode = signal === 'SIGINT'
@@ -1059,14 +988,29 @@ export async function runTreeseedIntegratedDev(
 					: signal === 'SIGTERM'
 						? 143
 						: code ?? 0;
+				const required = requiredSurfaceIds.has(command.id);
+				if (!readinessComplete || required) {
+					emitEvent(options, write, {
+						type: 'error',
+						surface: command.id,
+						exitCode,
+						signal,
+						message: `${command.label} exited unexpectedly during ${readinessComplete ? 'supervision' : 'startup'} with ${signal ?? exitCode}.`,
+					});
+					finalize(exitCode === 0 ? 1 : exitCode);
+					return;
+				}
 				emitEvent(options, write, {
-					type: exitCode === 0 ? 'shutdown' : 'error',
+					type: 'error',
 					surface: command.id,
 					exitCode,
 					signal,
-					message: `${command.label} exited with ${signal ?? exitCode}.`,
-				}, exitCode === 0 ? 'stdout' : 'stderr');
-				finalize(exitCode, command.id);
+					status: 'degraded',
+					message: `${command.label} exited with ${signal ?? exitCode}; continuing because it is not a required surface.`,
+				}, 'stderr');
+				void stopManagedProcess(managed, 'SIGTERM', killProcess, 0).finally(() => {
+					children.delete(command.id);
+				});
 			});
 			return child;
 		}
@@ -1077,16 +1021,64 @@ export async function runTreeseedIntegratedDev(
 				return;
 			}
 			const current = children.get(id);
-			restarting = true;
 			if (current) {
-				stopChildProcess(current);
-				await delay(350);
+				await stopManagedProcess(current, 'SIGTERM', killProcess, Math.min(shutdownGraceMs, 500));
 			}
 			children.delete(id);
 			exited.delete(id);
-			restarting = false;
+			if (settled) {
+				return;
+			}
 			spawnCommand(command);
 			emitEvent(options, write, { type: 'restart', surface: id, message: `Restarted ${command.label}.` });
+		}
+
+		function startLiveWatch() {
+			if (watchController || plan.watchEntries.length === 0 || plan.feedbackMode === 'off' || settled) {
+				return;
+			}
+			watchController = startWatch({
+				watchEntries: plan.watchEntries,
+				onChange: async (change) => {
+					if (settled) {
+						return;
+					}
+					if (restartInProgress) {
+						watchController?.rebaseline();
+						return;
+					}
+					restartInProgress = true;
+					try {
+						emitEvent(options, write, {
+							type: 'restart',
+							message: `Detected ${change.changedPaths.length} development change${change.changedPaths.length === 1 ? '' : 's'}.`,
+							detail: {
+								tenantChanged: change.tenantChanged,
+								tenantApiChanged: change.tenantApiChanged,
+								packageChanged: change.packageChanged,
+								sdkChanged: change.sdkChanged,
+							},
+						});
+						if (change.packageChanged || change.sdkChanged) {
+							await Promise.all([
+								restartCommand('api'),
+								restartCommand('manager'),
+								restartCommand('worker'),
+							]);
+						} else if (change.tenantApiChanged) {
+							await restartCommand('api');
+						}
+						if (plan.feedbackMode === 'live') {
+							writeDevReloadStamp(plan.tenantRoot);
+							emitEvent(options, write, { type: 'reload', message: 'Wrote browser reload stamp.' });
+						}
+					} finally {
+						watchController?.rebaseline();
+						restartInProgress = false;
+					}
+				},
+			});
+			watchController.rebaseline();
 		}
 
 		async function waitForReadiness() {
@@ -1101,7 +1093,7 @@ export async function runTreeseedIntegratedDev(
 					ready = await waitForHttpReady(fetchFn, check.url, readinessTimeoutMs);
 				} else {
 					await delay(processReadyGraceMs);
-					ready = !exited.has(check.id);
+					ready = !exited.has(check.id) && children.has(check.id);
 				}
 				if (settled) {
 					return;
@@ -1113,7 +1105,7 @@ export async function runTreeseedIntegratedDev(
 						url: check.url,
 						message: `${check.label} did not become ready${check.url ? ` at ${check.url}` : ''}.`,
 					});
-					finalize(1, check.id);
+					finalize(1);
 					return;
 				}
 				emitEvent(options, write, {
@@ -1124,6 +1116,7 @@ export async function runTreeseedIntegratedDev(
 					message: `${check.label} is ${ready ? 'ready' : 'degraded'}.`,
 				});
 			}
+			readinessComplete = true;
 			if (plan.webUrl) {
 				emitEvent(options, write, { type: 'ready', url: plan.webUrl, message: `Treeseed dev ready at ${plan.webUrl}.` });
 			}
@@ -1141,45 +1134,20 @@ export async function runTreeseedIntegratedDev(
 					});
 				}
 			}
+			startLiveWatch();
 		}
 
 		for (const command of plan.commands) {
 			spawnCommand(command);
 		}
 
-		if (plan.watchEntries.length > 0 && plan.feedbackMode !== 'off') {
-			stopWatching = startWatch({
-				watchEntries: plan.watchEntries,
-				onChange: async (change) => {
-					if (settled) {
-						return;
-					}
-					emitEvent(options, write, {
-						type: 'restart',
-						message: `Detected ${change.changedPaths.length} change${change.changedPaths.length === 1 ? '' : 's'}.`,
-						detail: {
-							tenantChanged: change.tenantChanged,
-							packageChanged: change.packageChanged,
-							sdkChanged: change.sdkChanged,
-						},
-					});
-					if (change.packageChanged || change.sdkChanged) {
-						await Promise.all([
-							restartCommand('api'),
-							restartCommand('manager'),
-							restartCommand('worker'),
-						]);
-					} else if (change.tenantChanged) {
-						await restartCommand('api');
-					}
-					if (plan.feedbackMode === 'live') {
-						writeDevReloadStamp(plan.tenantRoot);
-						emitEvent(options, write, { type: 'reload', message: 'Wrote browser reload stamp.' });
-					}
-				},
+		void waitForReadiness().catch((error) => {
+			emitEvent(options, write, {
+				type: 'error',
+				message: 'Dev readiness failed.',
+				detail: error instanceof Error ? error.message : String(error),
 			});
-		}
-
-		void waitForReadiness();
+			finalize(1);
+		});
 	});
 }
