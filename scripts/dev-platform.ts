@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-import { runTreeseedIntegratedDev, type TreeseedIntegratedDevSurface } from '../src/dev.ts';
+import {
+	runTreeseedIntegratedDev,
+	type TreeseedIntegratedDevFeedbackMode,
+	type TreeseedIntegratedDevOpenMode,
+	type TreeseedIntegratedDevSetupMode,
+	type TreeseedIntegratedDevSurface,
+} from '../src/dev.ts';
 
 const args = process.argv.slice(2);
 
@@ -14,6 +20,15 @@ function readOption(name: string) {
 		return undefined;
 	}
 	return args[index + 1];
+}
+
+function readNumberOption(name: string) {
+	const value = readOption(name);
+	if (!value) {
+		return undefined;
+	}
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
@@ -30,9 +45,40 @@ function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
 	return 'integrated';
 }
 
+function parseSetupMode(value: string | undefined): TreeseedIntegratedDevSetupMode | undefined {
+	if (value === 'auto' || value === 'check' || value === 'off') {
+		return value;
+	}
+	return undefined;
+}
+
+function parseFeedbackMode(value: string | undefined): TreeseedIntegratedDevFeedbackMode | undefined {
+	if (value === 'live' || value === 'restart' || value === 'off') {
+		return value;
+	}
+	return undefined;
+}
+
+function parseOpenMode(value: string | undefined): TreeseedIntegratedDevOpenMode | undefined {
+	if (value === 'auto' || value === 'on' || value === 'off') {
+		return value;
+	}
+	return undefined;
+}
+
 const exitCode = await runTreeseedIntegratedDev({
 	surface: parseSurface(readOption('--surface')),
 	watch: readFlag('--watch'),
+	webHost: readOption('--host'),
+	webPort: readNumberOption('--port'),
+	apiHost: readOption('--api-host'),
+	apiPort: readNumberOption('--api-port'),
+	managerPort: readNumberOption('--manager-port'),
+	setupMode: parseSetupMode(readOption('--setup')),
+	feedbackMode: parseFeedbackMode(readOption('--feedback')),
+	openMode: parseOpenMode(readOption('--open')),
+	plan: readFlag('--plan'),
+	json: readFlag('--json'),
 	projectId: readOption('--project-id'),
 	teamId: readOption('--team-id'),
 });
