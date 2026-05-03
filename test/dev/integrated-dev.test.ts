@@ -44,7 +44,9 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
 		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
-		expect(plan.setupSteps.map((step) => step.id)).toContain('d1-migrations');
+		expect(plan.setupSteps.map((step) => step.id)).toEqual(
+			expect.arrayContaining(['workspace-links', 'wrangler', 'starlight-patch', 'books', 'worker-bundle', 'mailpit']),
+		);
 		expect(plan.readyChecks.map((check) => check.id)).toEqual(['web', 'api', 'manager', 'worker']);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
