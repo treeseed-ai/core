@@ -1,6 +1,6 @@
 import type { APIContext } from 'astro';
 import { getTreeseedFormsProvider } from '@treeseed/sdk/platform/deploy-runtime';
-import { resolveFormsProvider } from './provider-runtime';
+import { resolveBuiltinFormsProvider } from './provider-core';
 import {
 	getContactRoutingMap,
 	getFormSecret,
@@ -39,7 +39,7 @@ function createAstroFormConfig(context: APIContext) {
 	return {
 		runtime: resolveFormRuntimeCapabilities(context.locals),
 		bindings: getBindings(context.locals),
-		formsProvider: resolveFormsProvider(getTreeseedFormsProvider()),
+		formsProvider: resolveBuiltinFormsProvider(getTreeseedFormsProvider()),
 		formSecret: getFormSecret(),
 		turnstileSecret: getTurnstileSecret(),
 		contactRouting: getContactRoutingMap(),

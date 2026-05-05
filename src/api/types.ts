@@ -58,6 +58,14 @@ export interface ApiAuthProvider {
 		userId: string;
 		identityId: string | null;
 	}>;
+	createUser?(input: { email?: string | null; username?: string | null; displayName?: string | null; metadata?: Record<string, unknown> }): Promise<{
+		principal: ApiPrincipal;
+		userId: string;
+	}>;
+	setUserRoles?(userId: string, roles: string[]): Promise<{
+		principal: ApiPrincipal;
+		userId: string;
+	}>;
 	createServiceToken(input: { serviceId: string; name: string; roles?: string[]; permissions?: string[] }): Promise<{
 		id: string;
 		serviceId: string;
@@ -108,6 +116,7 @@ export interface ApiConfig {
 	d1DatabaseId?: string;
 	d1DatabaseName?: string;
 	d1LocalPersistTo?: string;
+	d1WranglerConfigPath?: string;
 	webServiceId: string;
 	webServiceSecret: string;
 	webAssertionSecret: string;
@@ -156,6 +165,7 @@ export interface UserIdentityProfileInput {
 	providerSubject: string;
 	email?: string | null;
 	emailVerified?: boolean;
+	username?: string | null;
 	displayName?: string | null;
 	profile?: Record<string, unknown>;
 }

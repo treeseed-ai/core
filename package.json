@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -76,7 +76,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.6.16",
+    "@treeseed/sdk": "0.6.17",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "hono": "^4.8.2",
@@ -199,6 +199,10 @@
       "types": "./dist/api/app.d.ts",
       "default": "./dist/api/app.js"
     },
+    "./api/auth/d1-provider": {
+      "types": "./dist/api/auth/d1-provider.d.ts",
+      "default": "./dist/api/auth/d1-provider.js"
+    },
     "./launch": {
       "types": "./dist/launch.d.ts",
       "default": "./dist/launch.js"
@@ -207,9 +211,16 @@
       "types": "./dist/site-resources.d.ts",
       "default": "./dist/site-resources.js"
     },
-    "./types/cloudflare": "./dist/types/cloudflare.js",
+    "./types/cloudflare": {
+      "types": "./dist/types/cloudflare.d.ts",
+      "default": "./dist/types/cloudflare.js"
+    },
     "./utils/seo": "./dist/utils/seo.js",
     "./utils/site-config-schema": "./dist/utils/site-config-schema.js",
+    "./utils/forms/service": {
+      "types": "./dist/utils/forms/service.d.ts",
+      "default": "./dist/utils/forms/service.js"
+    },
     "./components/site/CTASection.astro": "./dist/components/site/CTASection.astro",
     "./components/site/SectionIntro.astro": "./dist/components/site/SectionIntro.astro",
     "./components/site/PathCard.astro": "./dist/components/site/PathCard.astro",

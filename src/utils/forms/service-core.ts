@@ -28,7 +28,6 @@ interface SmtpConfig {
 export interface FormServiceBindings {
 	FORM_GUARD_KV?: KvNamespaceLike | null;
 	SITE_DATA_DB?: D1DatabaseLike | null;
-	SESSION?: KvNamespaceLike | null;
 }
 
 export interface FormServiceConfig {

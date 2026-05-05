@@ -1,13 +1,11 @@
-import type { APIRoute } from 'astro';
+import type { APIContext } from 'astro';
 import { handleFormSubmission, handleTokenRequest } from '../../../utils/forms/service';
 
-export const prerender = false;
-
-export const GET: APIRoute = async (context) => {
+export async function GET(context: APIContext) {
 	return handleTokenRequest(context);
-};
+}
 
-export const POST: APIRoute = async (context) => {
+export async function POST(context: APIContext) {
 	const result = await handleFormSubmission(context);
 	return context.redirect(result.redirectTo, 303);
-};
+}

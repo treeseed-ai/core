@@ -235,7 +235,12 @@ export class MemoryDeviceCodeAuthProvider implements ApiAuthProvider {
 				scopes: ['auth:me'],
 				roles: ['member'],
 				permissions: ['auth:read:self'],
-				metadata: identity.profile,
+				metadata: {
+					...(identity.profile ?? {}),
+					username: identity.username ?? undefined,
+					firstName: typeof identity.profile?.firstName === 'string' ? identity.profile.firstName : undefined,
+					lastName: typeof identity.profile?.lastName === 'string' ? identity.profile.lastName : undefined,
+				},
 			},
 		};
 	}

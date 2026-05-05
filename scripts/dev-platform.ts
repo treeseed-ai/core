@@ -78,6 +78,7 @@ const exitCode = await runTreeseedIntegratedDev({
 	feedbackMode: parseFeedbackMode(readOption('--feedback')),
 	openMode: parseOpenMode(readOption('--open')),
 	plan: readFlag('--plan'),
+	reset: readFlag('--reset'),
 	json: readFlag('--json'),
 	projectId: readOption('--project-id'),
 	teamId: readOption('--team-id'),

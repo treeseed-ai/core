@@ -17,6 +17,137 @@ import type {
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLES } from './rbac.ts';
 import { createAccessToken, nextOpaqueToken, principalFromAccessTokenPayload, verifyAccessToken } from './tokens.ts';
 
+const AUTH_SCHEMA_SQL = [
+	`CREATE TABLE IF NOT EXISTS users (
+		id TEXT PRIMARY KEY,
+		email TEXT,
+		username TEXT UNIQUE,
+		display_name TEXT,
+		status TEXT NOT NULL DEFAULT 'active',
+		metadata_json TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS user_identities (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		provider TEXT NOT NULL,
+		provider_subject TEXT NOT NULL,
+		email TEXT,
+		email_verified INTEGER NOT NULL DEFAULT 0,
+		profile_json TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	)`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_identities_provider_subject
+		ON user_identities(provider, provider_subject)`,
+	`CREATE TABLE IF NOT EXISTS roles (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		description TEXT,
+		created_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS permissions (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		resource TEXT NOT NULL,
+		action TEXT NOT NULL,
+		scope TEXT NOT NULL,
+		description TEXT,
+		created_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS role_permissions (
+		role_id TEXT NOT NULL,
+		permission_id TEXT NOT NULL,
+		created_at TEXT NOT NULL,
+		PRIMARY KEY (role_id, permission_id),
+		FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+		FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+	)`,
+	`CREATE TABLE IF NOT EXISTS user_role_bindings (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		role_id TEXT NOT NULL,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+	)`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_role_bindings_user_role
+		ON user_role_bindings(user_id, role_id)`,
+	`CREATE TABLE IF NOT EXISTS api_tokens (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		kind TEXT NOT NULL,
+		name TEXT NOT NULL,
+		token_prefix TEXT NOT NULL,
+		token_hash TEXT NOT NULL,
+		scopes_json TEXT NOT NULL,
+		expires_at TEXT,
+		last_used_at TEXT,
+		revoked_at TEXT,
+		metadata_json TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_api_tokens_user_id
+		ON api_tokens(user_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_api_tokens_prefix
+		ON api_tokens(token_prefix)`,
+	`CREATE TABLE IF NOT EXISTS service_credentials (
+		id TEXT PRIMARY KEY,
+		service_id TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		secret_hash TEXT NOT NULL,
+		roles_json TEXT NOT NULL,
+		permissions_json TEXT NOT NULL,
+		revoked_at TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		last_used_at TEXT
+	)`,
+	`CREATE TABLE IF NOT EXISTS auth_sessions (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		session_type TEXT NOT NULL,
+		refresh_token_hash TEXT NOT NULL,
+		scopes_json TEXT NOT NULL,
+		expires_at TEXT NOT NULL,
+		revoked_at TEXT,
+		data_json TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id
+		ON auth_sessions(user_id)`,
+	`CREATE TABLE IF NOT EXISTS audit_events (
+		id TEXT PRIMARY KEY,
+		actor_type TEXT NOT NULL,
+		actor_id TEXT,
+		event_type TEXT NOT NULL,
+		target_type TEXT,
+		target_id TEXT,
+		data_json TEXT,
+		created_at TEXT NOT NULL
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_audit_events_target
+		ON audit_events(target_type, target_id)`,
+	`CREATE TABLE IF NOT EXISTS device_codes (
+		id TEXT PRIMARY KEY,
+		device_code TEXT NOT NULL UNIQUE,
+		user_code TEXT NOT NULL UNIQUE,
+		requested_scopes_json TEXT NOT NULL,
+		expires_at TEXT NOT NULL,
+		interval_seconds INTEGER NOT NULL,
+		status TEXT NOT NULL,
+		user_id TEXT,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+];
+
 type DeviceCodeRow = {
 	id: string;
 	device_code: string;
@@ -31,6 +162,7 @@ type DeviceCodeRow = {
 type UserRow = {
 	id: string;
 	email: string | null;
+	username: string | null;
 	display_name: string | null;
 	status: string;
 	metadata_json: string | null;
@@ -111,14 +243,34 @@ export class D1AuthStore {
 
 	private ensureInitialized() {
 		if (!this.initializationPromise) {
-			this.initializationPromise = this.seedCatalog()
+			this.initializationPromise = this.ensureAuthSchema()
+				.then(() => this.seedCatalog())
 				.then(() => this.seedConfiguredServices());
 		}
 		return this.initializationPromise;
 	}
 
+	private async ensureAuthSchema() {
+		for (const statement of AUTH_SCHEMA_SQL) await this.run(statement);
+		const result = await this.db.prepare('PRAGMA table_info(users)').all<{ name: string }>();
+		const columns = new Set((result.results ?? []).map((row) => row.name));
+		if (!columns.has('username')) {
+			await this.run('ALTER TABLE users ADD COLUMN username TEXT');
+		}
+		await this.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)');
+	}
+
 	private async seedCatalog() {
 		const createdAt = isoNow();
+		const seeded = await this.first<{ key: string }>(
+			`SELECT key FROM permissions WHERE key = '*:*:*' LIMIT 1`,
+		);
+		const adminRole = await this.first<{ key: string }>(
+			`SELECT key FROM roles WHERE key = 'platform_admin' LIMIT 1`,
+		);
+		if (seeded?.key && adminRole?.key) {
+			return;
+		}
 		for (const permission of DEFAULT_PERMISSIONS) {
 			await this.run(
 				`INSERT OR IGNORE INTO permissions (id, key, resource, action, scope, description, created_at)
@@ -166,6 +318,13 @@ export class D1AuthStore {
 		return this.first<{ id: string; user_id: string; email: string | null; profile_json: string | null }>(
 			`SELECT * FROM user_identities WHERE provider = ? AND provider_subject = ?`,
 			[provider, providerSubject],
+		);
+	}
+
+	private async loadUserByVerifiedEmail(email: string) {
+		return this.first<UserRow>(
+			`SELECT * FROM users WHERE LOWER(email) = LOWER(?) AND status = 'active' LIMIT 1`,
+			[email],
 		);
 	}
 
@@ -231,7 +390,10 @@ export class D1AuthStore {
 				roles,
 				permissions,
 				scopes: this.scopesForPrincipal(permissions),
-				metadata: parseJson(user.metadata_json, {}),
+				metadata: {
+					...parseJson(user.metadata_json, {}),
+					username: user.username ?? undefined,
+				},
 			},
 		};
 	}
@@ -244,6 +406,13 @@ export class D1AuthStore {
 			 VALUES (?, ?, ?, ?)`,
 			[randomUUID(), userId, role.id, isoNow()],
 		);
+	}
+
+	private async replaceRoles(userId: string, roleKeys: string[]) {
+		await this.run(`DELETE FROM user_role_bindings WHERE user_id = ?`, [userId]);
+		for (const roleKey of roleKeys) {
+			await this.assignRole(userId, roleKey);
+		}
 	}
 
 	private async bootstrapRolesForUser(userId: string, identity: UserIdentityProfileInput) {
@@ -289,25 +458,58 @@ export class D1AuthStore {
 		);
 	}
 
+	private userMetadata(identity: UserIdentityProfileInput, existingUsername: string | null = null) {
+		const profile = identity.profile ?? {};
+		return {
+			emailVerified: identity.emailVerified ?? false,
+			authProvider: identity.provider,
+			username: identity.username ?? existingUsername,
+			firstName: typeof profile.firstName === 'string' ? profile.firstName : null,
+			lastName: typeof profile.lastName === 'string' ? profile.lastName : null,
+		};
+	}
+
 	async syncUser(identity: UserIdentityProfileInput) {
 		await this.ensureInitialized();
 		const nowIso = isoNow();
 		const existingIdentity = await this.loadIdentityByProvider(identity.provider, identity.providerSubject);
 		let userId = existingIdentity?.user_id;
 		if (!userId) {
-			userId = randomUUID();
-			await this.run(
-				`INSERT INTO users (id, email, display_name, status, metadata_json, created_at, updated_at)
-				 VALUES (?, ?, ?, 'active', ?, ?, ?)`,
-				[
-					userId,
-					identity.email ?? null,
-					identity.displayName ?? null,
-					JSON.stringify({ emailVerified: identity.emailVerified ?? false, authProvider: identity.provider }),
-					nowIso,
-					nowIso,
-				],
-			);
+			const linkedUser = identity.email && identity.emailVerified ? await this.loadUserByVerifiedEmail(identity.email) : null;
+			userId = linkedUser?.id ?? randomUUID();
+			if (linkedUser) {
+				await this.run(
+					`UPDATE users
+					 SET email = COALESCE(?, email),
+					     username = COALESCE(username, ?),
+					     display_name = COALESCE(?, display_name),
+					     metadata_json = ?,
+					     updated_at = ?
+					 WHERE id = ?`,
+					[
+						identity.email ?? null,
+						identity.username ?? null,
+						identity.displayName ?? null,
+						JSON.stringify(this.userMetadata(identity, linkedUser.username ?? null)),
+						nowIso,
+						userId,
+					],
+				);
+			} else {
+				await this.run(
+					`INSERT INTO users (id, email, username, display_name, status, metadata_json, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, 'active', ?, ?, ?)`,
+					[
+						userId,
+						identity.email ?? null,
+						identity.username ?? null,
+						identity.displayName ?? null,
+						JSON.stringify(this.userMetadata(identity)),
+						nowIso,
+						nowIso,
+					],
+				);
+			}
 			await this.run(
 				`INSERT INTO user_identities (id, user_id, provider, provider_subject, email, email_verified, profile_json, created_at, updated_at)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -327,14 +529,16 @@ export class D1AuthStore {
 			await this.run(
 				`UPDATE users
 				 SET email = COALESCE(?, email),
+				     username = COALESCE(username, ?),
 				     display_name = COALESCE(?, display_name),
 				     metadata_json = ?,
 				     updated_at = ?
 				 WHERE id = ?`,
 				[
 					identity.email ?? null,
+					identity.username ?? null,
 					identity.displayName ?? null,
-					JSON.stringify({ emailVerified: identity.emailVerified ?? false, authProvider: identity.provider }),
+					JSON.stringify(this.userMetadata(identity)),
 					nowIso,
 					userId,
 				],
@@ -368,6 +572,50 @@ export class D1AuthStore {
 			...principal,
 			identityId: syncedIdentity?.id ?? null,
 		};
+	}
+
+	async createUser(input: { email?: string | null; username?: string | null; displayName?: string | null; metadata?: Record<string, unknown> }) {
+		await this.ensureInitialized();
+		const timestamp = isoNow();
+		const userId = randomUUID();
+		await this.run(
+			`INSERT INTO users (id, email, username, display_name, status, metadata_json, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, 'active', ?, ?, ?)`,
+			[
+				userId,
+				input.email?.trim() || null,
+				input.username?.trim().toLowerCase() || null,
+				input.displayName?.trim() || null,
+				JSON.stringify(input.metadata ?? {}),
+				timestamp,
+				timestamp,
+			],
+		);
+		await this.assignRole(userId, 'member');
+		await this.writeAuditEvent({
+			actorType: 'service',
+			actorId: this.config.webServiceId,
+			eventType: 'auth.user_created',
+			targetType: 'user',
+			targetId: userId,
+			data: { source: 'admin' },
+		});
+		return this.principalForUser(userId);
+	}
+
+	async setUserRoles(userId: string, roles: string[]) {
+		await this.ensureInitialized();
+		const requestedRoles = [...new Set(roles.map((role) => role.trim()).filter(Boolean))];
+		await this.replaceRoles(userId, requestedRoles.length > 0 ? requestedRoles : ['member']);
+		await this.writeAuditEvent({
+			actorType: 'service',
+			actorId: this.config.webServiceId,
+			eventType: 'auth.user_roles_set',
+			targetType: 'user',
+			targetId: userId,
+			data: { roles: requestedRoles },
+		});
+		return this.principalForUser(userId);
 	}
 
 	async startDeviceFlow(request: DeviceCodeStartRequest): Promise<DeviceCodeStartResponse> {
