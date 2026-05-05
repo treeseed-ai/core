@@ -54,7 +54,10 @@ describe('Treeseed integrated dev orchestration', () => {
 	it('creates an integrated plan with local API defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
-			env: {},
+			env: {
+				TREESEED_SMTP_HOST: undefined,
+				TREESEED_SMTP_PORT: undefined,
+			},
 		});
 
 		expect(plan.surface).toBe('integrated');
@@ -79,9 +82,8 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
 		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
-		expect(plan.commands[0]?.env.TREESEED_AUTH_LOCAL_USE_MAILPIT).toBe(
-			plan.setupSteps.find((step) => step.id === 'mailpit')?.required ? 'true' : 'false',
-		);
+		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
+		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {

@@ -29,9 +29,6 @@ interface WorkerEnv {
 	TREESEED_SMTP_REPLY_TO?: string;
 	TREESEED_LOCAL_DEV_MODE?: string;
 	TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS?: string;
-	TREESEED_FORMS_LOCAL_USE_MAILPIT?: string;
-	TREESEED_MAILPIT_SMTP_HOST?: string;
-	TREESEED_MAILPIT_SMTP_PORT?: string;
 }
 
 function envBoolean(value: unknown) {
@@ -82,10 +79,9 @@ function serializeCookie(cookie: { name: string; value: string; options: Record<
 }
 
 function buildSmtpConfig(env: WorkerEnv) {
-	const useMailpit = envBoolean(env.TREESEED_FORMS_LOCAL_USE_MAILPIT);
 	return {
-		host: useMailpit ? (env.TREESEED_MAILPIT_SMTP_HOST ?? env.TREESEED_SMTP_HOST ?? '127.0.0.1') : (env.TREESEED_SMTP_HOST ?? ''),
-		port: Number(useMailpit ? (env.TREESEED_MAILPIT_SMTP_PORT ?? env.TREESEED_SMTP_PORT ?? '1025') : (env.TREESEED_SMTP_PORT ?? '465')),
+		host: env.TREESEED_SMTP_HOST ?? '',
+		port: Number(env.TREESEED_SMTP_PORT ?? '465'),
 		username: env.TREESEED_SMTP_USERNAME ?? '',
 		password: env.TREESEED_SMTP_PASSWORD ?? '',
 		from: env.TREESEED_SMTP_FROM ?? '',
@@ -95,11 +91,6 @@ function buildSmtpConfig(env: WorkerEnv) {
 
 function isSmtpEnabled(env: WorkerEnv) {
 	const smtp = buildSmtpConfig(env);
-	const useMailpit = envBoolean(env.TREESEED_FORMS_LOCAL_USE_MAILPIT);
-	if (useMailpit) {
-		return true;
-	}
-
 	return Boolean(__TREESEED_DEPLOY_CONFIG__.smtp?.enabled && smtp.host && smtp.port && smtp.from);
 }
 
@@ -113,7 +104,6 @@ function buildRuntime(env: WorkerEnv) {
 		localDevMode: env.TREESEED_LOCAL_DEV_MODE === 'cloudflare' ? 'cloudflare' : null,
 		isDevServer: false,
 		bypassCloudflareGuards: envBoolean(env.TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS),
-		useMailpit: envBoolean(env.TREESEED_FORMS_LOCAL_USE_MAILPIT),
 		formsMode: __TREESEED_DEPLOY_CONFIG__.providers?.forms ?? 'store_only',
 		smtpEnabled: isSmtpEnabled(env),
 		turnstileEnabled: isTurnstileEnabled(env),
