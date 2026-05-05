@@ -75,6 +75,7 @@ const permissionDefinitions: PermissionDefinition[] = [
 	contentPermission('services', 'impersonate', 'global', 'Allow trusted web and service impersonation flows.'),
 	contentPermission('services', 'manage', 'global', 'Manage service credentials and internal service auth.'),
 	contentPermission('users', 'read', 'global', 'Read user records.'),
+	contentPermission('users', 'manage', 'global', 'Manage user records.'),
 	contentPermission('roles', 'manage', 'global', 'Manage role assignments.'),
 	contentPermission('audit', 'read', 'global', 'Read audit events.'),
 	contentPermission('jobs', 'manage', 'global', 'Manage internal job and worker control surfaces.'),

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { SpawnOptions } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { createTreeseedIntegratedDevPlan, runTreeseedIntegratedDev } from '../../src/dev.ts';
+import {
+	createTreeseedIntegratedDevPlan,
+	runTreeseedIntegratedDev,
+	runTreeseedIntegratedDevReset,
+} from '../../src/dev.ts';
 import { shouldIgnoreWatchPath } from '../../src/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
@@ -37,6 +43,14 @@ class FakeChildProcess {
 describe('Treeseed integrated dev orchestration', () => {
 	const tenantRoot = resolve(process.cwd(), '../..');
 
+	function writeTempTenant(siteConfig: string) {
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-runtime-'));
+		mkdirSync(resolve(root, 'src'), { recursive: true });
+		writeFileSync(resolve(root, 'src/manifest.yaml'), 'id: test\n');
+		writeFileSync(resolve(root, 'treeseed.site.yaml'), siteConfig);
+		return root;
+	}
+
 	it('creates an integrated plan with local API defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
@@ -50,14 +64,129 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
 		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.localRuntimes.web.selected).toBe('cloudflare-wrangler-local');
+		expect(plan.commands[0]?.localRuntime?.selected).toBe('cloudflare-wrangler-local');
+		expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--local', '--config']));
 		expect(plan.setupSteps.map((step) => step.id)).toEqual(
-			expect.arrayContaining(['workspace-links', 'wrangler', 'starlight-patch', 'books', 'worker-bundle', 'mailpit']),
+			expect.arrayContaining(['workspace-links', 'wrangler', 'wrangler-config', 'web-build', 'mailpit']),
 		);
-		expect(plan.readyChecks.map((check) => check.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.readyChecks.map((check) => check.id)).toEqual(
+			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
+				? ['web', 'api', 'manager', 'worker', 'mailpit']
+				: ['web', 'api', 'manager', 'worker'],
+		);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
 		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
+		expect(plan.commands[0]?.env.TREESEED_AUTH_LOCAL_USE_MAILPIT).toBe(
+			plan.setupSteps.find((step) => step.id === 'mailpit')?.required ? 'true' : 'false',
+		);
+	});
+
+	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+cloudflare:
+  accountId: account-123
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: provider
+`);
+		try {
+			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
+
+			expect(plan.localRuntimes.web).toMatchObject({
+				requested: 'provider',
+				selected: 'cloudflare-wrangler-local',
+				provider: 'cloudflare',
+			});
+			expect(plan.commands[0]?.label).toBe('Cloudflare Wrangler UI');
+			expect(plan.commands[0]?.args).toEqual(expect.arrayContaining([
+				'dev',
+				'--local',
+				'--config',
+				resolve(tempRoot, '.treeseed/generated/environments/local/wrangler.toml'),
+			]));
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('uses Astro local when Cloudflare web explicitly requests local runtime', () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+cloudflare:
+  accountId: account-123
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		try {
+			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
+
+			expect(plan.localRuntimes.web.selected).toBe('astro-local');
+			expect(plan.commands[0]?.label).toBe('Astro UI');
+			expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--host', '127.0.0.1', '--port', '4321']));
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('falls Railway services back to Node local when runtime is auto', () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+cloudflare:
+  accountId: account-123
+services:
+  api:
+    provider: railway
+    local:
+      runtime: auto
+`);
+		try {
+			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'api', setupMode: 'off', env: {} });
+
+			expect(plan.localRuntimes.api).toMatchObject({
+				requested: 'auto',
+				selected: 'node-local',
+				provider: 'railway',
+			});
+			expect(plan.localRuntimes.api.reason).toContain('using Node local');
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('fails when provider runtime is required but unsupported', () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+cloudflare:
+  accountId: account-123
+surfaces:
+  web:
+    provider: static-host
+    local:
+      runtime: provider
+`);
+		try {
+			expect(() => createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} }))
+				.toThrow(/Local provider runtime is not supported/u);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
 	});
 
 	it('preserves explicit env values and lets the supervisor own live feedback', () => {
@@ -128,6 +257,134 @@ describe('Treeseed integrated dev orchestration', () => {
 		const parsed = JSON.parse(output.join(''));
 		expect(parsed.kind).toBe('treeseed.dev.plan');
 		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+	});
+
+	it('plans dev reset against runtime state while preserving configuration paths', () => {
+		const tempRoot = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-reset-plan-'));
+		const d1Path = resolve(tempRoot, '.wrangler/state/v3/d1');
+		const envPath = resolve(tempRoot, '.treeseed/generated/environments/local');
+		try {
+			mkdirSync(d1Path, { recursive: true });
+			mkdirSync(envPath, { recursive: true });
+			mkdirSync(resolve(tempRoot, '.treeseed/generated/worker'), { recursive: true });
+			writeFileSync(resolve(tempRoot, '.treeseed/generated/worker/index.js'), 'export {};\n');
+			writeFileSync(resolve(tempRoot, 'treeseed.site.yaml'), 'site: test\n');
+
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: tempRoot,
+				reset: true,
+				surface: 'web',
+				setupMode: 'off',
+				env: {},
+			});
+
+			expect(plan.reset?.enabled).toBe(true);
+			expect(plan.reset?.actions.map((action) => action.id)).toEqual([
+				'd1-state',
+				'mailpit',
+				'wrangler-tmp',
+				'worker-bundle',
+				'dev-reload',
+			]);
+			expect(plan.reset?.actions.find((action) => action.id === 'd1-state')?.path).toBe(d1Path);
+			expect(plan.reset?.preserved).toEqual(expect.arrayContaining([
+				'treeseed.site.yaml',
+				'.treeseed/generated/environments',
+				'.treeseed/config',
+				'.treeseed/state',
+				'.treeseed/workflow',
+			]));
+			expect(existsSync(envPath)).toBe(true);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('does not mutate reset targets when reset is only planned', async () => {
+		const tempRoot = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-reset-dry-'));
+		const d1Path = resolve(tempRoot, '.wrangler/state/v3/d1');
+		const workerPath = resolve(tempRoot, '.treeseed/generated/worker');
+		try {
+			mkdirSync(d1Path, { recursive: true });
+			mkdirSync(workerPath, { recursive: true });
+			writeFileSync(resolve(workerPath, 'index.js'), 'export {};\n');
+
+			const output: string[] = [];
+			const exitCode = await runTreeseedIntegratedDev(
+				{ cwd: tempRoot, reset: true, plan: true, json: true, setupMode: 'off', surface: 'web' },
+				{
+					spawn() {
+						throw new Error('plan mode should not spawn child processes');
+					},
+					removePath() {
+						throw new Error('plan mode should not remove paths');
+					},
+					stopMailpitContainers() {
+						throw new Error('plan mode should not stop Mailpit');
+					},
+					prepareEnvironment() {},
+					write(line) {
+						output.push(line);
+					},
+				},
+			);
+
+			expect(exitCode).toBe(0);
+			const parsed = JSON.parse(output.join(''));
+			expect(parsed.kind).toBe('treeseed.dev.plan');
+			expect(parsed.payload.reset.actions.find((action: { id: string }) => action.id === 'd1-state')?.status).toBe('planned');
+			expect(existsSync(d1Path)).toBe(true);
+			expect(existsSync(workerPath)).toBe(true);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('clears disposable reset targets and leaves configuration paths intact', () => {
+		const tempRoot = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-reset-'));
+		const d1Path = resolve(tempRoot, '.wrangler/state/v3/d1');
+		const tmpPath = resolve(tempRoot, '.wrangler/tmp');
+		const workerPath = resolve(tempRoot, '.treeseed/generated/worker');
+		const envPath = resolve(tempRoot, '.treeseed/generated/environments/local');
+		const reloadPath = resolve(tempRoot, 'public/__treeseed/dev-reload.json');
+		try {
+			for (const path of [d1Path, tmpPath, workerPath, envPath]) {
+				mkdirSync(path, { recursive: true });
+			}
+			mkdirSync(resolve(tempRoot, 'public/__treeseed'), { recursive: true });
+			writeFileSync(reloadPath, '{}\n');
+			writeFileSync(resolve(tempRoot, 'treeseed.site.yaml'), 'site: test\n');
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: tempRoot,
+				reset: true,
+				surface: 'web',
+				setupMode: 'off',
+				env: {},
+			});
+			const events: string[] = [];
+			const result = runTreeseedIntegratedDevReset(plan.reset, { json: true }, {
+				write(line) {
+					events.push(line);
+				},
+				removePath(path) {
+					rmSync(path, { recursive: true, force: true });
+				},
+				stopMailpitContainers() {
+					return true;
+				},
+			});
+
+			expect(result?.actions.filter((action) => action.kind === 'path').every((action) => action.status === 'removed')).toBe(true);
+			expect(existsSync(d1Path)).toBe(false);
+			expect(existsSync(tmpPath)).toBe(false);
+			expect(existsSync(workerPath)).toBe(false);
+			expect(existsSync(reloadPath)).toBe(false);
+			expect(existsSync(envPath)).toBe(true);
+			expect(existsSync(resolve(tempRoot, 'treeseed.site.yaml'))).toBe(true);
+			expect(events.some((line) => line.includes('"type":"reset"'))).toBe(true);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
 	});
 
 	it('starts both child processes and stops the sibling when one exits with failure', async () => {

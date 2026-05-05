@@ -15,7 +15,6 @@ import type {
 	TrustedUserAssertionClaims,
 	UserIdentityProfileInput,
 } from '../types.ts';
-import { resolveApiD1Database } from './d1-database.ts';
 import { D1AuthStore } from './d1-store.ts';
 
 function encodePayload(payload: TrustedUserAssertionClaims) {
@@ -44,7 +43,10 @@ export class D1AuthProvider implements ApiAuthProvider {
 		private readonly config: ApiConfig,
 		options: { db?: D1DatabaseLike } = {},
 	) {
-		this.store = new D1AuthStore(config, options.db ?? resolveApiD1Database(config));
+		if (!options.db) {
+			throw new Error('D1AuthProvider requires an explicit database binding or adapter.');
+		}
+		this.store = new D1AuthStore(config, options.db);
 	}
 
 	startDeviceFlow(request: DeviceCodeStartRequest): Promise<DeviceCodeStartResponse> {
@@ -85,6 +87,14 @@ export class D1AuthProvider implements ApiAuthProvider {
 
 	syncUserIdentity(identity: UserIdentityProfileInput) {
 		return this.store.syncUser(identity);
+	}
+
+	createUser(input: { email?: string | null; displayName?: string | null; metadata?: Record<string, unknown> }) {
+		return this.store.createUser(input);
+	}
+
+	setUserRoles(userId: string, roles: string[]) {
+		return this.store.setUserRoles(userId, roles);
 	}
 
 	createServiceToken(input: { serviceId: string; name: string; roles?: string[]; permissions?: string[] }) {

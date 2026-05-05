@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -8,10 +8,17 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
 	applyTreeseedEnvironmentToProcess,
 	assertTreeseedCommandEnvironment,
+	createPersistentDeployTarget,
+	ensureGeneratedWranglerConfig,
 	ensureLocalWorkspaceLinks,
 	findNearestTreeseedWorkspaceRoot,
+	packageScriptPath,
+	resolveTreeseedMachineEnvironmentValues,
 	resolveTreeseedToolBinary,
+	resolveWranglerBin,
+	stopKnownMailpitContainers,
 } from '@treeseed/sdk/workflow-support';
+import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import {
 	startPollingWatch,
 	type TreeseedDevWatchController,
@@ -27,6 +34,9 @@ export const TREESEED_DEFAULT_WEB_PORT = 4321;
 export const TREESEED_DEFAULT_API_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_API_PORT = 3000;
 export const TREESEED_DEFAULT_MANAGER_PORT = 3100;
+export const TREESEED_DEFAULT_MAILPIT_SMTP_HOST = '127.0.0.1';
+export const TREESEED_DEFAULT_MAILPIT_SMTP_PORT = 1025;
+export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
@@ -38,6 +48,15 @@ export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | '
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
 export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
+export type TreeseedLocalRuntimeMode = 'auto' | 'provider' | 'local';
+export type TreeseedSelectedLocalRuntime = 'astro-local' | 'cloudflare-wrangler-local' | 'node-local';
+
+export type TreeseedLocalRuntimeSelection = {
+	requested: TreeseedLocalRuntimeMode;
+	selected: TreeseedSelectedLocalRuntime;
+	provider: string;
+	reason?: string;
+};
 
 export type TreeseedIntegratedDevOptions = {
 	surface?: TreeseedIntegratedDevSurface;
@@ -54,6 +73,7 @@ export type TreeseedIntegratedDevOptions = {
 	feedbackMode?: TreeseedIntegratedDevFeedbackMode;
 	openMode?: TreeseedIntegratedDevOpenMode;
 	plan?: boolean;
+	reset?: boolean;
 	json?: boolean;
 	includeServices?: boolean;
 	projectId?: string;
@@ -70,6 +90,7 @@ export type TreeseedIntegratedDevCommand = {
 	args: string[];
 	cwd: string;
 	env: NodeJS.ProcessEnv;
+	localRuntime?: TreeseedLocalRuntimeSelection;
 };
 
 export type TreeseedIntegratedDevWatchEntry = TreeseedDevWatchEntry;
@@ -85,11 +106,26 @@ export type TreeseedIntegratedDevSetupStep = {
 };
 
 export type TreeseedIntegratedDevReadinessCheck = {
-	id: TreeseedIntegratedDevCommand['id'];
+	id: TreeseedIntegratedDevCommand['id'] | 'mailpit';
 	label: string;
 	required: boolean;
 	strategy: 'http' | 'process';
 	url?: string;
+};
+
+export type TreeseedIntegratedDevResetAction = {
+	id: 'd1-state' | 'mailpit' | 'wrangler-tmp' | 'worker-bundle' | 'dev-reload';
+	label: string;
+	kind: 'path' | 'service';
+	path?: string;
+	status: 'planned' | 'removed' | 'skipped' | 'failed';
+	detail?: string;
+};
+
+export type TreeseedIntegratedDevResetPlan = {
+	enabled: boolean;
+	actions: TreeseedIntegratedDevResetAction[];
+	preserved: string[];
 };
 
 export type TreeseedIntegratedDevPlan = {
@@ -105,6 +141,8 @@ export type TreeseedIntegratedDevPlan = {
 	readyChecks: TreeseedIntegratedDevReadinessCheck[];
 	watchEntries: TreeseedIntegratedDevWatchEntry[];
 	commands: TreeseedIntegratedDevCommand[];
+	localRuntimes: Record<string, TreeseedLocalRuntimeSelection>;
+	reset: TreeseedIntegratedDevResetPlan | null;
 };
 
 type SpawnLike = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
@@ -126,6 +164,8 @@ type TreeseedIntegratedDevDependencies = {
 	write: (line: string, stream: 'stdout' | 'stderr') => void;
 	openBrowser: (url: string) => void | Promise<void>;
 	startWatch: WatchStarter;
+	removePath: (path: string) => void;
+	stopMailpitContainers: () => boolean;
 };
 
 type DevEvent = {
@@ -136,6 +176,7 @@ type DevEvent = {
 		| 'log'
 		| 'ready'
 		| 'restart'
+		| 'reset'
 		| 'reload'
 		| 'open'
 		| 'error'
@@ -243,12 +284,156 @@ function normalizeOpenMode(value: TreeseedIntegratedDevOpenMode | undefined) {
 	return value ?? 'auto';
 }
 
+function normalizeLocalRuntimeMode(value: unknown): TreeseedLocalRuntimeMode {
+	return value === 'provider' || value === 'local' ? value : 'auto';
+}
+
+function normalizeProvider(value: unknown, fallback = 'local') {
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function unsupportedProviderRuntimeMessage(kind: string, name: string, provider: string) {
+	return [
+		`Local provider runtime is not supported for ${kind} "${name}" with provider "${provider}".`,
+		`Set ${kind === 'surface' ? 'surfaces' : 'services'}.${name}.local.runtime to "auto" or "local" in treeseed.site.yaml,`,
+		'or add a provider-local adapter before requiring provider runtime.',
+	].join(' ');
+}
+
+function selectWebLocalRuntime(surfaceConfig: unknown): TreeseedLocalRuntimeSelection {
+	const record = surfaceConfig && typeof surfaceConfig === 'object' ? surfaceConfig as {
+		provider?: unknown;
+		local?: { runtime?: unknown };
+	} : {};
+	const provider = normalizeProvider(record.provider);
+	const requested = normalizeLocalRuntimeMode(record.local?.runtime);
+	if (provider === 'cloudflare' && requested !== 'local') {
+		return {
+			requested,
+			provider,
+			selected: 'cloudflare-wrangler-local',
+			reason: 'Cloudflare web surfaces support local Wrangler runtime.',
+		};
+	}
+	if (requested === 'provider') {
+		throw new Error(unsupportedProviderRuntimeMessage('surface', 'web', provider));
+	}
+	return {
+		requested,
+		provider,
+		selected: 'astro-local',
+		reason: requested === 'local'
+			? 'Configured to use the full local Astro runtime.'
+			: `Provider "${provider}" has no provider-local web runtime; using Astro local.`,
+	};
+}
+
+function selectServiceLocalRuntime(serviceName: string, serviceConfig: unknown): TreeseedLocalRuntimeSelection {
+	const record = serviceConfig && typeof serviceConfig === 'object' ? serviceConfig as {
+		provider?: unknown;
+		local?: { runtime?: unknown };
+	} : {};
+	const provider = normalizeProvider(record.provider, 'railway');
+	const requested = normalizeLocalRuntimeMode(record.local?.runtime);
+	if (requested === 'provider') {
+		throw new Error(unsupportedProviderRuntimeMessage('service', serviceName, provider));
+	}
+	return {
+		requested,
+		provider,
+		selected: 'node-local',
+		reason: requested === 'local'
+			? 'Configured to use the full local Node runtime.'
+			: `Provider "${provider}" has no provider-local service runtime; using Node local.`,
+	};
+}
+
+function loadDevDeployConfig(tenantRoot: string) {
+	try {
+		return loadTreeseedDeployConfig(resolve(tenantRoot, 'treeseed.site.yaml'));
+	} catch {
+		return null;
+	}
+}
+
+function generatedLocalWranglerPath(tenantRoot: string) {
+	return resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', 'wrangler.toml');
+}
+
 function browserHost(host: string) {
 	return host === '0.0.0.0' || host === '::' || host === '[::]' ? '127.0.0.1' : host;
 }
 
 function webUrlFor(host: string, port: number) {
 	return `http://${browserHost(host)}:${port}`;
+}
+
+function dockerComposeIsAvailable(env: NodeJS.ProcessEnv) {
+	const docker = resolveTreeseedToolBinary('docker', { env });
+	if (!docker) return false;
+	const result = spawnSync(docker, ['compose', 'version'], {
+		encoding: 'utf8',
+		env,
+	});
+	return (result.status ?? 1) === 0;
+}
+
+function resetActionForPath(
+	id: TreeseedIntegratedDevResetAction['id'],
+	label: string,
+	path: string,
+): TreeseedIntegratedDevResetAction {
+	return {
+		id,
+		label,
+		kind: 'path',
+		path,
+		status: existsSync(path) ? 'planned' : 'skipped',
+		detail: existsSync(path) ? undefined : 'Path does not exist.',
+	};
+}
+
+export function createTreeseedIntegratedDevResetPlan(options: {
+	tenantRoot: string;
+	env: NodeJS.ProcessEnv;
+	mailpitEnabled: boolean;
+	enabled?: boolean;
+}): TreeseedIntegratedDevResetPlan | null {
+	if (!options.enabled) {
+		return null;
+	}
+	const tenantRoot = options.tenantRoot;
+	const d1PersistTo = options.env.TREESEED_API_D1_LOCAL_PERSIST_TO?.trim() || resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1');
+	return {
+		enabled: true,
+		actions: [
+			resetActionForPath('d1-state', 'Remove local D1 state', d1PersistTo),
+			{
+				id: 'mailpit',
+				label: options.mailpitEnabled ? 'Reset Mailpit email runtime' : 'Skip Mailpit email runtime',
+				kind: 'service',
+				status: options.mailpitEnabled ? 'planned' : 'skipped',
+				detail: options.mailpitEnabled
+					? 'The Treeseed-managed Mailpit container and inbox will be stopped and removed.'
+					: 'Docker Compose is unavailable, so Mailpit is disabled for this local dev run.',
+			},
+			resetActionForPath('wrangler-tmp', 'Remove Wrangler temporary output', resolve(tenantRoot, '.wrangler', 'tmp')),
+			resetActionForPath('worker-bundle', 'Remove generated local worker bundle', resolve(tenantRoot, '.treeseed', 'generated', 'worker')),
+			resetActionForPath('dev-reload', 'Remove browser reload marker', resolve(tenantRoot, DEV_RELOAD_FILE)),
+		],
+		preserved: [
+			'.env*',
+			'treeseed.site.yaml',
+			'src/env.yaml',
+			'.treeseed/config',
+			'.treeseed/generated/environments',
+			'.treeseed/state',
+			'.treeseed/workflow',
+			'.treeseed/workspace-links.json',
+			'migrations',
+			'node_modules',
+		],
+	};
 }
 
 function createWatchEntries(tenantRoot: string, sdkPackageRoot: string): TreeseedIntegratedDevWatchEntry[] {
@@ -296,6 +481,8 @@ function createSetupSteps(
 	sdkPackageRoot: string,
 	planLike: Pick<TreeseedIntegratedDevPlan, 'commands'>,
 	env: NodeJS.ProcessEnv,
+	mailpitEnabled: boolean,
+	usesCloudflareWebRuntime: boolean,
 ): TreeseedIntegratedDevSetupStep[] {
 	if (setupMode === 'off') {
 		return [
@@ -314,6 +501,17 @@ function createSetupSteps(
 		['books', 'Generate book/public artifacts', 'scripts/aggregate-book.ts', 'dist/scripts/aggregate-book.js'],
 		['worker-bundle', 'Generate local worker bundle', 'scripts/build-tenant-worker.ts', 'dist/scripts/build-tenant-worker.js'],
 	] as const;
+	const tenantBuild = usesCloudflareWebRuntime
+		? {
+			command: process.execPath,
+			args: [packageScriptPath('tenant-build')],
+		}
+		: null;
+	const mailpit = resolveOptionalScriptEntrypoint(
+		sdkPackageRoot,
+		'scripts/ensure-mailpit.ts',
+		'dist/scripts/ensure-mailpit.js',
+	);
 	const steps: TreeseedIntegratedDevSetupStep[] = [
 		{
 			id: 'workspace-links',
@@ -324,11 +522,28 @@ function createSetupSteps(
 		{
 			id: 'wrangler',
 			label: 'Verify Wrangler executable',
-			required: isSurfaceIncluded(planLike, 'api'),
+			required: usesCloudflareWebRuntime || isSurfaceIncluded(planLike, 'api'),
 			status: 'planned',
 			detail: resolveTreeseedToolBinary('wrangler', { env }) ?? undefined,
 		},
-		...coreScripts.map(([id, label, source, dist]) => {
+		...(usesCloudflareWebRuntime ? [
+			{
+				id: 'wrangler-config',
+				label: 'Generate local Wrangler config',
+				required: true,
+				status: 'planned',
+				detail: generatedLocalWranglerPath(tenantRoot),
+			} satisfies TreeseedIntegratedDevSetupStep,
+			{
+				id: 'web-build',
+				label: 'Build local Cloudflare web runtime',
+				required: true,
+				command: tenantBuild?.command,
+				args: tenantBuild?.args,
+				status: tenantBuild ? 'planned' : 'failed',
+				detail: tenantBuild ? undefined : 'Unable to resolve the tenant build script.',
+			} satisfies TreeseedIntegratedDevSetupStep,
+		] : coreScripts.map(([id, label, source, dist]) => {
 			const script = resolveOptionalScriptEntrypoint(packageRoot, source, dist);
 			return {
 				id,
@@ -339,16 +554,21 @@ function createSetupSteps(
 				status: script ? 'planned' : 'skipped',
 				detail: script ? undefined : `Script not found at ${source}.`,
 			} satisfies TreeseedIntegratedDevSetupStep;
-		}),
+		})),
 		{
 			id: 'mailpit',
-			label: 'Check optional Mailpit email runtime',
-			required: false,
-			status: 'planned',
+			label: mailpitEnabled ? 'Start Mailpit email runtime' : 'Disable Mailpit email runtime',
+			required: mailpitEnabled,
+			command: mailpitEnabled ? mailpit?.command : undefined,
+			args: mailpitEnabled ? mailpit?.args : undefined,
+			status: mailpitEnabled ? (mailpit ? 'planned' : 'failed') : 'skipped',
+			detail: mailpitEnabled
+				? (mailpit ? 'Mailpit SMTP will listen on 127.0.0.1:1025 and the web UI on http://127.0.0.1:8025.' : 'Unable to resolve the Mailpit startup script.')
+				: 'Docker Compose is unavailable, so Mailpit is disabled for this local dev run.',
 		},
 	];
 
-	if (isSurfaceIncluded(planLike, 'api') && existsSync(resolve(tenantRoot, 'migrations'))) {
+	if ((isSurfaceIncluded(planLike, 'api') || usesCloudflareWebRuntime) && existsSync(resolve(tenantRoot, 'migrations'))) {
 		const migrate = resolveOptionalScriptEntrypoint(
 			sdkPackageRoot,
 			'scripts/tenant-d1-migrate-local.ts',
@@ -381,20 +601,43 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const apiPort = normalizePort(options.apiPort, TREESEED_DEFAULT_API_PORT);
 	const managerPort = normalizePort(options.managerPort, TREESEED_DEFAULT_MANAGER_PORT);
 	const includeServices = options.includeServices ?? (surface === 'integrated' || surface === 'services');
-	const projectId = options.projectId ?? process.env.TREESEED_PROJECT_ID;
-	const teamId = options.teamId ?? process.env.TREESEED_HOSTING_TEAM_ID;
-	const mergedEnv = { ...process.env, ...(options.env ?? {}) };
+	const machineEnv = resolveLocalMachineEnv(tenantRoot);
+	const mergedEnv = { ...process.env, ...machineEnv, ...(options.env ?? {}) };
+	const projectId = options.projectId ?? mergedEnv.TREESEED_PROJECT_ID;
+	const teamId = options.teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID;
 	const apiBaseUrl = options.apiHost != null || options.apiPort != null
 		? `http://${apiHost}:${apiPort}`
 		: mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
 	const webUrl = surface === 'integrated' || surface === 'web' ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
+	const deployConfig = loadDevDeployConfig(tenantRoot);
+	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web);
+	const serviceLocalRuntimes = {
+		api: selectServiceLocalRuntime('api', deployConfig?.services?.api),
+		manager: selectServiceLocalRuntime('manager', deployConfig?.services?.manager),
+		worker: selectServiceLocalRuntime('worker', deployConfig?.services?.worker),
+	};
+	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
 	const coreRunTsPath = resolve(packageRoot, 'scripts', 'run-ts.mjs');
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
 		'dist/scripts/tenant-astro-command.js',
 	);
+	const wranglerEntrypoint = {
+		command: process.execPath,
+		args: [
+			resolveWranglerBin(),
+			'dev',
+			'--local',
+			'--config',
+			generatedLocalWranglerPath(tenantRoot),
+			'--ip',
+			webHost,
+			'--port',
+			String(webPort),
+		],
+	};
 	const apiEntrypoint = resolveTenantApiEntrypoint(tenantRoot, coreRunTsPath) ?? resolveNodeEntrypoint(
 		packageRoot,
 		'src/api/server.ts',
@@ -411,6 +654,8 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		'dist/services/worker.js',
 	);
 	const watchEntries = watch ? createWatchEntries(tenantRoot, sdkPackageRoot) : [];
+	const mailpitEnabled = dockerComposeIsAvailable(mergedEnv);
+	const resetRequested = options.reset === true;
 
 	const sharedEnv: NodeJS.ProcessEnv = {
 		...mergedEnv,
@@ -421,8 +666,26 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_HOSTING_TEAM_ID: teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
 		TREESEED_API_D1_DATABASE_NAME: mergedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
 		SITE_DATA_DB: mergedEnv.SITE_DATA_DB ?? 'SITE_DATA_DB',
-		TREESEED_API_D1_LOCAL_PERSIST_TO: mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1'),
+		TREESEED_API_D1_LOCAL_PERSIST_TO: mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? (
+			usesCloudflareWebRuntime
+				? resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3', 'd1')
+				: resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1')
+		),
+		TREESEED_FORM_TOKEN_SECRET: mergedEnv.TREESEED_FORM_TOKEN_SECRET ?? 'treeseed-local-form-token-secret',
+		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
+		TREESEED_AUTH_LOCAL_USE_MAILPIT: mailpitEnabled ? (mergedEnv.TREESEED_AUTH_LOCAL_USE_MAILPIT ?? 'true') : 'false',
+		TREESEED_FORMS_LOCAL_USE_MAILPIT: mailpitEnabled ? (mergedEnv.TREESEED_FORMS_LOCAL_USE_MAILPIT ?? 'true') : 'false',
+		TREESEED_MAILPIT_SMTP_HOST: mergedEnv.TREESEED_MAILPIT_SMTP_HOST ?? TREESEED_DEFAULT_MAILPIT_SMTP_HOST,
+		TREESEED_MAILPIT_SMTP_PORT: mergedEnv.TREESEED_MAILPIT_SMTP_PORT ?? String(TREESEED_DEFAULT_MAILPIT_SMTP_PORT),
+		TREESEED_MAILPIT_UI_PORT: mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(TREESEED_DEFAULT_MAILPIT_UI_PORT),
+		TREESEED_AUTH_EMAIL_FROM: mergedEnv.TREESEED_AUTH_EMAIL_FROM ?? 'Treeseed Market <auth@treeseed.local>',
 	};
+	const reset = createTreeseedIntegratedDevResetPlan({
+		tenantRoot,
+		env: sharedEnv,
+		mailpitEnabled,
+		enabled: resetRequested,
+	});
 
 	if (watch && feedbackMode === 'live') {
 		sharedEnv.TREESEED_PUBLIC_DEV_WATCH_RELOAD = sharedEnv.TREESEED_PUBLIC_DEV_WATCH_RELOAD || 'true';
@@ -433,11 +696,14 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	if (surface === 'integrated' || surface === 'web') {
 		commands.push({
 			id: 'web',
-			label: 'Astro UI',
-			command: webEntrypoint.command,
-			args: [...webEntrypoint.args, 'dev', '--host', webHost, '--port', String(webPort)],
+			label: usesCloudflareWebRuntime ? 'Cloudflare Wrangler UI' : 'Astro UI',
+			command: usesCloudflareWebRuntime ? wranglerEntrypoint.command : webEntrypoint.command,
+			args: usesCloudflareWebRuntime
+				? wranglerEntrypoint.args
+				: [...webEntrypoint.args, 'dev', '--host', webHost, '--port', String(webPort)],
 			cwd: tenantRoot,
 			env: sharedEnv,
+			localRuntime: webLocalRuntime,
 		});
 	}
 
@@ -452,6 +718,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 				...sharedEnv,
 				PORT: options.apiPort != null ? String(apiPort) : sharedEnv.PORT ?? String(apiPort),
 			},
+			localRuntime: serviceLocalRuntimes.api,
 		});
 	}
 
@@ -469,6 +736,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 					? `http://${apiHost}:${managerPort}`
 					: sharedEnv.TREESEED_MANAGER_BASE_URL ?? `http://${apiHost}:${managerPort}`,
 			},
+			localRuntime: serviceLocalRuntimes.manager,
 		});
 	}
 
@@ -480,6 +748,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			args: workerEntrypoint.args,
 			cwd: tenantRoot,
 			env: sharedEnv,
+			localRuntime: serviceLocalRuntimes.worker,
 		});
 	}
 
@@ -509,6 +778,15 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			strategy: 'process',
 		};
 	});
+	if (mailpitEnabled && setupMode !== 'off') {
+		readyChecks.push({
+			id: 'mailpit',
+			label: 'Mailpit',
+			required: true,
+			strategy: 'http',
+			url: `http://127.0.0.1:${sharedEnv.TREESEED_MAILPIT_UI_PORT ?? TREESEED_DEFAULT_MAILPIT_UI_PORT}`,
+		});
+	}
 
 	return {
 		surface,
@@ -519,10 +797,15 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		tenantRoot,
 		apiBaseUrl,
 		webUrl,
-		setupSteps: createSetupSteps(tenantRoot, setupMode, sdkPackageRoot, { commands }, sharedEnv),
+		setupSteps: createSetupSteps(tenantRoot, setupMode, sdkPackageRoot, { commands }, sharedEnv, mailpitEnabled, usesCloudflareWebRuntime),
 		readyChecks,
 		watchEntries,
 		commands,
+		localRuntimes: {
+			web: webLocalRuntime,
+			...serviceLocalRuntimes,
+		},
+		reset,
 	};
 }
 
@@ -540,6 +823,10 @@ function defaultPrepareEnvironment(tenantRoot: string) {
 
 function defaultKillProcess(pid: number, signal: NodeJS.Signals) {
 	process.kill(pid, signal);
+}
+
+function defaultRemovePath(path: string) {
+	rmSync(path, { recursive: true, force: true });
 }
 
 type ManagedDevProcess = {
@@ -638,6 +925,14 @@ function defaultWrite(line: string, stream: 'stdout' | 'stderr') {
 	target.write(line);
 }
 
+function resolveLocalMachineEnv(tenantRoot: string) {
+	try {
+		return resolveTreeseedMachineEnvironmentValues(tenantRoot, 'local') as NodeJS.ProcessEnv;
+	} catch {
+		return {};
+	}
+}
+
 function emitEvent(
 	options: Pick<TreeseedIntegratedDevOptions, 'json'>,
 	write: TreeseedIntegratedDevDependencies['write'],
@@ -653,6 +948,90 @@ function emitEvent(
 	write(`${surface} ${String(message)}\n`, stream);
 }
 
+export function runTreeseedIntegratedDevReset(
+	reset: TreeseedIntegratedDevResetPlan | null,
+	options: Pick<TreeseedIntegratedDevOptions, 'json'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'removePath' | 'stopMailpitContainers'>,
+) {
+	if (!reset?.enabled) {
+		return null;
+	}
+	const results = reset.actions.map((action) => {
+		if (action.status === 'skipped') {
+			emitEvent(options, deps.write, {
+				type: 'reset',
+				status: action.status,
+				message: `${action.label}: skipped`,
+				detail: action,
+			});
+			return action;
+		}
+		if (action.kind === 'service') {
+			const stopped = deps.stopMailpitContainers();
+			const result: TreeseedIntegratedDevResetAction = {
+				...action,
+				status: stopped ? 'removed' : 'failed',
+				detail: stopped
+					? 'Mailpit container state was reset.'
+					: 'Unable to stop or remove the Treeseed-managed Mailpit container.',
+			};
+			emitEvent(options, deps.write, {
+				type: 'reset',
+				status: result.status,
+				message: `${result.label}: ${result.status}`,
+				detail: result,
+			}, result.status === 'failed' ? 'stderr' : 'stdout');
+			return result;
+		}
+		if (!action.path || !existsSync(action.path)) {
+			const result: TreeseedIntegratedDevResetAction = {
+				...action,
+				status: 'skipped',
+				detail: action.detail ?? 'Path does not exist.',
+			};
+			emitEvent(options, deps.write, {
+				type: 'reset',
+				status: result.status,
+				message: `${result.label}: skipped`,
+				detail: result,
+			});
+			return result;
+		}
+		try {
+			deps.removePath(action.path);
+			const result: TreeseedIntegratedDevResetAction = {
+				...action,
+				status: 'removed',
+				detail: action.path,
+			};
+			emitEvent(options, deps.write, {
+				type: 'reset',
+				status: result.status,
+				message: `${result.label}: removed`,
+				detail: result,
+			});
+			return result;
+		} catch (error) {
+			const result: TreeseedIntegratedDevResetAction = {
+				...action,
+				status: 'failed',
+				detail: error instanceof Error ? error.message : String(error),
+			};
+			emitEvent(options, deps.write, {
+				type: 'reset',
+				status: result.status,
+				message: `${result.label}: failed`,
+				detail: result,
+			}, 'stderr');
+			return result;
+		}
+	});
+	return {
+		...reset,
+		actions: results,
+	};
+}
+
 function writePlan(plan: TreeseedIntegratedDevPlan, options: Pick<TreeseedIntegratedDevOptions, 'json'>, write: TreeseedIntegratedDevDependencies['write']) {
 	if (options.json) {
 		write(`${JSON.stringify({ schemaVersion: 1, kind: 'treeseed.dev.plan', ok: true, payload: plan }, null, 2)}\n`, 'stdout');
@@ -662,10 +1041,19 @@ function writePlan(plan: TreeseedIntegratedDevPlan, options: Pick<TreeseedIntegr
 	write(`surface: ${plan.surface}\n`, 'stdout');
 	write(`setup: ${plan.setupMode}\n`, 'stdout');
 	write(`feedback: ${plan.feedbackMode}\n`, 'stdout');
+	if (plan.reset) {
+		write(`reset: enabled\n`, 'stdout');
+		for (const action of plan.reset.actions) {
+			write(`- reset ${action.id}: ${action.status}${action.path ? ` ${action.path}` : ''}\n`, 'stdout');
+		}
+	}
 	if (plan.webUrl) {
 		write(`web: ${plan.webUrl}\n`, 'stdout');
 	}
 	write(`api: ${plan.apiBaseUrl}\n`, 'stdout');
+	for (const [name, runtime] of Object.entries(plan.localRuntimes)) {
+		write(`runtime ${name}: ${runtime.selected} (${runtime.provider}, requested ${runtime.requested})${runtime.reason ? ` - ${runtime.reason}` : ''}\n`, 'stdout');
+	}
 	for (const command of plan.commands) {
 		write(`- ${command.id}: ${command.command} ${command.args.join(' ')}\n`, 'stdout');
 	}
@@ -794,16 +1182,29 @@ function runLocalSetup(
 					status: step.required ? 'failed' : 'degraded',
 					detail: 'Wrangler was not found. Run `npx trsd install --json` and retry `npx trsd dev`.',
 				};
-		} else if (step.id === 'mailpit') {
-			const docker = resolveTreeseedToolBinary('docker', { env: { ...process.env, ...plan.commands[0]?.env } });
-			result = docker
-				? { ...step, status: 'completed', detail: `Docker detected at ${docker}; Mailpit remains optional for local dev.` }
-				: { ...step, status: 'degraded', detail: 'Docker is unavailable, so Mailpit email previews are disabled.' };
-		} else if (plan.setupMode === 'check') {
-			result = { ...step, status: step.status === 'failed' ? 'failed' : 'skipped', detail: step.detail ?? 'Skipped in setup check mode.' };
-		} else {
-			result = runSetupStep(step, plan, deps);
-		}
+			} else if (step.id === 'wrangler-config') {
+				if (plan.setupMode === 'check') {
+					result = { ...step, status: 'skipped', detail: 'Local Wrangler config generation was checked in non-mutating mode.' };
+				} else {
+					try {
+						const { wranglerPath } = ensureGeneratedWranglerConfig(plan.tenantRoot, {
+							target: createPersistentDeployTarget('local'),
+							env: plan.commands[0]?.env,
+						});
+						result = { ...step, status: 'completed', detail: wranglerPath };
+					} catch (error) {
+						result = {
+							...step,
+							status: 'failed',
+							detail: error instanceof Error ? error.message : String(error),
+						};
+					}
+				}
+			} else if (plan.setupMode === 'check') {
+				result = { ...step, status: step.status === 'failed' ? 'failed' : 'skipped', detail: step.detail ?? 'Skipped in setup check mode.' };
+			} else {
+				result = runSetupStep(step, plan, deps);
+			}
 		results.push(result);
 		emitEvent(options, deps.write, {
 			type: 'setup',
@@ -884,6 +1285,8 @@ export async function runTreeseedIntegratedDev(
 	const openBrowser = deps.openBrowser ?? defaultOpenBrowser;
 	const startWatch = deps.startWatch ?? startPollingWatch;
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
+	const removePath = deps.removePath ?? defaultRemovePath;
+	const stopMailpit = deps.stopMailpitContainers ?? stopKnownMailpitContainers;
 
 	prepareEnvironment(tenantRoot);
 	const plan = createTreeseedIntegratedDevPlan({
@@ -900,6 +1303,21 @@ export async function runTreeseedIntegratedDev(
 		return 0;
 	}
 
+	const resetResults = runTreeseedIntegratedDevReset(plan.reset, options, {
+		write,
+		removePath,
+		stopMailpitContainers: stopMailpit,
+	});
+	const failedReset = resetResults?.actions.find((action) => action.status === 'failed');
+	if (failedReset) {
+		emitEvent(options, write, {
+			type: 'error',
+			message: `${failedReset.label} failed during dev reset.`,
+			detail: failedReset,
+		});
+		return 1;
+	}
+
 	const setupResults = runLocalSetup(plan, options, { spawnSync: spawnSyncProcess, write });
 	const failedSetup = setupResults.find((step) => step.status === 'failed' && step.required);
 	if (failedSetup) {
@@ -909,7 +1327,7 @@ export async function runTreeseedIntegratedDev(
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
-	const requiredSurfaceIds = new Set(plan.readyChecks.filter((check) => check.required).map((check) => check.id));
+	const requiredSurfaceIds = new Set<string>(plan.readyChecks.filter((check) => check.required).map((check) => check.id));
 	const exited = new Map<string, { code: number | null; signal: NodeJS.Signals | null }>();
 	let watchController: WatchController | null = null;
 	let settled = false;
@@ -1062,6 +1480,25 @@ export async function runTreeseedIntegratedDev(
 								sdkChanged: change.sdkChanged,
 							},
 						});
+						if (
+							commandsById.get('web')?.localRuntime?.selected === 'cloudflare-wrangler-local'
+							&& (change.tenantChanged || change.packageChanged || change.sdkChanged)
+						) {
+							const web = children.get('web');
+							if (web) {
+								await stopManagedProcess(web, 'SIGTERM', killProcess, Math.min(shutdownGraceMs, 500));
+								children.delete('web');
+								exited.delete('web');
+							}
+							const setupResults = runLocalSetup(plan, options, { spawnSync: spawnSyncProcess, write });
+							const failedSetup = setupResults.find((step) => step.status === 'failed' && step.required);
+							if (failedSetup) {
+								emitEvent(options, write, { type: 'error', message: failedSetupMessage(failedSetup), detail: failedSetup });
+								finalize(1);
+								return;
+							}
+							await restartCommand('web');
+						}
 						if (change.packageChanged || change.sdkChanged) {
 							await Promise.all([
 								restartCommand('api'),
@@ -1092,12 +1529,13 @@ export async function runTreeseedIntegratedDev(
 					return;
 				}
 				let ready = false;
-				if (check.strategy === 'http' && check.url) {
-					ready = await waitForHttpReady(fetchFn, check.url, readinessTimeoutMs);
-				} else {
-					await delay(processReadyGraceMs);
-					ready = !exited.has(check.id) && children.has(check.id);
-				}
+					if (check.strategy === 'http' && check.url) {
+						ready = await waitForHttpReady(fetchFn, check.url, readinessTimeoutMs);
+					} else {
+						const commandId = check.id as TreeseedIntegratedDevCommand['id'];
+						await delay(processReadyGraceMs);
+						ready = !exited.has(commandId) && children.has(commandId);
+					}
 				if (settled) {
 					return;
 				}

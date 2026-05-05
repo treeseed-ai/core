@@ -259,6 +259,37 @@ export function createTreeseedApiApp(options: ApiServerOptions = {}) {
 			await runtimeProviders.auth.revokePersonalAccessToken(principal.id, c.req.param('id'));
 			return c.json({ ok: true });
 		});
+
+		app.post('/auth/admin/users', async (c) => {
+			const unauthorized = requirePermission(c, 'users:manage:global');
+			if (unauthorized) return unauthorized;
+			if (!runtimeProviders.auth.createUser) {
+				return jsonError(c, 501, 'User management is unavailable for this auth provider.');
+			}
+			const body = await c.req.json().catch(() => ({})) as { email?: string | null; displayName?: string | null; metadata?: Record<string, unknown> };
+			return c.json({
+				ok: true,
+				payload: await runtimeProviders.auth.createUser({
+					email: body.email ?? null,
+					displayName: body.displayName ?? null,
+					metadata: typeof body.metadata === 'object' && body.metadata ? body.metadata : {},
+				}),
+			});
+		});
+
+		app.post('/auth/admin/users/:userId/roles', async (c) => {
+			const unauthorized = requirePermission(c, 'roles:manage:global');
+			if (unauthorized) return unauthorized;
+			if (!runtimeProviders.auth.setUserRoles) {
+				return jsonError(c, 501, 'Role management is unavailable for this auth provider.');
+			}
+			const body = await c.req.json().catch(() => ({})) as { roles?: string[] };
+			const roles = Array.isArray(body.roles) ? body.roles.map(String) : [];
+			return c.json({
+				ok: true,
+				payload: await runtimeProviders.auth.setUserRoles(c.req.param('userId'), roles),
+			});
+		});
 	}
 
 	app.post('/internal/auth/web/sync-user', async (c) => {

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ApiConfig } from './types.ts';
 
@@ -5,6 +6,13 @@ function parseInteger(value: string | undefined, fallback: number) {
 	if (!value) return fallback;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function resolveLocalWranglerConfigPath(repoRoot: string, env: NodeJS.ProcessEnv) {
+	const explicit = env.TREESEED_API_D1_WRANGLER_CONFIG?.trim() || env.TREESEED_LOCAL_WRANGLER_CONFIG?.trim();
+	if (explicit) return resolve(repoRoot, explicit);
+	const generated = resolve(repoRoot, '.treeseed', 'generated', 'environments', 'local', 'wrangler.toml');
+	return existsSync(generated) ? generated : undefined;
 }
 
 function normalizeUrl(value: string) {
@@ -57,6 +65,7 @@ export function resolveApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfi
 		d1DatabaseId: env.TREESEED_API_D1_DATABASE_ID?.trim() || undefined,
 		d1DatabaseName: env.TREESEED_API_D1_DATABASE_NAME?.trim() || env.SITE_DATA_DB?.trim() || undefined,
 		d1LocalPersistTo: env.TREESEED_API_D1_LOCAL_PERSIST_TO?.trim() || resolve(repoRoot, '.wrangler/state/v3/d1'),
+		d1WranglerConfigPath: resolveLocalWranglerConfigPath(repoRoot, env),
 		webServiceId: env.TREESEED_API_WEB_SERVICE_ID?.trim() || 'web',
 		webServiceSecret: env.TREESEED_API_WEB_SERVICE_SECRET?.trim() || 'treeseed-web-service-dev-secret',
 		webAssertionSecret: env.TREESEED_API_WEB_ASSERTION_SECRET?.trim() || env.TREESEED_API_AUTH_SECRET?.trim() || 'treeseed-web-assertion-dev-secret',

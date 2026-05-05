@@ -323,6 +323,9 @@ export function createTreeseedSite(
 		output: serverRendered
 			? 'server'
 			: 'static',
+		session: serverRendered
+			? { driver: 'null' }
+			: undefined,
 		site: siteConfig.site.siteUrl,
 		image: {
 			service: {
