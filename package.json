@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.6.23-dev.staging.20260505T214150Z",
+  "version": "0.6.23-dev.staging.20260505T214832Z",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {

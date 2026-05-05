@@ -54,7 +54,10 @@ describe('Treeseed integrated dev orchestration', () => {
 	it('creates an integrated plan with local API defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
-			env: {},
+			env: {
+				TREESEED_SMTP_HOST: undefined,
+				TREESEED_SMTP_PORT: undefined,
+			},
 		});
 
 		expect(plan.surface).toBe('integrated');
