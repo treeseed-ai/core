@@ -300,12 +300,19 @@ function unsupportedProviderRuntimeMessage(kind: string, name: string, provider:
 	].join(' ');
 }
 
-function selectWebLocalRuntime(surfaceConfig: unknown): TreeseedLocalRuntimeSelection {
+function fallbackWebProviderFromDeployConfig(deployConfig: unknown) {
+	const record = deployConfig && typeof deployConfig === 'object'
+		? deployConfig as { providers?: { deploy?: unknown } }
+		: {};
+	return normalizeProvider(record.providers?.deploy, 'local');
+}
+
+function selectWebLocalRuntime(surfaceConfig: unknown, providerFallback = 'local'): TreeseedLocalRuntimeSelection {
 	const record = surfaceConfig && typeof surfaceConfig === 'object' ? surfaceConfig as {
 		provider?: unknown;
 		local?: { runtime?: unknown };
 	} : {};
-	const provider = normalizeProvider(record.provider);
+	const provider = normalizeProvider(record.provider, providerFallback);
 	const requested = normalizeLocalRuntimeMode(record.local?.runtime);
 	if (provider === 'cloudflare' && requested !== 'local') {
 		return {
@@ -611,7 +618,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const webUrl = surface === 'integrated' || surface === 'web' ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
 	const deployConfig = loadDevDeployConfig(tenantRoot);
-	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web);
+	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));
 	const serviceLocalRuntimes = {
 		api: selectServiceLocalRuntime('api', deployConfig?.services?.api),
 		manager: selectServiceLocalRuntime('manager', deployConfig?.services?.manager),

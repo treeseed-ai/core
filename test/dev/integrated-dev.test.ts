@@ -41,7 +41,7 @@ class FakeChildProcess {
 }
 
 describe('Treeseed integrated dev orchestration', () => {
-	const tenantRoot = resolve(process.cwd(), '../..');
+	const tenantRoot = resolve(process.cwd(), '.fixtures/treeseed-fixtures/sites/working-site');
 
 	function writeTempTenant(siteConfig: string) {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-runtime-'));
