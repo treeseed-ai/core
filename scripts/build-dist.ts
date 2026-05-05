@@ -481,6 +481,10 @@ async function main() {
 		resolve(distRoot, 'content-config.d.ts'),
 		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tbooks: any;\n\tdocs: any;\n\tworkdays?: any;\n};"
 	);
+	writeCompatibilityEntrypoint(
+		resolve(distRoot, 'utils/forms/service.d.ts'),
+		"import type { APIContext } from 'astro';\nimport type { SubmitResult } from '../../types/forms';\nexport declare function handleTokenRequest(context: APIContext): Promise<Response>;\nexport declare function handleFormSubmission(context: APIContext): Promise<SubmitResult>;"
+	);
 	rmSync(resolve(distRoot, 'config.d.js'), { force: true });
 	rmSync(resolve(distRoot, 'content-config.d.js'), { force: true });
 

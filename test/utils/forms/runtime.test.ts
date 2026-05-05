@@ -8,7 +8,6 @@ describe('form runtime capabilities', () => {
 			localDevMode: 'cloudflare',
 			isDevServer: false,
 			bypassCloudflareGuards: undefined,
-			useMailpit: false,
 			formsMode: 'store_only',
 			smtpEnabled: false,
 			turnstileEnabled: false,
@@ -17,7 +16,6 @@ describe('form runtime capabilities', () => {
 		expect(runtime.isLocalMode).toBe(true);
 		expect(runtime.bypassTurnstile).toBe(true);
 		expect(runtime.bypassCloudflareGuards).toBe(false);
-		expect(runtime.useMailpit).toBe(false);
 		expect(runtime.formsMode).toBe('store_only');
 		expect(runtime.smtpEnabled).toBe(false);
 		expect(runtime.turnstileEnabled).toBe(false);
@@ -29,16 +27,14 @@ describe('form runtime capabilities', () => {
 			localDevMode: 'cloudflare',
 			isDevServer: false,
 			bypassCloudflareGuards: true,
-			useMailpit: true,
 			formsMode: 'notify_admin',
-			smtpEnabled: false,
+			smtpEnabled: true,
 			turnstileEnabled: true,
 		});
 
 		expect(runtime.isLocalMode).toBe(true);
 		expect(runtime.bypassTurnstile).toBe(true);
 		expect(runtime.bypassCloudflareGuards).toBe(true);
-		expect(runtime.useMailpit).toBe(true);
 		expect(runtime.formsMode).toBe('notify_admin');
 		expect(runtime.smtpEnabled).toBe(true);
 		expect(runtime.turnstileEnabled).toBe(false);
@@ -50,7 +46,6 @@ describe('form runtime capabilities', () => {
 			localDevMode: null,
 			isDevServer: false,
 			bypassCloudflareGuards: true,
-			useMailpit: true,
 			formsMode: 'full_email',
 			smtpEnabled: true,
 			turnstileEnabled: true,

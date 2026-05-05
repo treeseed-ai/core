@@ -70,7 +70,6 @@ export interface FormRuntimeCapabilities {
 	localDevMode: LocalDevMode | 'production';
 	bypassTurnstile: boolean;
 	bypassCloudflareGuards: boolean;
-	useMailpit: boolean;
 	formsMode: FormsMode;
 	smtpEnabled: boolean;
 	turnstileEnabled: boolean;

@@ -4,7 +4,6 @@ import {
 	isSmtpEnabled,
 	isTurnstileEnabled,
 	shouldBypassCloudflareGuardsByEnv,
-	shouldUseMailpit,
 } from './config';
 import type { CloudflareRuntime } from '../../types/cloudflare';
 import type { FormRuntimeCapabilities } from '../../types/forms';
@@ -17,7 +16,6 @@ export function resolveFormRuntimeCapabilities(locals: App.Locals): FormRuntimeC
 		localDevMode: getLocalDevMode(),
 		isDevServer: import.meta.env.DEV,
 		bypassCloudflareGuards: shouldBypassCloudflareGuardsByEnv(),
-		useMailpit: shouldUseMailpit(),
 		formsMode: getFormsMode(),
 		smtpEnabled: isSmtpEnabled(),
 		turnstileEnabled: isTurnstileEnabled(),
