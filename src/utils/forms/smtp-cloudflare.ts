@@ -32,7 +32,7 @@ async function createSocketContext(port: number, host: string): Promise<SocketCo
 	const socket = connect(
 		{ hostname: host, port },
 		{
-			secureTransport: port === 465 ? 'on' : 'off',
+			secureTransport: port === 465 ? 'on' : port === 587 ? 'starttls' : 'off',
 		},
 	);
 
@@ -104,6 +104,8 @@ async function upgradeToTls(context: SocketContext): Promise<SocketContext> {
 		throw new Error('SMTP socket does not support STARTTLS upgrade.');
 	}
 
+	context.reader.releaseLock();
+	context.writer.releaseLock();
 	const secureSocket = context.socket.startTls();
 	return {
 		socket: secureSocket,
