@@ -9,6 +9,13 @@ async function hasRuntimeRecordsTable(db: D1DatabaseLike) {
 	return Boolean(row?.name);
 }
 
+async function tableColumns(db: D1DatabaseLike, tableName: 'contact_submissions') {
+	const { results } = await db
+		.prepare(`PRAGMA table_info(${tableName})`)
+		.all<{ name?: string }>();
+	return new Set(results.map((row) => row.name).filter((name): name is string => Boolean(name)));
+}
+
 export async function createContactSubmission(
 	db: D1DatabaseLike,
 	input: ContactRecordInput,
@@ -52,6 +59,33 @@ export async function createContactSubmission(
 				now,
 				payloadJson,
 				metaJson,
+			)
+			.run();
+		return;
+	}
+
+	const columns = await tableColumns(db, 'contact_submissions');
+	if (!columns.has('contact_type')) {
+		await db
+			.prepare(
+				`INSERT INTO contact_submissions (
+					email,
+					message,
+					created_at
+				) VALUES (?, ?, ?)`,
+			)
+			.bind(
+				input.email,
+				[
+					input.subject,
+					'',
+					input.message,
+					'',
+					`Name: ${input.name}`,
+					input.organization ? `Organization: ${input.organization}` : null,
+					`Contact type: ${input.contactType}`,
+				].filter(Boolean).join('\n'),
+				now,
 			)
 			.run();
 		return;
