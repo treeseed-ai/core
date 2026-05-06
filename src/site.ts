@@ -23,6 +23,7 @@ import {
 	resolveTreeseedSiteResource,
 	resolveTreeseedStyleEntrypoint,
 } from './site-resources';
+import { deriveTreeseedAstroAllowedDomains } from './utils/astro-security';
 import { isSiteRenderedModel } from './utils/site-models';
 
 const TENANT_THEME_VIRTUAL_ID = 'virtual:treeseed/tenant-theme.css';
@@ -305,6 +306,7 @@ export function createTreeseedSite(
 	const resolvedGlobalCss = resolveTreeseedStyleEntrypoint(siteLayers, 'styles/global.css');
 	const serverRendered =
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
+	const allowedDomains = deriveTreeseedAstroAllowedDomains(deployConfig, { siteUrl: siteConfig.site.siteUrl });
 	const publishedRuntime = getTreeseedContentServingMode() === 'published_runtime';
 	const packageRoutes = [
 		...PACKAGE_ROUTE_ENTRIES,
@@ -326,6 +328,10 @@ export function createTreeseedSite(
 		session: serverRendered
 			? { driver: 'null' }
 			: undefined,
+		security: {
+			checkOrigin: true,
+			allowedDomains,
+		},
 		site: siteConfig.site.siteUrl,
 		image: {
 			service: {
