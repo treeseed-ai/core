@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -39,6 +39,7 @@ export const TREESEED_DEFAULT_LOCAL_SMTP_PORT = 1025;
 export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
+const DEV_RUNTIME_FILE = '.treeseed/generated/dev/runtime.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_500;
@@ -151,6 +152,7 @@ type SignalRegistrar = (signal: NodeJS.Signals, handler: () => void) => () => vo
 type ProcessLike = Pick<ChildProcess, 'kill' | 'on'> & Partial<Pick<ChildProcess, 'stdout' | 'stderr' | 'pid' | 'unref'>>;
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 type ProcessKiller = (pid: number, signal: NodeJS.Signals) => void;
+type ProcessStatusChecker = (pid: number) => boolean;
 type WatchController = TreeseedDevWatchController;
 type WatchStarter = TreeseedDevWatchStarter;
 
@@ -161,6 +163,7 @@ type TreeseedIntegratedDevDependencies = {
 	prepareEnvironment: (tenantRoot: string) => void;
 	fetch: FetchLike;
 	killProcess: ProcessKiller;
+	processIsAlive: ProcessStatusChecker;
 	write: (line: string, stream: 'stdout' | 'stderr') => void;
 	openBrowser: (url: string) => void | Promise<void>;
 	startWatch: WatchStarter;
@@ -180,6 +183,7 @@ type DevEvent = {
 		| 'reload'
 		| 'open'
 		| 'error'
+		| 'replace'
 		| 'shutdown';
 	surface?: string;
 	message?: string;
@@ -680,8 +684,12 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		),
 		TREESEED_FORM_TOKEN_SECRET: mergedEnv.TREESEED_FORM_TOKEN_SECRET ?? 'treeseed-local-form-token-secret',
 		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
-		TREESEED_SMTP_HOST: mergedEnv.TREESEED_SMTP_HOST ?? TREESEED_DEFAULT_LOCAL_SMTP_HOST,
-		TREESEED_SMTP_PORT: mergedEnv.TREESEED_SMTP_PORT ?? String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
+		TREESEED_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
+		TREESEED_SMTP_PORT: String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
+		TREESEED_SMTP_USERNAME: '',
+		TREESEED_SMTP_PASSWORD: '',
+		TREESEED_MAILPIT_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
+		TREESEED_MAILPIT_SMTP_PORT: String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
 		TREESEED_MAILPIT_UI_PORT: mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(TREESEED_DEFAULT_MAILPIT_UI_PORT),
 		TREESEED_AUTH_EMAIL_FROM: mergedEnv.TREESEED_AUTH_EMAIL_FROM ?? 'Treeseed Market <auth@treeseed.local>',
 	};
@@ -830,6 +838,18 @@ function defaultKillProcess(pid: number, signal: NodeJS.Signals) {
 	process.kill(pid, signal);
 }
 
+function defaultProcessIsAlive(pid: number) {
+	if (!Number.isInteger(pid) || pid <= 0) {
+		return false;
+	}
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function defaultRemovePath(path: string) {
 	rmSync(path, { recursive: true, force: true });
 }
@@ -936,6 +956,108 @@ function resolveLocalMachineEnv(tenantRoot: string) {
 	} catch {
 		return {};
 	}
+}
+
+type DevRuntimeState = {
+	pid: number;
+	tenantRoot: string;
+	startedAt: string;
+};
+
+function devRuntimeStatePath(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_RUNTIME_FILE);
+}
+
+function readDevRuntimeState(tenantRoot: string): DevRuntimeState | null {
+	try {
+		const parsed = JSON.parse(readFileSync(devRuntimeStatePath(tenantRoot), 'utf8')) as Partial<DevRuntimeState>;
+		if (!Number.isInteger(parsed.pid) || typeof parsed.tenantRoot !== 'string' || typeof parsed.startedAt !== 'string') {
+			return null;
+		}
+		return {
+			pid: parsed.pid,
+			tenantRoot: parsed.tenantRoot,
+			startedAt: parsed.startedAt,
+		};
+	} catch {
+		return null;
+	}
+}
+
+function writeCurrentDevRuntimeState(tenantRoot: string) {
+	const outputPath = devRuntimeStatePath(tenantRoot);
+	mkdirSync(dirname(outputPath), { recursive: true });
+	writeFileSync(
+		outputPath,
+		`${JSON.stringify({
+			pid: process.pid,
+			tenantRoot,
+			startedAt: new Date().toISOString(),
+		}, null, 2)}\n`,
+		'utf8',
+	);
+}
+
+function removeCurrentDevRuntimeState(tenantRoot: string) {
+	const state = readDevRuntimeState(tenantRoot);
+	if (!state || state.pid !== process.pid) {
+		return;
+	}
+	rmSync(devRuntimeStatePath(tenantRoot), { force: true });
+}
+
+async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChecker, timeoutMs: number) {
+	const startedAt = Date.now();
+	while (Date.now() - startedAt < timeoutMs) {
+		if (!processIsAlive(pid)) {
+			return true;
+		}
+		await delay(100);
+	}
+	return !processIsAlive(pid);
+}
+
+async function stopPreviousDevRuntime(
+	tenantRoot: string,
+	options: Pick<TreeseedIntegratedDevOptions, 'json' | 'shutdownGraceMs'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'killProcess' | 'processIsAlive'>,
+) {
+	const state = readDevRuntimeState(tenantRoot);
+	if (!state) {
+		return;
+	}
+	const statePath = devRuntimeStatePath(tenantRoot);
+	if (state.pid === process.pid) {
+		return;
+	}
+	if (!deps.processIsAlive(state.pid)) {
+		rmSync(statePath, { force: true });
+		return;
+	}
+
+	emitEvent(options, deps.write, {
+		type: 'replace',
+		message: `Stopping previous Treeseed dev runtime (${state.pid}) before starting a new one.`,
+		detail: { pid: state.pid, startedAt: state.startedAt },
+	});
+
+	try {
+		deps.killProcess(state.pid, 'SIGTERM');
+	} catch {
+		// The runtime may have exited after the liveness check.
+	}
+	if (await waitForProcessExit(state.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
+		rmSync(statePath, { force: true });
+		return;
+	}
+
+	try {
+		deps.killProcess(state.pid, 'SIGKILL');
+	} catch {
+		// Ignore shutdown races from already-exited supervisors.
+	}
+	await waitForProcessExit(state.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
+	rmSync(statePath, { force: true });
 }
 
 function emitEvent(
@@ -1287,6 +1409,7 @@ export async function runTreeseedIntegratedDev(
 	const onSignal = deps.onSignal ?? defaultSignalRegistrar;
 	const fetchFn = deps.fetch ?? globalThis.fetch.bind(globalThis);
 	const killProcess = deps.killProcess ?? defaultKillProcess;
+	const processIsAlive = deps.processIsAlive ?? defaultProcessIsAlive;
 	const openBrowser = deps.openBrowser ?? defaultOpenBrowser;
 	const startWatch = deps.startWatch ?? startPollingWatch;
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
@@ -1306,6 +1429,10 @@ export async function runTreeseedIntegratedDev(
 	if (options.plan) {
 		writePlan(plan, options, write);
 		return 0;
+	}
+
+	if (readDevRuntimeState(tenantRoot)) {
+		await stopPreviousDevRuntime(tenantRoot, options, { write, killProcess, processIsAlive });
 	}
 
 	const resetResults = runTreeseedIntegratedDevReset(plan.reset, options, {
@@ -1329,6 +1456,8 @@ export async function runTreeseedIntegratedDev(
 		emitEvent(options, write, { type: 'error', message: failedSetupMessage(failedSetup), detail: failedSetup });
 		return 1;
 	}
+
+	writeCurrentDevRuntimeState(tenantRoot);
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
@@ -1371,6 +1500,7 @@ export async function runTreeseedIntegratedDev(
 			for (const dispose of disposers) {
 				dispose();
 			}
+			removeCurrentDevRuntimeState(tenantRoot);
 			emitEvent(
 				options,
 				write,

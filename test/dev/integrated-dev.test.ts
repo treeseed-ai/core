@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SpawnOptions } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import {
@@ -55,8 +55,10 @@ describe('Treeseed integrated dev orchestration', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			env: {
-				TREESEED_SMTP_HOST: undefined,
-				TREESEED_SMTP_PORT: undefined,
+				TREESEED_SMTP_HOST: 'smtp.mailgun.org',
+				TREESEED_SMTP_PORT: '587',
+				TREESEED_SMTP_USERNAME: 'hosted-user',
+				TREESEED_SMTP_PASSWORD: 'hosted-password',
 			},
 		});
 
@@ -84,6 +86,10 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
+		expect(plan.commands[0]?.env.TREESEED_SMTP_USERNAME).toBe('');
+		expect(plan.commands[0]?.env.TREESEED_SMTP_PASSWORD).toBe('');
+		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_HOST).toBe('127.0.0.1');
+		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT).toBe('1025');
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {
@@ -259,6 +265,78 @@ surfaces:
 		const parsed = JSON.parse(output.join(''));
 		expect(parsed.kind).toBe('treeseed.dev.plan');
 		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+	});
+
+	it('replaces an active previous dev runtime before spawning services', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const previousPid = 98_765;
+		const runtimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime.json');
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const livePids = new Set([previousPid]);
+		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
+		let spawnCount = 0;
+
+		try {
+			mkdirSync(resolve(tempRoot, '.treeseed/generated/dev'), { recursive: true });
+			writeFileSync(runtimePath, `${JSON.stringify({
+				pid: previousPid,
+				tenantRoot: tempRoot,
+				startedAt: '2026-05-06T00:00:00.000Z',
+			}, null, 2)}\n`);
+
+			const promise = runTreeseedIntegratedDev(
+				{
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					shutdownGraceMs: 0,
+				},
+				{
+					spawn() {
+						spawnCount += 1;
+						return new FakeChildProcess() as never;
+					},
+					killProcess(pid, signal) {
+						killCalls.push({ pid, signal });
+						livePids.delete(pid);
+					},
+					processIsAlive(pid) {
+						return livePids.has(pid);
+					},
+					onSignal(signal, handler) {
+						signalHandlers.set(signal, handler);
+						return () => signalHandlers.delete(signal);
+					},
+					prepareEnvironment() {},
+					fetch: async () => ({ ok: true }) as Response,
+				},
+			);
+
+			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+			expect(killCalls).toEqual([{ pid: previousPid, signal: 'SIGTERM' }]);
+			expect(spawnCount).toBe(1);
+			expect(JSON.parse(readFileSync(runtimePath, 'utf8'))).toMatchObject({
+				pid: process.pid,
+				tenantRoot: tempRoot,
+			});
+
+			signalHandlers.get('SIGINT')?.();
+			await expect(promise).resolves.toBe(130);
+			expect(existsSync(runtimePath)).toBe(false);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
 	});
 
 	it('plans dev reset against runtime state while preserving configuration paths', () => {
