@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.40] - 2026-05-08
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk (c83745ba6597)
+- Release @treeseed/core 0.6.40.
+
 ## [0.6.39] - 2026-05-08
 
 ### Added
