@@ -240,11 +240,12 @@ export function resolveWorkerConfig() {
 		maxLocalWorkers: integerFromEnv('TREESEED_RUNNER_MAX_LOCAL_WORKERS', 4),
 		runnerServiceName: process.env.TREESEED_RUNNER_SERVICE_NAME?.trim() || process.env.RAILWAY_SERVICE_NAME?.trim() || `worker-runner-${process.pid}`,
 		volumeRoot: process.env.TREESEED_RUNNER_VOLUME_ROOT?.trim() || process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim() || '.treeseed-runner',
-		volumeIdentity: process.env.TREESEED_RUNNER_VOLUME_ID?.trim() || process.env.RAILWAY_VOLUME_ID?.trim() || 'local-runner-volume',
+		volumeIdentity: process.env.TREESEED_RUNNER_VOLUME_ID?.trim() || process.env.RAILWAY_VOLUME_ID?.trim() || process.env.RAILWAY_VOLUME_NAME?.trim() || 'local-runner-volume',
 		projectId: process.env.TREESEED_PROJECT_ID?.trim() || 'treeseed-market',
 		environment: process.env.TREESEED_DEPLOY_ENVIRONMENT?.trim() || (process.env.NODE_ENV === 'production' ? 'prod' : 'local'),
 		visibilityTimeoutMs: integerFromEnv('TREESEED_QUEUE_VISIBILITY_TIMEOUT_MS', 120000),
 		pollIntervalMs: integerFromEnv('TREESEED_WORKER_POLL_INTERVAL_MS', 5000),
+		idleExitMs: integerFromEnv('TREESEED_WORKER_IDLE_EXIT_MS', 0),
 		leaseSeconds: integerFromEnv('TREESEED_TASK_LEASE_SECONDS', 120),
 	};
 }

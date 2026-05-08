@@ -623,7 +623,7 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 				workerState: 'warm',
 				capacity: {
 					desiredWorkers: 1,
-					scaleApplied: false,
+					scaleApplied: true,
 					reason: 'interactive_enqueue',
 				},
 				payload: {
@@ -649,7 +649,8 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 				desiredWorkers: 1,
 				reason: 'interactive_enqueue',
 			}));
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes('backboard.railway.com/graphql'))).toBe(true);
 		} finally {
 			vi.unstubAllEnvs();
 			vi.unstubAllGlobals();
@@ -776,7 +777,7 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 				workerState: 'cold_starting',
 				capacity: {
 					desiredWorkers: 1,
-					scaleApplied: false,
+					scaleApplied: true,
 					reason: 'interactive_cold_start',
 				},
 				payload: {

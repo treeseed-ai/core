@@ -351,11 +351,64 @@ export async function runWorkerCycle() {
 	return { ok: true, processed: results.reduce((sum, value) => sum + value, 0) };
 }
 
+export function shouldExitWorkerLoopAfterIdle(options: {
+	idleExitMs?: number | null;
+	idleSince: number | null;
+	now: number;
+	processed: number;
+}) {
+	const idleExitMs = Number(options.idleExitMs ?? 0);
+	if (!Number.isFinite(idleExitMs) || idleExitMs <= 0) {
+		return false;
+	}
+	if (options.processed > 0 || options.idleSince === null) {
+		return false;
+	}
+	return options.now - options.idleSince >= idleExitMs;
+}
+
+async function recordWorkerLoopExitState(config: ReturnType<typeof resolveWorkerConfig>) {
+	const sdk = createServiceSdk();
+	if (typeof sdk.recordWorkerRunner !== 'function') {
+		return;
+	}
+	await sdk.recordWorkerRunner({
+		projectId: config.projectId,
+		environment: config.environment as 'local' | 'staging' | 'prod',
+		runnerId: config.workerId,
+		runnerServiceName: config.runnerServiceName,
+		volumeIdentity: config.volumeIdentity,
+		state: 'sleeping',
+		maxLocalWorkers: config.maxLocalWorkers,
+		activeLocalWorkers: 0,
+		metadata: {
+			volumeRoot: config.volumeRoot,
+			reason: 'idle_exit',
+		},
+	}).catch(() => null);
+}
+
 export async function startWorkerLoop() {
 	const config = resolveWorkerConfig();
+	let idleSince: number | null = null;
 	for (;;) {
 		try {
-			await runWorkerCycle();
+			const result = await runWorkerCycle();
+			const processed = Number((result as { processed?: unknown }).processed ?? 0);
+			if (processed > 0) {
+				idleSince = null;
+			} else {
+				idleSince ??= Date.now();
+				if (shouldExitWorkerLoopAfterIdle({
+					idleExitMs: config.idleExitMs,
+					idleSince,
+					now: Date.now(),
+					processed,
+				})) {
+					await recordWorkerLoopExitState(config);
+					return;
+				}
+			}
 		} catch (error) {
 			process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
 		}

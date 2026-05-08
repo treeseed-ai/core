@@ -114,6 +114,29 @@ describe('worker service', () => {
 		expect(queue.ack).toHaveBeenCalledWith(['lease-1']);
 	});
 
+	it('identifies when a deployed worker loop should exit after idle timeout', async () => {
+		const { shouldExitWorkerLoopAfterIdle } = await import('../../src/services/worker.ts');
+
+		expect(shouldExitWorkerLoopAfterIdle({
+			idleExitMs: 60000,
+			idleSince: 1000,
+			now: 61000,
+			processed: 0,
+		})).toBe(true);
+		expect(shouldExitWorkerLoopAfterIdle({
+			idleExitMs: 60000,
+			idleSince: 1000,
+			now: 61000,
+			processed: 1,
+		})).toBe(false);
+		expect(shouldExitWorkerLoopAfterIdle({
+			idleExitMs: 0,
+			idleSince: 1000,
+			now: 61000,
+			processed: 0,
+		})).toBe(false);
+	});
+
 	it('executes manager-materialized agent trigger tasks with the provided invocation', async () => {
 		taskContext = {
 			task: {
