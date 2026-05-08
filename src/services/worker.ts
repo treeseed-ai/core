@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
 import { AgentKernel } from '../agents/kernel/agent-kernel.ts';
@@ -23,6 +25,15 @@ function asRecord(value: unknown): Record<string, unknown> {
 function readCapacityEnvelope(payload: Record<string, unknown>): CapacityTaskExecutionEnvelope | null {
 	const envelope = asRecord(payload.capacityEnvelope);
 	return Object.keys(envelope).length > 0 ? envelope as CapacityTaskExecutionEnvelope : null;
+}
+
+function runnerRepositoryPath(volumeRoot: string, repositoryId: string, taskId: string) {
+	const repositoryRoot = join(volumeRoot, 'repositories', repositoryId);
+	return {
+		repositoryRoot,
+		bareGit: join(repositoryRoot, 'bare.git'),
+		worktree: join(repositoryRoot, 'worktrees', taskId),
+	};
 }
 
 class WorkerPausedForApproval extends Error {
@@ -60,6 +71,69 @@ async function executeQueuedTask(options: {
 		});
 	}
 	const executionKind = typeof payload.executionKind === 'string' ? payload.executionKind : null;
+	if (String(task?.type ?? task?.taskType ?? '') === 'refresh_project_graph') {
+		const config = resolveWorkerConfig();
+		const projectId = typeof payload.projectId === 'string' ? payload.projectId : config.projectId;
+		const repositoryId = typeof payload.repositoryId === 'string' ? payload.repositoryId : projectId;
+		const paths = runnerRepositoryPath(config.volumeRoot, repositoryId, options.taskId);
+		await mkdir(paths.bareGit, { recursive: true });
+		await mkdir(paths.worktree, { recursive: true });
+		const graphRefresh = await options.sdk.refreshGraph();
+		const graphVersion = graphRefresh.snapshotRoot;
+		await options.sdk.create({
+			model: 'graph_run',
+			data: {
+				id: `${options.taskId}:graph`,
+				workDayId: String(task?.workDayId ?? task?.work_day_id ?? ''),
+				corpusHash: graphVersion,
+				graphVersion,
+				statsJson: JSON.stringify(graphRefresh),
+				snapshotRef: graphVersion,
+			},
+			actor: 'worker',
+		});
+		if (typeof options.sdk.updateWorkDayGraph === 'function') {
+			await options.sdk.updateWorkDayGraph({
+				id: String(task?.workDayId ?? task?.work_day_id ?? ''),
+				graphVersion,
+				summaryPatch: {
+					graphRefresh: {
+						state: 'completed',
+						graphVersion,
+						snapshotRef: graphVersion,
+						runnerId: config.workerId,
+					},
+				},
+			});
+		}
+		if (typeof options.sdk.recordRepositoryClaim === 'function') {
+			await options.sdk.recordRepositoryClaim({
+				projectId,
+				repositoryId,
+				runnerId: config.workerId,
+				runnerServiceName: config.runnerServiceName,
+				volumeIdentity: config.volumeIdentity,
+				lastSeenCommit: typeof payload.commitSha === 'string' ? payload.commitSha : null,
+				metadata: {
+					bareGit: paths.bareGit,
+					worktree: paths.worktree,
+				},
+			});
+		}
+		return {
+			workerId: options.workerId,
+			queueAttempt: options.queueAttempt,
+			graphVersion,
+			snapshotRef: graphVersion,
+			repositoryId,
+			paths,
+			summary: {
+				status: 'completed',
+				workerId: options.workerId,
+				summary: `Refreshed project graph ${graphVersion}`,
+			},
+		};
+	}
 
 	if (executionKind === 'workflow_dispatch' || executionKind === 'sdk_dispatch') {
 		const namespace = typeof payload.namespace === 'string' ? payload.namespace : 'workflow';
@@ -134,6 +208,21 @@ export async function runWorkerCycle() {
 	const queue = createQueueClient();
 	const config = resolveWorkerConfig();
 	const kernel = new AgentKernel(sdk, resolveServiceRepoRoot());
+	if (typeof sdk.recordWorkerRunner === 'function') {
+		await sdk.recordWorkerRunner({
+			projectId: config.projectId,
+			environment: config.environment as 'local' | 'staging' | 'prod',
+			runnerId: config.workerId,
+			runnerServiceName: config.runnerServiceName,
+			volumeIdentity: config.volumeIdentity,
+			state: 'active',
+			maxLocalWorkers: config.maxLocalWorkers,
+			activeLocalWorkers: 0,
+			metadata: {
+				volumeRoot: config.volumeRoot,
+			},
+		}).catch(() => null);
+	}
 	if (!queue) {
 		if (process.env.TREESEED_LOCAL_DEV_MODE?.trim()) {
 			return { ok: true, processed: 0, idle: true, reason: 'queue_unconfigured' };
@@ -149,8 +238,9 @@ export async function runWorkerCycle() {
 		return { ok: true, processed: 0 };
 	}
 
-	let processed = 0;
-	for (const message of pulled.messages) {
+	const maxLocalWorkers = Number.isFinite(Number(config.maxLocalWorkers)) ? Math.max(1, Number(config.maxLocalWorkers)) : 1;
+	const selectedMessages = pulled.messages.slice(0, maxLocalWorkers);
+	const results = await Promise.all(selectedMessages.map(async (message) => {
 		try {
 			await sdk.claimTask({
 				id: message.body.taskId,
@@ -211,8 +301,7 @@ export async function runWorkerCycle() {
 						actor: 'worker',
 					});
 					await queue.ack([message.leaseId]);
-					processed += 1;
-					continue;
+					return 1;
 				}
 				throw error;
 			}
@@ -244,7 +333,7 @@ export async function runWorkerCycle() {
 			}
 
 			await queue.ack([message.leaseId]);
-			processed += 1;
+			return 1;
 		} catch (error) {
 			const retryDelaySeconds = Math.min(300, Math.max(15, message.attempts * 30));
 			await sdk.failTask({
@@ -255,10 +344,11 @@ export async function runWorkerCycle() {
 				actor: 'worker',
 			}).catch(() => null);
 			await queue.retry([{ leaseId: message.leaseId, delaySeconds: retryDelaySeconds }]);
+			return 0;
 		}
-	}
+	}));
 
-	return { ok: true, processed };
+	return { ok: true, processed: results.reduce((sum, value) => sum + value, 0) };
 }
 
 export async function startWorkerLoop() {

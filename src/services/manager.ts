@@ -22,7 +22,7 @@ import type { CapacityPlan, CapacityTaskExecutionEnvelope } from '@treeseed/sdk'
 import { loadActiveAgentSpecs } from '../agents/spec-loader.ts';
 import { followCursorKey, resolveTriggerDecision } from '../agents/kernel/trigger-resolver.ts';
 import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
-import { createQueuePushClient, createServiceSdk, queueEnvelopeForTask, resolveManagerConfig } from './common.ts';
+import { createQueuePushClient, createServiceSdk, queueEnvelopeForTask, resolveManagerConfig, seedGraphRefreshTask } from './common.ts';
 import {
 	applyInteractiveWakeUpOverride,
 	applyScaleCooldown,
@@ -428,6 +428,13 @@ function normalizePolicyRecord(
 		projectId,
 		environment,
 		schedule: config.defaultSchedule,
+		enabled: true,
+		startCron: envValue('TREESEED_WORKDAY_START_CRON') || '0 9 * * 1-5',
+		durationMinutes: integerFromEnv('TREESEED_WORKDAY_DURATION_MINUTES', 480),
+		maxRunners: config.autoscale.maxWorkers,
+		maxWorkersPerRunner: integerFromEnv('TREESEED_RUNNER_MAX_LOCAL_WORKERS', 4),
+		dailyCreditBudget: config.dailyTaskCreditBudget,
+		closeoutGraceMinutes: integerFromEnv('TREESEED_WORKDAY_CLOSEOUT_GRACE_MINUTES', 15),
 		dailyTaskCreditBudget: config.dailyTaskCreditBudget,
 		maxQueuedTasks: config.maxQueuedTasks,
 		maxQueuedCredits: config.maxQueuedCredits,
@@ -614,20 +621,26 @@ async function openWorkday(
 	if (capacityPlan && capacityPlan.grants.length > 0 && !capacityEnvelope) {
 		return null;
 	}
-	const graphRefresh = await sdk.refreshGraph();
 	const created = await sdk.startWorkDay({
 		projectId: config.projectId,
 		capacityBudget: policy.dailyTaskCreditBudget,
-		graphVersion: graphRefresh.snapshotRoot,
+		graphVersion: null,
 		summary: {
 			openedAt: now.toISOString(),
 			environment: config.environment,
-			graphVersion: graphRefresh.snapshotRoot,
+			graphRefresh: { state: 'queued' },
 			capacityPlan: capacityPlan ? summarizeCapacityPlan(capacityPlan) : null,
 			capacityEnvelope,
 		},
 		actor: 'manager',
 	});
+	if (created.payload) {
+		await seedGraphRefreshTask(sdk, {
+			workDayId: String(created.payload.id),
+			projectId: config.projectId,
+			actor: 'manager',
+		});
+	}
 	return created.payload;
 }
 
@@ -1244,7 +1257,31 @@ async function reconcileManager(options: {
 	const scaler = resolveScaler(config, options.scaler);
 	const now = options.now ?? new Date();
 	const policy = await ensureWorkPolicy(sdk, config);
-	const insideWorkWindow = isWithinWorkWindow(now, policy.schedule);
+	if (policy.enabled === false) {
+		return {
+			ok: true,
+			mode: 'reconcile' as const,
+			managerId: config.managerId,
+			projectId: config.projectId,
+			environment: config.environment,
+			insideWorkWindow: false,
+			workPolicy: policy,
+			workDay: null,
+			prioritySnapshot: null,
+			seededTasks: [],
+			queuedCount: 0,
+			activeLeases: 0,
+			desiredWorkers: 0,
+			scaleResult: { applied: false, provider: 'noop', desiredWorkers: 0, metadata: { reason: 'workday_policy_disabled' } },
+			workdaySummary: null,
+		};
+	}
+	const pendingWorkdayRequests = typeof sdk.listWorkdayRequests === 'function'
+		? ((await sdk.listWorkdayRequests(config.projectId, config.environment, 'pending').catch(() => ({ payload: [] }))).payload ?? []) as Array<Record<string, unknown>>
+		: [];
+	const manualRunRequested = pendingWorkdayRequests.some((entry) => entry.type === 'one_off_run' || entry.type === 'retry_open');
+	const earlyCloseRequested = pendingWorkdayRequests.some((entry) => entry.type === 'early_close');
+	const insideWorkWindow = !earlyCloseRequested && (manualRunRequested || isWithinWorkWindow(now, policy.schedule));
 	let activeWorkDay = await getActiveWorkDay(sdk, config.projectId);
 	let currentSnapshot: PrioritySnapshot | null = null;
 
@@ -1390,6 +1427,9 @@ async function runOpenWorkday(options: {
 	const active = await getActiveWorkDay(sdk, config.projectId);
 	if (active) {
 		return { ok: true, created: false, workDay: active };
+	}
+	if (policy.enabled === false) {
+		return { ok: true, created: false, skipped: true, reason: 'workday_policy_disabled' };
 	}
 	if (!isWithinWorkWindow(now, policy.schedule)) {
 		return { ok: true, created: false, skipped: true, reason: 'outside_work_window' };

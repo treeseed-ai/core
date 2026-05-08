@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { NoopWorkerPoolScaler, RailwayWorkerPoolScaler } from '../../src/services/worker-pool-scaler.ts';
 
 describe('worker pool scaler', () => {
@@ -25,24 +25,12 @@ describe('worker pool scaler', () => {
 		});
 	});
 
-	it('posts a Railway GraphQL scale request when configured', async () => {
-		const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-			data: {
-				serviceInstanceUpdate: {
-					id: 'svc-inst-1',
-				},
-			},
-		}), {
-			status: 200,
-			headers: { 'content-type': 'application/json' },
-		}));
+	it('does not scale Railway replicas under the named runner architecture', async () => {
 		const scaler = new RailwayWorkerPoolScaler({
 			apiToken: 'railway-token',
-			apiUrl: 'https://railway.example.com/graphql/v2',
 			serviceId: 'svc-worker',
 			environmentId: 'env-staging',
 			projectId: 'railway-project-1',
-			fetchImpl: fetchMock,
 		});
 
 		const result = await scaler.scale({
@@ -59,19 +47,13 @@ describe('worker pool scaler', () => {
 			createdAt: '2026-04-15T00:00:00.000Z',
 		});
 
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] ?? [];
-		expect(JSON.parse(String(init?.body))).toMatchObject({
-			variables: {
-				serviceId: 'svc-worker',
-				environmentId: 'env-staging',
-				replicas: 3,
-			},
-		});
 		expect(result).toMatchObject({
-			applied: true,
+			applied: false,
 			provider: 'railway',
 			desiredWorkers: 3,
+			metadata: {
+				reason: 'replica_scaling_obsolete_named_worker_runners_required',
+			},
 		});
 	});
 });

@@ -167,6 +167,31 @@ export async function seedRootTasks(sdk: AgentSdk, workDayId: string) {
 	return created;
 }
 
+export async function seedGraphRefreshTask(
+	sdk: AgentSdk,
+	request: {
+		workDayId: string;
+		projectId: string;
+		repositoryId?: string | null;
+		actor?: string;
+	},
+) {
+	const task = await sdk.createTask({
+		workDayId: request.workDayId,
+		agentId: 'system',
+		type: 'refresh_project_graph',
+		priority: 1000,
+		idempotencyKey: `${request.workDayId}:refresh_project_graph`,
+		payload: {
+			projectId: request.projectId,
+			repositoryId: request.repositoryId ?? request.projectId,
+		},
+		graphVersion: null,
+		actor: request.actor ?? 'manager',
+	});
+	return task.payload;
+}
+
 export async function startAndSeedWorkday(
 	sdk: AgentSdk,
 	request: {
@@ -176,20 +201,26 @@ export async function startAndSeedWorkday(
 		actor?: string;
 	},
 ) {
-	const graphRefresh = await sdk.refreshGraph();
 	const workDay = await sdk.startWorkDay({
 		id: request.id,
 		projectId: request.projectId,
 		capacityBudget: request.capacityBudget,
-		graphVersion: graphRefresh.snapshotRoot,
-		summary: { graphRefresh },
+		graphVersion: null,
+		summary: { graphRefresh: { state: 'queued' } },
 		actor: request.actor ?? 'manager',
 	});
+	const graphTask = workDay.payload
+		? await seedGraphRefreshTask(sdk, {
+			workDayId: String(workDay.payload.id),
+			projectId: request.projectId,
+			actor: request.actor ?? 'manager',
+		})
+		: null;
 	const tasks = workDay.payload ? await seedRootTasks(sdk, String(workDay.payload.id)) : [];
 	return {
 		ok: true,
 		workDay: workDay.payload,
-		seededTasks: tasks.map((entry) => entry.payload).filter(Boolean),
+		seededTasks: [graphTask, ...tasks.map((entry) => entry.payload).filter(Boolean)].filter(Boolean),
 	};
 }
 
@@ -205,7 +236,13 @@ export function resolveManagerConfig() {
 export function resolveWorkerConfig() {
 	return {
 		workerId: process.env.TREESEED_WORKER_ID?.trim() || `worker-${process.pid}`,
-		batchSize: integerFromEnv('TREESEED_QUEUE_BATCH_SIZE', 1),
+		batchSize: integerFromEnv('TREESEED_QUEUE_BATCH_SIZE', integerFromEnv('TREESEED_RUNNER_MAX_LOCAL_WORKERS', 4)),
+		maxLocalWorkers: integerFromEnv('TREESEED_RUNNER_MAX_LOCAL_WORKERS', 4),
+		runnerServiceName: process.env.TREESEED_RUNNER_SERVICE_NAME?.trim() || process.env.RAILWAY_SERVICE_NAME?.trim() || `worker-runner-${process.pid}`,
+		volumeRoot: process.env.TREESEED_RUNNER_VOLUME_ROOT?.trim() || process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim() || '.treeseed-runner',
+		volumeIdentity: process.env.TREESEED_RUNNER_VOLUME_ID?.trim() || process.env.RAILWAY_VOLUME_ID?.trim() || 'local-runner-volume',
+		projectId: process.env.TREESEED_PROJECT_ID?.trim() || 'treeseed-market',
+		environment: process.env.TREESEED_DEPLOY_ENVIRONMENT?.trim() || (process.env.NODE_ENV === 'production' ? 'prod' : 'local'),
 		visibilityTimeoutMs: integerFromEnv('TREESEED_QUEUE_VISIBILITY_TIMEOUT_MS', 120000),
 		pollIntervalMs: integerFromEnv('TREESEED_WORKER_POLL_INTERVAL_MS', 5000),
 		leaseSeconds: integerFromEnv('TREESEED_TASK_LEASE_SECONDS', 120),

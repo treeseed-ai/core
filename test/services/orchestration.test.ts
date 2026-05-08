@@ -59,7 +59,12 @@ describe('service orchestration helpers', () => {
 			ok: true,
 			workDay: { id: 'workday-1' },
 		});
-		expect((sdk.createTask as any).mock.calls).toHaveLength(2);
+		expect(sdk.refreshGraph).not.toHaveBeenCalled();
+		expect((sdk.createTask as any).mock.calls).toHaveLength(3);
+		expect((sdk.createTask as any).mock.calls[0]?.[0]).toMatchObject({
+			type: 'refresh_project_graph',
+			idempotencyKey: 'workday-1:refresh_project_graph',
+		});
 	});
 
 	it('enqueues a task directly through the queue client and records queued state', async () => {

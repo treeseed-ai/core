@@ -8,27 +8,12 @@ export interface RailwayWorkerPoolScalerOptions {
 	serviceId?: string | null;
 	environmentId?: string | null;
 	projectId?: string | null;
-	fetchImpl?: typeof fetch;
-	mutation?: string | null;
 }
 
 function envValue(name: string) {
 	const value = process.env[name]?.trim();
 	return value ? value : '';
 }
-
-const DEFAULT_RAILWAY_API_URL = 'https://backboard.railway.com/graphql/v2';
-const DEFAULT_SCALE_MUTATION = `
-mutation TreeseedScaleService($serviceId: String!, $environmentId: String!, $replicas: Int!) {
-	serviceInstanceUpdate(
-		serviceId: $serviceId
-		environmentId: $environmentId
-		input: { numReplicas: $replicas }
-	) {
-		id
-	}
-}
-`.trim();
 
 export class NoopWorkerPoolScaler implements WorkerPoolScaler {
 	async scale(decision: ScaleDecision): Promise<WorkerPoolScaleResult> {
@@ -45,16 +30,12 @@ export class NoopWorkerPoolScaler implements WorkerPoolScaler {
 
 export class RailwayWorkerPoolScaler implements WorkerPoolScaler {
 	private readonly apiToken: string | null;
-	private readonly apiUrl: string;
 	private readonly serviceId: string | null;
 	private readonly environmentId: string | null;
 	private readonly projectId: string | null;
-	private readonly fetchImpl: typeof fetch;
-	private readonly mutation: string;
 
 	constructor(options: RailwayWorkerPoolScalerOptions = {}) {
 		this.apiToken = options.apiToken?.trim() || envValue('RAILWAY_API_TOKEN') || null;
-		this.apiUrl = options.apiUrl?.trim() || envValue('TREESEED_RAILWAY_API_URL') || DEFAULT_RAILWAY_API_URL;
 		this.serviceId = options.serviceId?.trim()
 			|| envValue('TREESEED_RAILWAY_WORKER_SERVICE_ID')
 			|| envValue('TREESEED_WORKER_SERVICE_ID')
@@ -65,63 +46,16 @@ export class RailwayWorkerPoolScaler implements WorkerPoolScaler {
 		this.projectId = options.projectId?.trim()
 			|| envValue('TREESEED_RAILWAY_PROJECT_ID')
 			|| null;
-		this.fetchImpl = options.fetchImpl ?? fetch;
-		this.mutation = options.mutation?.trim()
-			|| envValue('TREESEED_RAILWAY_SCALE_MUTATION')
-			|| DEFAULT_SCALE_MUTATION;
-	}
-
-	private configured() {
-		return Boolean(this.apiToken && this.serviceId && this.environmentId);
 	}
 
 	async scale(decision: ScaleDecision): Promise<WorkerPoolScaleResult> {
-		if (!this.configured() || !this.apiToken || !this.serviceId || !this.environmentId) {
-			return {
-				applied: false,
-				provider: 'railway',
-				desiredWorkers: decision.desiredWorkers,
-				metadata: {
-					reason: 'railway_scaler_unconfigured',
-					projectId: this.projectId,
-					serviceId: this.serviceId,
-					environmentId: this.environmentId,
-				},
-			};
-		}
-
-		const response = await this.fetchImpl(this.apiUrl, {
-			method: 'POST',
-			headers: {
-				authorization: `Bearer ${this.apiToken}`,
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({
-				query: this.mutation,
-				variables: {
-					serviceId: this.serviceId,
-					environmentId: this.environmentId,
-					replicas: decision.desiredWorkers,
-				},
-			}),
-		});
-
-		const payload = await response.json().catch(() => ({})) as {
-			data?: Record<string, unknown>;
-			errors?: Array<{ message?: string }>;
-		};
-		if (!response.ok || (Array.isArray(payload.errors) && payload.errors.length > 0)) {
-			throw new Error(
-				payload.errors?.[0]?.message
-				?? `Railway worker scale request failed with ${response.status}.`,
-			);
-		}
-
 		return {
-			applied: true,
+			applied: false,
 			provider: 'railway',
 			desiredWorkers: decision.desiredWorkers,
 			metadata: {
+				reason: 'replica_scaling_obsolete_named_worker_runners_required',
+				hasApiToken: Boolean(this.apiToken),
 				projectId: this.projectId,
 				serviceId: this.serviceId,
 				environmentId: this.environmentId,
