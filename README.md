@@ -52,8 +52,8 @@ npm run dev
 npm run dev:web
 npm run dev:api
 npm run dev:worker
-npm run dev:workday-start
-npm run dev:workday-report
+npm run dev:workday-manager
+npm run dev:worker-runner
 npm run fixtures:check
 npm run build:dist
 npm run test:unit
@@ -67,7 +67,7 @@ What they do:
 - `dev`: starts the integrated Astro UI and Hono API local runtime from `core`
 - `dev:web`: starts only the Astro UI dev surface through the `core` runtime
 - `dev:api`: starts only the Hono API dev surface through the `core` runtime
-- `dev:worker`, `dev:workday-start`, `dev:workday-report`: start the worker-service entrypoints from `core`
+- `dev:workday-manager`, `dev:worker-runner`: start the scheduled manager and worker runner entrypoints from `core`
 - `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
 - `build:dist`: builds the publishable `dist/` package output
 - `test:unit`: runs package unit tests with Vitest

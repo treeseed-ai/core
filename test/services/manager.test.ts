@@ -14,6 +14,11 @@ function createReporter() {
 		registerAgentPoolHeartbeat: vi.fn(async () => undefined),
 		reportScaleDecision: vi.fn(async () => undefined),
 		reportWorkdaySummary: vi.fn(async () => undefined),
+		getProjectCapacityPlan: vi.fn(async () => null),
+		createCapacityReservation: vi.fn(async () => null),
+		reportCapacityUsage: vi.fn(async () => undefined),
+		reportCapacityRoutingDecision: vi.fn(async () => null),
+		createApprovalRequest: vi.fn(async () => null),
 	};
 }
 

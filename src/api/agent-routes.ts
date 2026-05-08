@@ -86,17 +86,7 @@ export function registerAgentRoutes(
 	app.post(withPrefix(prefix, '/workdays/start'), async (c) => {
 		const unauthorized = authorizeRequest(c as ApiContext, options);
 		if (unauthorized) return unauthorized;
-		const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-		const graphRefresh = await options.sdk.refreshGraph();
-		const result = await options.sdk.startWorkDay({
-			id: typeof body.id === 'string' ? body.id : undefined,
-			projectId: String(body.projectId ?? options.projectId ?? 'treeseed-market'),
-			capacityBudget: body.capacityBudget === undefined ? undefined : Number(body.capacityBudget),
-			graphVersion: typeof body.graphVersion === 'string' ? body.graphVersion : graphRefresh.snapshotRoot,
-			summary: (body.summary as Record<string, unknown> | undefined) ?? { graphRefresh },
-			actor: actor(body, defaultActor),
-		});
-		return c.json(result);
+		return jsonError(c, 410, 'Starting workdays through /agent/workdays/start is deprecated. Use project workday policy and workday requests instead.');
 	});
 
 	app.post(withPrefix(prefix, '/workdays/:id/close'), async (c) => {

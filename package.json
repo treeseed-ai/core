@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.6.38",
+  "version": "0.6.39",
   "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -42,12 +42,14 @@
     "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
     "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
     "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
-    "dev:manager": "node ./scripts/run-ts.mjs ./src/services/manager.ts",
-    "dev:worker": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
+    "dev:workday-manager": "node ./scripts/run-ts.mjs ./src/services/workday-manager.ts",
+    "dev:worker-runner": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
+    "dev:manager": "npm run dev:workday-manager",
+    "dev:worker": "npm run dev:worker-runner",
     "dev:agents": "node ./scripts/run-ts.mjs ./src/services/agents.ts",
     "dev:remote-runner": "node ./scripts/run-ts.mjs ./src/services/remote-runner.ts",
-    "dev:workday-start": "node ./scripts/run-ts.mjs ./src/services/workday-start.ts",
-    "dev:workday-report": "node ./scripts/run-ts.mjs ./src/services/workday-report.ts",
+    "dev:workday-start": "npm run dev:workday-manager",
+    "dev:workday-report": "npm run dev:workday-manager",
     "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
     "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
@@ -76,7 +78,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.6.39",
+    "@treeseed/sdk": "0.6.40",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "hono": "^4.8.2",
@@ -186,6 +188,10 @@
     "./services/remote-runner": {
       "types": "./dist/services/remote-runner.d.ts",
       "default": "./dist/services/remote-runner.js"
+    },
+    "./services/workday-manager": {
+      "types": "./dist/services/workday-manager.d.ts",
+      "default": "./dist/services/workday-manager.js"
     },
     "./services/workday-start": {
       "types": "./dist/services/workday-start.d.ts",

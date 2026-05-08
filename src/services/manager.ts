@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import type { AgentRuntimeSpec } from '@treeseed/sdk/types/agents';
 import {
 	createControlPlaneReporter,
+	reserveCreditsForEstimate,
+	selectBestCapacityLane,
+	summarizeCapacityPlan,
 	type ControlPlaneReporter,
 	type PrioritySnapshot,
 	type PrioritySnapshotItem,
@@ -15,10 +18,11 @@ import {
 	type WorkerPoolScaleResult,
 	type WorkerPoolScaler,
 } from '@treeseed/sdk';
+import type { CapacityPlan, CapacityTaskExecutionEnvelope } from '@treeseed/sdk';
 import { loadActiveAgentSpecs } from '../agents/spec-loader.ts';
 import { followCursorKey, resolveTriggerDecision } from '../agents/kernel/trigger-resolver.ts';
 import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
-import { createQueuePushClient, createServiceSdk, queueEnvelopeForTask, resolveManagerConfig } from './common.ts';
+import { createQueuePushClient, createServiceSdk, queueEnvelopeForTask, resolveManagerConfig, seedGraphRefreshTask } from './common.ts';
 import {
 	applyInteractiveWakeUpOverride,
 	applyScaleCooldown,
@@ -424,6 +428,13 @@ function normalizePolicyRecord(
 		projectId,
 		environment,
 		schedule: config.defaultSchedule,
+		enabled: true,
+		startCron: envValue('TREESEED_WORKDAY_START_CRON') || '0 9 * * 1-5',
+		durationMinutes: integerFromEnv('TREESEED_WORKDAY_DURATION_MINUTES', 480),
+		maxRunners: config.autoscale.maxWorkers,
+		maxWorkersPerRunner: integerFromEnv('TREESEED_RUNNER_MAX_LOCAL_WORKERS', 4),
+		dailyCreditBudget: config.dailyTaskCreditBudget,
+		closeoutGraceMinutes: integerFromEnv('TREESEED_WORKDAY_CLOSEOUT_GRACE_MINUTES', 15),
 		dailyTaskCreditBudget: config.dailyTaskCreditBudget,
 		maxQueuedTasks: config.maxQueuedTasks,
 		maxQueuedCredits: config.maxQueuedCredits,
@@ -597,20 +608,121 @@ async function openWorkday(
 	config: ManagerConfig,
 	policy: WorkdayPolicy,
 	now: Date,
+	reporter?: ControlPlaneReporter,
 ) {
-	const graphRefresh = await sdk.refreshGraph();
+	const capacityPlan = await reporter?.getProjectCapacityPlan(config.environment as ProjectEnvironmentName).catch(() => null) ?? null;
+	const capacityEnvelope = await reserveWorkdayCapacity({
+		config,
+		policy,
+		capacityPlan,
+		reporter,
+		now,
+	});
+	if (capacityPlan && capacityPlan.grants.length > 0 && !capacityEnvelope) {
+		return null;
+	}
 	const created = await sdk.startWorkDay({
 		projectId: config.projectId,
 		capacityBudget: policy.dailyTaskCreditBudget,
-		graphVersion: graphRefresh.snapshotRoot,
+		graphVersion: null,
 		summary: {
 			openedAt: now.toISOString(),
 			environment: config.environment,
-			graphVersion: graphRefresh.snapshotRoot,
+			graphRefresh: { state: 'queued' },
+			capacityPlan: capacityPlan ? summarizeCapacityPlan(capacityPlan) : null,
+			capacityEnvelope,
 		},
 		actor: 'manager',
 	});
+	if (created.payload) {
+		await seedGraphRefreshTask(sdk, {
+			workDayId: String(created.payload.id),
+			projectId: config.projectId,
+			actor: 'manager',
+		});
+	}
 	return created.payload;
+}
+
+async function reserveWorkdayCapacity(options: {
+	config: ManagerConfig;
+	policy: WorkdayPolicy;
+	capacityPlan: CapacityPlan | null;
+	reporter?: ControlPlaneReporter;
+	now: Date;
+}): Promise<CapacityTaskExecutionEnvelope | null> {
+	if (!options.capacityPlan || options.capacityPlan.grants.length === 0 || options.capacityPlan.lanes.length === 0) {
+		return null;
+	}
+	const activeGrants = options.capacityPlan.grants.filter((grant) => grant.state === 'active');
+	const candidates = activeGrants.flatMap((grant) => {
+		const lane = grant.laneId
+			? options.capacityPlan?.lanes.find((entry) => entry.id === grant.laneId)
+			: options.capacityPlan?.lanes.find((entry) => entry.capacityProviderId === grant.capacityProviderId);
+		if (!lane) return [];
+		return [{
+			lane,
+			grant,
+			remainingCredits: grant.dailyCreditLimit ?? options.capacityPlan?.remaining.dailyCredits ?? null,
+			taskKind: 'workday',
+		}];
+	});
+	const selected = selectBestCapacityLane(candidates).selected;
+	if (!selected || !options.reporter?.enabled) {
+		return null;
+	}
+	const grant = activeGrants.find((entry) => entry.laneId === selected.laneId || entry.capacityProviderId === selected.capacityProviderId);
+	const estimate = reserveCreditsForEstimate({
+		taskKind: 'workday',
+		confidence: 'medium',
+		estimatedCreditsP50: options.policy.dailyTaskCreditBudget,
+		estimatedCreditsP90: options.policy.dailyTaskCreditBudget,
+	});
+	const reservation = await options.reporter.createCapacityReservation({
+		capacityProviderId: selected.capacityProviderId,
+		laneId: selected.laneId,
+		teamId: options.capacityPlan.teamId,
+		projectId: options.config.projectId,
+		workDayId: null,
+		taskId: null,
+		reservedCredits: estimate.reservedCredits,
+		metadata: {
+			environment: options.config.environment,
+			grantId: grant?.id ?? null,
+			createdBy: 'manager.openWorkday',
+			createdAt: options.now.toISOString(),
+		},
+	}).catch(() => null);
+	if (!reservation) {
+		return null;
+	}
+	await options.reporter.reportCapacityRoutingDecision({
+		projectId: options.config.projectId,
+		selectedProviderId: selected.capacityProviderId,
+		selectedLaneId: selected.laneId,
+		decision: 'workday_capacity_reserved',
+		reason: 'Selected eligible capacity lane for workday reservation.',
+		scores: { selected },
+		candidates: candidates.map((candidate) => ({
+			laneId: candidate.lane.id,
+			capacityProviderId: candidate.lane.capacityProviderId,
+			grantId: candidate.grant?.id ?? null,
+		})),
+	}).catch(() => null);
+	return {
+		providerId: selected.capacityProviderId,
+		laneId: selected.laneId,
+		reservationIds: [reservation.id],
+		maxCredits: estimate.reservedCredits,
+		approvalBehavior: 'pause_task',
+		pausePolicy: {
+			onOverrun: 'pause_for_approval',
+		},
+		metadata: {
+			grantId: grant?.id ?? null,
+			scarcityLevel: options.capacityPlan.lanes.find((lane) => lane.id === selected.laneId)?.scarcityLevel ?? null,
+		},
+	};
 }
 
 function remainingCredits(workDay: WorkDayRecord | null, policy: WorkdayPolicy) {
@@ -620,6 +732,28 @@ function remainingCredits(workDay: WorkDayRecord | null, policy: WorkdayPolicy) 
 	const budget = Number(workDay.capacityBudget ?? policy.dailyTaskCreditBudget ?? 0);
 	const used = Number(workDay.capacityUsed ?? 0);
 	return Math.max(0, budget - used);
+}
+
+function capacityEnvelopeFromWorkDay(workDay: WorkDayRecord, maxCredits?: number): CapacityTaskExecutionEnvelope | null {
+	const summary = parseJsonString(workDay.summaryJson ?? workDay.summary_json, {});
+	const envelope = asRecord(summary.capacityEnvelope);
+	if (!Object.keys(envelope).length) {
+		return maxCredits
+			? {
+				maxCredits,
+				approvalBehavior: 'pause_task',
+				pausePolicy: { onOverrun: 'pause_for_approval' },
+			}
+			: null;
+	}
+	return {
+		...envelope,
+		maxCredits: maxCredits ?? readNumber(envelope, 'maxCredits') ?? null,
+		metadata: {
+			...asRecord(envelope.metadata),
+			inheritedFromWorkDay: true,
+		},
+	} as CapacityTaskExecutionEnvelope;
 }
 
 function chooseAgentId(agentSpecs: Array<Record<string, unknown>>) {
@@ -718,6 +852,7 @@ async function topUpQueuedTasks(
 				estimatedCredits,
 				priority: item.priority,
 				reasons: item.reasons,
+				capacityEnvelope: capacityEnvelopeFromWorkDay(workDay, estimatedCredits),
 				createdAt: now.toISOString(),
 			},
 			graphVersion: typeof workDay.graphVersion === 'string' ? workDay.graphVersion : null,
@@ -850,6 +985,7 @@ async function materializeAgentTriggerTasks(
 					executionKind: 'agent_trigger',
 					agentSlug: agent.slug,
 					invocation,
+					capacityEnvelope: capacityEnvelopeFromWorkDay(workDay),
 					createdAt: now.toISOString(),
 				},
 				graphVersion: typeof workDay.graphVersion === 'string' ? workDay.graphVersion : null,
@@ -1008,26 +1144,48 @@ async function reportWorkdaySummary(
 	scaleResult: WorkerPoolScaleResult,
 ) {
 	const summary = await buildWorkdaySummary(sdk, config, workDay, policy, currentSnapshot, scaleDecision, scaleResult);
+	const capacityPlan = await reporter.getProjectCapacityPlan(config.environment as ProjectEnvironmentName).catch(() => null);
+	const enrichedSummary = {
+		...summary,
+		capacity: capacityPlan
+			? {
+				...summarizeCapacityPlan(capacityPlan),
+				providerSplit: capacityPlan.activeReservations
+					.filter((reservation) => reservation.workDayId === String(workDay.id ?? '') || reservation.workDayId === null)
+					.map((reservation) => ({
+						providerId: reservation.capacityProviderId,
+						laneId: reservation.laneId,
+						state: reservation.state,
+						reservedCredits: reservation.reservedCredits,
+						consumedCredits: reservation.consumedCredits,
+						reservedProviderUnits: reservation.reservedProviderUnits,
+						consumedProviderUnits: reservation.consumedProviderUnits,
+						reservedUsd: reservation.reservedUsd,
+						consumedUsd: reservation.consumedUsd,
+					})),
+			}
+			: null,
+	};
 	const snapshot = writeWorkdayContentSnapshot({
 		repoRoot: process.env.TREESEED_AGENT_REPO_ROOT?.trim() || process.cwd(),
 		projectId: config.projectId,
 		teamId: config.teamId,
 		environment: config.environment,
 		workDay,
-		summary,
+		summary: enrichedSummary,
 		prioritySnapshot: currentSnapshot,
 		scaleDecision,
 		scaleResult,
-		tasks: (Array.isArray(summary.taskItems) ? summary.taskItems : []) as WorkdayContentTaskSummary[],
-		changedFiles: Array.isArray(summary.changedFiles) ? summary.changedFiles.filter((entry): entry is string => typeof entry === 'string') : [],
-		releases: (Array.isArray(summary.releases) ? summary.releases : []) as WorkdayContentReleaseRecord[],
-		generatedAt: String(summary.generatedAt ?? new Date().toISOString()),
+		tasks: (Array.isArray(enrichedSummary.taskItems) ? enrichedSummary.taskItems : []) as WorkdayContentTaskSummary[],
+		changedFiles: Array.isArray(enrichedSummary.changedFiles) ? enrichedSummary.changedFiles.filter((entry): entry is string => typeof entry === 'string') : [],
+		releases: (Array.isArray(enrichedSummary.releases) ? enrichedSummary.releases : []) as WorkdayContentReleaseRecord[],
+		generatedAt: String(enrichedSummary.generatedAt ?? new Date().toISOString()),
 	});
 	const report = await sdk.createReport({
 		workDayId: String(workDay.id ?? ''),
 		kind: 'workday_summary',
 		body: {
-			...summary,
+			...enrichedSummary,
 			contentSnapshot: {
 				relativePath: snapshot.relativePath,
 				slug: snapshot.slug,
@@ -1036,7 +1194,7 @@ async function reportWorkdaySummary(
 			},
 		},
 		renderedRef: snapshot.relativePath,
-		sentAt: String(summary.generatedAt ?? new Date().toISOString()),
+		sentAt: String(enrichedSummary.generatedAt ?? new Date().toISOString()),
 		actor: 'manager',
 	});
 	await reporter.reportWorkdaySummary({
@@ -1046,7 +1204,7 @@ async function reportWorkdaySummary(
 		state: String(workDay.state ?? 'active'),
 		startedAt: readString(workDay, 'startedAt', 'started_at') || null,
 		endedAt: readString(workDay, 'endedAt', 'ended_at') || null,
-		summary,
+		summary: enrichedSummary,
 		metadata: {
 			projectId: config.projectId,
 			contentSnapshot: {
@@ -1058,7 +1216,7 @@ async function reportWorkdaySummary(
 		},
 	});
 	return {
-		...summary,
+		...enrichedSummary,
 		contentSnapshot: {
 			relativePath: snapshot.relativePath,
 			slug: snapshot.slug,
@@ -1099,14 +1257,38 @@ async function reconcileManager(options: {
 	const scaler = resolveScaler(config, options.scaler);
 	const now = options.now ?? new Date();
 	const policy = await ensureWorkPolicy(sdk, config);
-	const insideWorkWindow = isWithinWorkWindow(now, policy.schedule);
+	if (policy.enabled === false) {
+		return {
+			ok: true,
+			mode: 'reconcile' as const,
+			managerId: config.managerId,
+			projectId: config.projectId,
+			environment: config.environment,
+			insideWorkWindow: false,
+			workPolicy: policy,
+			workDay: null,
+			prioritySnapshot: null,
+			seededTasks: [],
+			queuedCount: 0,
+			activeLeases: 0,
+			desiredWorkers: 0,
+			scaleResult: { applied: false, provider: 'noop', desiredWorkers: 0, metadata: { reason: 'workday_policy_disabled' } },
+			workdaySummary: null,
+		};
+	}
+	const pendingWorkdayRequests = typeof sdk.listWorkdayRequests === 'function'
+		? ((await sdk.listWorkdayRequests(config.projectId, config.environment, 'pending').catch(() => ({ payload: [] }))).payload ?? []) as Array<Record<string, unknown>>
+		: [];
+	const manualRunRequested = pendingWorkdayRequests.some((entry) => entry.type === 'one_off_run' || entry.type === 'retry_open');
+	const earlyCloseRequested = pendingWorkdayRequests.some((entry) => entry.type === 'early_close');
+	const insideWorkWindow = !earlyCloseRequested && (manualRunRequested || isWithinWorkWindow(now, policy.schedule));
 	let activeWorkDay = await getActiveWorkDay(sdk, config.projectId);
 	let currentSnapshot: PrioritySnapshot | null = null;
 
 	if (!activeWorkDay && insideWorkWindow && policy.dailyTaskCreditBudget > 0) {
 		const previewSnapshot = await buildPrioritySnapshot(sdk, config, policy, now, null);
 		if ((previewSnapshot?.items.length ?? 0) > 0) {
-			activeWorkDay = await openWorkday(sdk, config, policy, now);
+			activeWorkDay = await openWorkday(sdk, config, policy, now, reporter);
 			currentSnapshot = activeWorkDay
 				? await buildPrioritySnapshot(sdk, config, policy, now, String(activeWorkDay.id ?? ''))
 				: previewSnapshot;
@@ -1234,20 +1416,25 @@ async function reconcileManager(options: {
 async function runOpenWorkday(options: {
 	sdk?: ManagerSdk;
 	config?: ManagerConfig;
+	reporter?: ControlPlaneReporter;
 	now?: Date;
 }) {
 	const config = options.config ?? resolveManagerServiceConfig();
 	const sdk = options.sdk ?? createServiceSdk();
+	const reporter = await resolveReporter(options.reporter);
 	const now = options.now ?? new Date();
 	const policy = await ensureWorkPolicy(sdk, config);
 	const active = await getActiveWorkDay(sdk, config.projectId);
 	if (active) {
 		return { ok: true, created: false, workDay: active };
 	}
+	if (policy.enabled === false) {
+		return { ok: true, created: false, skipped: true, reason: 'workday_policy_disabled' };
+	}
 	if (!isWithinWorkWindow(now, policy.schedule)) {
 		return { ok: true, created: false, skipped: true, reason: 'outside_work_window' };
 	}
-	const workDay = await openWorkday(sdk, config, policy, now);
+	const workDay = await openWorkday(sdk, config, policy, now, reporter);
 	const prioritySnapshot = workDay
 		? await buildPrioritySnapshot(sdk, config, policy, now, String(workDay.id ?? ''))
 		: null;

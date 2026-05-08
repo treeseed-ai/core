@@ -650,6 +650,7 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 				reason: 'interactive_enqueue',
 			}));
 			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes('backboard.railway.com/graphql'))).toBe(true);
 		} finally {
 			vi.unstubAllEnvs();
 			vi.unstubAllGlobals();
@@ -905,9 +906,8 @@ apiRuntimeDescribe('@treeseed/core api runtime', () => {
 			},
 			body: JSON.stringify({ capacityBudget: 25 }),
 		});
-		expect(started.status).toBe(200);
-		const startedPayload = await json(started);
-		const workDayId = startedPayload.payload.id;
+		expect(started.status).toBe(410);
+		const workDayId = 'workday-1';
 
 		const task = await app.request('/agent/tasks', {
 			method: 'POST',

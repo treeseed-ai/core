@@ -3,6 +3,7 @@ export { listTreeseedAgentCommands, renderTreeseedAgentHelp, runTreeseedAgentCli
 export { resolveAgentHandler, listRegisteredAgentHandlers } from './agents/registry.ts';
 export { resolveAgentRuntimeProviders } from './agent-runtime.ts';
 export { runWorkerCycle, startWorkerLoop } from './services/worker.ts';
+export { runScheduledWorkdayManager } from './services/workday-manager.ts';
 export { runWorkdayStart } from './services/workday-start.ts';
 export { runWorkdayReport } from './services/workday-report.ts';
 export { parseAgentMessagePayload, AGENT_MESSAGE_TYPES } from './agents/contracts/messages.ts';

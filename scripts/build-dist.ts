@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const srcRoot = resolve(packageRoot, 'src');
 const scriptsRoot = resolve(packageRoot, 'scripts');
 const distRoot = resolve(packageRoot, 'dist');
+const workspaceSdkDistRoot = resolve(packageRoot, '..', 'sdk', 'dist');
 
 const JS_SOURCE_EXTENSIONS = new Set(['.ts', '.ts']);
 const COPY_EXTENSIONS = new Set(['.astro', '.css', '.d.ts', '.js', '.json', '.jsonc', '.ts', '.yaml', '.yml']);
@@ -245,6 +246,20 @@ function rewriteDeclarations() {
 	}
 }
 
+function relativePathForTsconfig(fromRoot, targetPath) {
+	return relative(fromRoot, targetPath).replaceAll('\\', '/');
+}
+
+function resolveWorkspaceSdkDeclarationPaths() {
+	if (!existsSync(resolve(workspaceSdkDistRoot, 'index.d.ts'))) {
+		return null;
+	}
+	return {
+		'@treeseed/sdk': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'index.d.ts'))],
+		'@treeseed/sdk/*': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, '*.d.ts'))],
+	};
+}
+
 function emitTypeDeclarations() {
 	const sourceFiles = [
 		resolve(srcRoot, 'types/astro-build.d.ts'),
@@ -273,11 +288,13 @@ function emitTypeDeclarations() {
 
 	const compilerOptions = {
 		allowImportingTsExtensions: true,
+		baseUrl: packageRoot,
 		declaration: true,
 		emitDeclarationOnly: true,
 		module: ts.ModuleKind.ESNext,
 		moduleResolution: ts.ModuleResolutionKind.Bundler,
 		outDir: distRoot,
+		paths: resolveWorkspaceSdkDeclarationPaths() ?? undefined,
 		rootDir: srcRoot,
 		skipLibCheck: true,
 		target: ts.ScriptTarget.ES2022,
