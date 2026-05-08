@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.49] - 2026-05-08
+
+### Dependencies
+
+- Release @treeseed/core 0.6.49.
+
 ## [0.6.48] - 2026-05-08
 
 ### Dependencies
