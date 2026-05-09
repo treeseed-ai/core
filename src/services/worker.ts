@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentTriggerInvocation } from '../agents/runtime-types.ts';
@@ -36,6 +36,55 @@ function runnerRepositoryPath(volumeRoot: string, repositoryId: string, taskId: 
 	};
 }
 
+function runnerComposedWorkspacePath(volumeRoot: string, hubId: string) {
+	const workspaceRoot = join(volumeRoot, 'workspaces', hubId);
+	return {
+		root: workspaceRoot,
+		parent: join(workspaceRoot, 'workspace-root'),
+		site: join(workspaceRoot, 'site'),
+		content: join(workspaceRoot, 'content'),
+		manifest: join(workspaceRoot, '.treeseed', 'workspace.json'),
+	};
+}
+
+async function ensureRunnerComposedWorkspace(volumeRoot: string, task: Record<string, unknown>) {
+	const payload = parseTaskPayload(task);
+	const workspace = asRecord(payload.workspace);
+	const hubId = String(workspace.hubId ?? payload.projectId ?? task.projectId ?? '').trim();
+	if (!hubId) return null;
+	const paths = runnerComposedWorkspacePath(volumeRoot, hubId);
+	await mkdir(paths.parent, { recursive: true });
+	await mkdir(paths.site, { recursive: true });
+	await mkdir(paths.content, { recursive: true });
+	await mkdir(join(paths.root, '.treeseed'), { recursive: true });
+	await writeFile(paths.manifest, `${JSON.stringify({
+		schemaVersion: 1,
+		kind: 'treeseed_composed_workspace',
+		hubId,
+		softwareRepository: workspace.softwareRepository ?? null,
+		contentRepository: workspace.contentRepository ?? null,
+		parentRepository: workspace.parentRepository ?? null,
+		paths: {
+			workspaceRoot: paths.parent,
+			site: paths.site,
+			content: paths.content,
+		},
+		allowedWriteTargets: Array.isArray(workspace.allowedWriteTargets) ? workspace.allowedWriteTargets : ['content'],
+		credentialSessionScopes: workspace.credentialSessionScopes ?? {
+			software: ['repository:software'],
+			content: ['repository:content'],
+			parentWorkspace: [],
+		},
+		credentialScopes: workspace.credentialScopes ?? {
+			software: ['repository:software'],
+			content: ['repository:content'],
+			parentWorkspace: [],
+		},
+		contentOverlay: workspace.contentOverlay ?? 'src_content_when_present',
+	}, null, 2)}\n`, 'utf8');
+	return paths;
+}
+
 class WorkerPausedForApproval extends Error {
 	constructor(readonly request: Record<string, unknown>) {
 		super(String(request.summary ?? request.title ?? 'Task paused for approval.'));
@@ -48,10 +97,15 @@ async function executeQueuedTask(options: {
 	taskId: string;
 	workerId: string;
 	queueAttempt: number;
+	volumeRoot: string;
 }) {
 	const context = await buildTaskContext(options.sdk, options.taskId);
 	const task = context.task as Record<string, unknown> | null;
 	const payload = parseTaskPayload(task);
+	await ensureRunnerComposedWorkspace(options.volumeRoot, {
+		...(task ?? {}),
+		payloadJson: JSON.stringify(payload),
+	});
 	const capacityEnvelope = readCapacityEnvelope(payload);
 	const explicitApproval = asRecord(payload.approvalRequest);
 	if (Object.keys(explicitApproval).length > 0 || capacityEnvelope?.maxCredits === 0) {
@@ -268,6 +322,7 @@ export async function runWorkerCycle() {
 					taskId: message.body.taskId,
 					workerId: config.workerId,
 					queueAttempt: message.attempts,
+					volumeRoot: config.volumeRoot,
 				});
 			} catch (error) {
 				if (error instanceof WorkerPausedForApproval) {

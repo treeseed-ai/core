@@ -1,18 +1,18 @@
 import {
-	executeKnowledgeCoopManagedLaunch,
-	validateKnowledgeCoopManagedLaunchPrerequisites,
-	type KnowledgeCoopManagedLaunchInput,
-	type KnowledgeCoopManagedLaunchResult,
-	type KnowledgeCoopLaunchPreflightReport,
+	executeKnowledgeHubProviderLaunch,
+	validateKnowledgeHubProviderLaunchPrerequisites,
+	type KnowledgeHubProviderLaunchInput,
+	type KnowledgeHubProviderLaunchResult,
+	type KnowledgeHubProviderLaunchPreflightReport,
 } from '@treeseed/sdk';
 
 export {
-	executeKnowledgeCoopManagedLaunch,
-	validateKnowledgeCoopManagedLaunchPrerequisites,
+	executeKnowledgeHubProviderLaunch,
+	validateKnowledgeHubProviderLaunchPrerequisites,
 };
 
 export type {
-	KnowledgeCoopManagedLaunchInput,
-	KnowledgeCoopManagedLaunchResult,
-	KnowledgeCoopLaunchPreflightReport,
+	KnowledgeHubProviderLaunchInput,
+	KnowledgeHubProviderLaunchResult,
+	KnowledgeHubProviderLaunchPreflightReport,
 };
