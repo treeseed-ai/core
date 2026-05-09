@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0] - 2026-05-09
+
+### Dependencies
+
+- refactor(core): update launch types and enhance remote runner logic (797153ff64e4)
+- Release @treeseed/core 0.7.0.
+
 ## [0.6.50] - 2026-05-09
 
 ### Dependencies
