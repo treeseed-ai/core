@@ -15,8 +15,8 @@ export { createTreeseedApiApp } from './api/app';
 export { createRailwayTreeseedApiServer } from './api/railway';
 export { resolveApiConfig } from './api/config';
 export {
-	executeKnowledgeCoopManagedLaunch,
-	validateKnowledgeCoopManagedLaunchPrerequisites,
+	executeKnowledgeHubProviderLaunch,
+	validateKnowledgeHubProviderLaunchPrerequisites,
 } from './launch';
 export {
 	createTreeseedIntegratedDevPlan,
