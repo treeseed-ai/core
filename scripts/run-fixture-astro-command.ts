@@ -59,6 +59,7 @@ function ensureFixtureWorkspacePackage(packageName: string, workspaceDir: string
 }
 
 ensureFixtureWorkspacePackage('@treeseed/sdk', resolve(packageRoot, '..', 'sdk'));
+ensureFixtureWorkspacePackage('@treeseed/agent', resolve(packageRoot, '..', 'agent'));
 ensureFixtureWorkspacePackage('@treeseed/core', packageRoot);
 
 const result = spawnSync('npx', ['astro', command, '--root', fixtureRoot, ...rest], {

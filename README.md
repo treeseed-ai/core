@@ -1,6 +1,8 @@
 # @treeseed/core
 
-`@treeseed/core` is the Treeseed integrated platform starter for Astro/Starlight sites, Hono API runtimes, agent runtimes, and worker services. It contains the published web runtime, API runtime, manager/worker entrypoints, integrated local dev orchestration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
+`@treeseed/core` is the Treeseed web framework package for Astro/Starlight sites. It contains the published web runtime, tenant site configuration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
+
+Backend API, agent runtime, manager, worker, and workday processing services are owned by `@treeseed/agent`.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -33,7 +35,7 @@ npm ci
 - `test/`: unit tests run by Vitest
 - `.fixtures/treeseed-fixtures/`: pinned shared fixtures submodule
 - `.github/workflows/`: CI and publish workflows for this package repo
-- `templates/github/deploy.workflow.yml`: downstream tenant deploy workflow template
+- `templates/github/deploy-web.workflow.yml`: downstream tenant web deploy workflow template
 
 The package builds directly against the canonical shared working-site fixture in `treeseed-fixtures`.
 
@@ -50,10 +52,6 @@ That means the fixture may reference package surfaces owned by `sdk`, `core`, an
 ```bash
 npm run dev
 npm run dev:web
-npm run dev:api
-npm run dev:worker
-npm run dev:workday-manager
-npm run dev:worker-runner
 npm run fixtures:check
 npm run build:dist
 npm run test:unit
@@ -64,10 +62,8 @@ npm run test:smoke
 
 What they do:
 
-- `dev`: starts the integrated Astro UI and Hono API local runtime from `core`
+- `dev`: starts the Astro UI local runtime from `core`
 - `dev:web`: starts only the Astro UI dev surface through the `core` runtime
-- `dev:api`: starts only the Hono API dev surface through the `core` runtime
-- `dev:workday-manager`, `dev:worker-runner`: start the scheduled manager and worker runner entrypoints from `core`
 - `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
 - `build:dist`: builds the publishable `dist/` package output
 - `test:unit`: runs package unit tests with Vitest
@@ -117,7 +113,7 @@ This repo ships two package workflows:
 - [`ci.yml`](./.github/workflows/ci.yml): runs on push and pull request, installs with `npm ci`, then runs `npm run verify`
 - [`publish.yml`](./.github/workflows/publish.yml): runs on `workflow_dispatch` and on plain semver tags like `0.1.0`; it installs with `npm ci`, validates the tag with `release:check-tag`, runs `npm run verify`, and publishes with `NPM_TOKEN`
 
-The deploy workflow template at [`templates/github/deploy.workflow.yml`](./templates/github/deploy.workflow.yml) is for downstream Treeseed site repositories, not for publishing this package.
+The deploy workflow template at [`templates/github/deploy-web.workflow.yml`](./templates/github/deploy-web.workflow.yml) is for downstream Treeseed web repositories, not for publishing this package. Processing host deploy assets are owned by `@treeseed/agent`.
 
 ## Consumer Contract
 
@@ -132,7 +128,7 @@ The published package includes:
 - `utils/`
 - `README.md`
 
-The package currently depends on `@treeseed/sdk` plus the runtime packages needed for its web, API, and worker surfaces. It does not depend on `@treeseed/cli`.
+The package currently depends on `@treeseed/sdk` plus the runtime packages needed for its web surfaces. It does not depend on `@treeseed/cli` or `@treeseed/agent`.
 
 ## Contributor Workflow
 

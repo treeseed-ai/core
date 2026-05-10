@@ -137,8 +137,6 @@ export function classifyChanges(changedPaths: string[], watchEntries: TreeseedDe
 	function isTenantApiInput(filePath: string) {
 		const normalized = filePath.split(sep).join('/');
 		return (
-			normalized.includes('/src/api/') ||
-			normalized.endsWith('/src/api') ||
 			normalized.endsWith('/treeseed.site.yaml') ||
 			normalized.endsWith('/treeseed.config.ts') ||
 			normalized.endsWith('/package.json') ||
