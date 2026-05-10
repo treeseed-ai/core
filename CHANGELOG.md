@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2] - 2026-05-10
+
+### Dependencies
+
+- build(core): bump version to 0.8.2-dev.staging.20260510T000348Z (2125f375cbd2)
+- Release @treeseed/core 0.8.2.
+
 ## [0.8.1] - 2026-05-09
 
 ### Dependencies
