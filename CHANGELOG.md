@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.8] - 2026-05-11
+
+### Dependencies
+
+- build(build): sync package dependency references (c0259dcaf10e)
+- build(core): bump version and update @treeseed/sdk dependency (b7fc8c9bd7a5)
+- Release @treeseed/core 0.8.8.
+
 ## [0.8.7] - 2026-05-11
 
 ### Dependencies
