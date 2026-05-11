@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.8.4] - 2026-05-11
+
+### Tests
+
+- build(source): sync package dependency references (f6524269b2ff)
+
+### Dependencies
+
+- build(build): sync package dependency references (26a8e2861a89)
+- chore(core): bump version and @treeseed/sdk dependency (ad73c0cd9006)
+- build(core): bump version and update @treeseed/sdk dependency (a66c451eff47)
+- build(core): bump version and update @treeseed/sdk (18b21dbc5336)
+- chore(core): update version and @treeseed/sdk dependency (582fc639a850)
+- build(core): bump version and update @treeseed/sdk (5c630f0b119f)
+- build(build): sync package dependency references (3bac1cc7c9bc)
+- chore(core): bump version and update @treeseed/sdk (2798a117da8c)
+- chore(core): bump version and update @treeseed/sdk (86d0bc000d05)
+- build(core): bump version and update @treeseed/sdk (a0630849ca93)
+- chore(core): update version and @treeseed/sdk dependency (65d187164948)
+- build(core): bump version and update @treeseed/sdk dependency (28563c62aedc)
+- build(core): bump version and update @treeseed/sdk (730a7ef563b7)
+- build(core): bump version and update @treeseed/sdk (b9fafea981a1)
+- chore(core): bump version and update @treeseed/sdk (cf75981d8314)
+- chore(core): bump version and update @treeseed/sdk (0b5975e8bfa4)
+- build(core): bump version and update @treeseed/sdk dependency (f8252b397f3a)
+- build(core): bump version and @treeseed/sdk dependency (bd23b984b52a)
+- build(core): bump version and update @treeseed/sdk (6aa77f39e72d)
+- chore(core): bump version and update @treeseed/sdk (a4e8b7d139d3)
+- 34 additional changes omitted from this summary.
+
 ## [0.8.3] - 2026-05-10
 
 ### Dependencies

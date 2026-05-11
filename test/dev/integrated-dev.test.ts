@@ -51,7 +51,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
-	it('creates an integrated plan with local API defaults', () => {
+	it('creates an integrated web plan with local defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			env: {
@@ -68,7 +68,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.openMode).toBe('auto');
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web']);
 		expect(plan.localRuntimes.web.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.commands[0]?.localRuntime?.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--local', '--config']));
@@ -77,13 +77,11 @@ describe('Treeseed integrated dev orchestration', () => {
 		);
 		expect(plan.readyChecks.map((check) => check.id)).toEqual(
 			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
-				? ['web', 'api', 'manager', 'worker', 'mailpit']
-				: ['web', 'api', 'manager', 'worker'],
+				? ['web', 'mailpit']
+				: ['web'],
 		);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
-		expect(plan.commands[1]?.env.PORT).toBe('3000');
-		expect(plan.commands[2]?.env.TREESEED_MARKET_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_USERNAME).toBe('');
@@ -149,7 +147,7 @@ surfaces:
 		}
 	});
 
-	it('falls Railway services back to Node local when runtime is auto', () => {
+	it('does not start processing services from the core web runtime', () => {
 		const tempRoot = writeTempTenant(`name: Test
 slug: test
 siteUrl: https://example.com
@@ -163,14 +161,10 @@ services:
       runtime: auto
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'api', setupMode: 'off', env: {} });
+			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'integrated', setupMode: 'off', env: {} });
 
-			expect(plan.localRuntimes.api).toMatchObject({
-				requested: 'auto',
-				selected: 'node-local',
-				provider: 'railway',
-			});
-			expect(plan.localRuntimes.api.reason).toContain('using Node local');
+			expect(plan.commands.map((command) => command.id)).toEqual(['web']);
+			expect(plan.localRuntimes).not.toHaveProperty('api');
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
 		}
@@ -207,12 +201,10 @@ surfaces:
 			},
 		});
 
-		const apiCommand = plan.commands.find((command) => command.id === 'api');
 		expect(plan.apiBaseUrl).toBe('https://override.example.com');
-		expect(apiCommand?.env.PORT).toBe('4400');
-		expect(apiCommand?.args).not.toContain('--watch-path');
+		expect(plan.commands[0]?.args).not.toContain('--watch-path');
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
-		expect(apiCommand?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
+		expect(plan.commands[0]?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
 	});
 
 	it('ignores generated and runtime files in watched development roots', () => {
@@ -226,24 +218,19 @@ surfaces:
 		expect(shouldIgnoreWatchPath(resolve(publicRoot, 'images/logo.png'), publicRoot)).toBe(false);
 	});
 
-	it('lets explicit API and manager ports override loaded local env values', () => {
+	it('lets explicit API port override the shared web environment value', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			apiPort: 4401,
-			managerPort: 4402,
 			env: {
 				TREESEED_API_BASE_URL: 'https://override.example.com',
 				PORT: '4400',
-				TREESEED_MANAGER_BASE_URL: 'https://manager.example.com',
 			},
 		});
 
-		const apiCommand = plan.commands.find((command) => command.id === 'api');
-		const managerCommand = plan.commands.find((command) => command.id === 'manager');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:4401');
-		expect(apiCommand?.env.PORT).toBe('4401');
-		expect(managerCommand?.env.PORT).toBe('4402');
-		expect(managerCommand?.env.TREESEED_MANAGER_BASE_URL).toBe('http://127.0.0.1:4402');
+		expect(plan.commands.map((command) => command.id)).toEqual(['web']);
+		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:4401');
 	});
 
 	it('emits a structured plan and exits without spawning services', async () => {
@@ -264,7 +251,7 @@ surfaces:
 		expect(exitCode).toBe(0);
 		const parsed = JSON.parse(output.join(''));
 		expect(parsed.kind).toBe('treeseed.dev.plan');
-		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web']);
 	});
 
 	it('replaces an active previous dev runtime before spawning services', async () => {
@@ -467,9 +454,9 @@ surfaces:
 		}
 	});
 
-	it('starts both child processes and stops the sibling when one exits with failure', async () => {
+	it('starts the web child process and reports failure', async () => {
 		const spawns: Array<{ command: string; args: string[]; options: SpawnOptions }> = [];
-		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
+		const children = Array.from({ length: 1 }, () => new FakeChildProcess());
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 		const promise = runTreeseedIntegratedDev(
@@ -488,65 +475,14 @@ surfaces:
 			},
 		);
 
-		expect(spawns).toHaveLength(4);
-		children[1]?.exit(1);
+		expect(spawns).toHaveLength(1);
+		children[0]?.exit(1);
 		await expect(promise).resolves.toBe(1);
-		expect(children[0]?.kills).toEqual(['SIGTERM', 'SIGKILL']);
-		expect(children[2]?.kills).toEqual(['SIGTERM', 'SIGKILL']);
-		expect(children[3]?.kills).toEqual(['SIGTERM', 'SIGKILL']);
 		expect(signalHandlers.size).toBe(0);
 	});
 
-	it('keeps running when an optional worker exits cleanly during startup', async () => {
-		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
-		const signalHandlers = new Map<NodeJS.Signals, () => void>();
-		const output: string[] = [];
-		let spawnCount = 0;
-		let settled = false;
-
-		const promise = runTreeseedIntegratedDev(
-			{
-				cwd: tenantRoot,
-				setupMode: 'off',
-				feedbackMode: 'off',
-				openMode: 'off',
-				processReadyGraceMs: 0,
-				shutdownGraceMs: 0,
-			},
-			{
-				spawn() {
-					spawnCount += 1;
-					return children[spawnCount - 1] as never;
-				},
-				onSignal(signal, handler) {
-					signalHandlers.set(signal, handler);
-					return () => signalHandlers.delete(signal);
-				},
-				prepareEnvironment() {},
-				fetch: async () => ({ ok: true }) as Response,
-				write(line) {
-					output.push(line);
-				},
-			},
-		);
-		promise.then(() => {
-			settled = true;
-		});
-
-		expect(spawnCount).toBe(4);
-		children[3]?.exit(0);
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
-
-		expect(settled).toBe(false);
-		expect(output.join('')).toContain('Worker exited during startup with 0; continuing because it is not a required surface.');
-		expect(output.join('')).toContain('Worker is degraded.');
-
-		signalHandlers.get('SIGINT')?.();
-		await expect(promise).resolves.toBe(130);
-	});
-
 	it('shuts down children on parent signals', async () => {
-		const children = Array.from({ length: 4 }, () => new FakeChildProcess());
+		const children = Array.from({ length: 1 }, () => new FakeChildProcess());
 		let spawnCount = 0;
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 

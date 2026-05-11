@@ -33,7 +33,6 @@ export const TREESEED_DEFAULT_WEB_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_WEB_PORT = 4321;
 export const TREESEED_DEFAULT_API_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_API_PORT = 3000;
-export const TREESEED_DEFAULT_MANAGER_PORT = 3100;
 export const TREESEED_DEFAULT_LOCAL_SMTP_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_LOCAL_SMTP_PORT = 1025;
 export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
@@ -45,7 +44,7 @@ const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_500;
 const DEFAULT_KILL_GRACE_MS = 500;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'services' | 'web' | 'api' | 'manager' | 'worker';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'web';
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
 export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
@@ -69,7 +68,6 @@ export type TreeseedIntegratedDevOptions = {
 	webPort?: number;
 	apiHost?: string;
 	apiPort?: number;
-	managerPort?: number;
 	setupMode?: TreeseedIntegratedDevSetupMode;
 	feedbackMode?: TreeseedIntegratedDevFeedbackMode;
 	openMode?: TreeseedIntegratedDevOpenMode;
@@ -85,7 +83,7 @@ export type TreeseedIntegratedDevOptions = {
 };
 
 export type TreeseedIntegratedDevCommand = {
-	id: 'web' | 'api' | 'manager' | 'worker';
+	id: 'web';
 	label: string;
 	command: string;
 	args: string[];
@@ -247,31 +245,6 @@ function resolveOptionalScriptEntrypoint(packageDir: string, sourceRelativePath:
 	return null;
 }
 
-function resolveTenantApiEntrypoint(tenantRoot: string, runTsPath: string) {
-	const javascriptCandidates = [
-		resolve(tenantRoot, 'src', 'api', 'server.js'),
-		resolve(tenantRoot, 'src', 'api', 'server.mjs'),
-	];
-	for (const candidate of javascriptCandidates) {
-		if (existsSync(candidate)) {
-			return {
-				command: process.execPath,
-				args: [candidate],
-			};
-		}
-	}
-
-	const typescriptCandidate = resolve(tenantRoot, 'src', 'api', 'server.ts');
-	if (existsSync(typescriptCandidate) && existsSync(runTsPath)) {
-		return {
-			command: process.execPath,
-			args: [runTsPath, typescriptCandidate],
-		};
-	}
-
-	return null;
-}
-
 function normalizePort(value: number | undefined, fallback: number) {
 	return Number.isInteger(value) && Number(value) > 0 ? Number(value) : fallback;
 }
@@ -336,26 +309,6 @@ function selectWebLocalRuntime(surfaceConfig: unknown, providerFallback = 'local
 		reason: requested === 'local'
 			? 'Configured to use the full local Astro runtime.'
 			: `Provider "${provider}" has no provider-local web runtime; using Astro local.`,
-	};
-}
-
-function selectServiceLocalRuntime(serviceName: string, serviceConfig: unknown): TreeseedLocalRuntimeSelection {
-	const record = serviceConfig && typeof serviceConfig === 'object' ? serviceConfig as {
-		provider?: unknown;
-		local?: { runtime?: unknown };
-	} : {};
-	const provider = normalizeProvider(record.provider, 'railway');
-	const requested = normalizeLocalRuntimeMode(record.local?.runtime);
-	if (requested === 'provider') {
-		throw new Error(unsupportedProviderRuntimeMessage('service', serviceName, provider));
-	}
-	return {
-		requested,
-		provider,
-		selected: 'node-local',
-		reason: requested === 'local'
-			? 'Configured to use the full local Node runtime.'
-			: `Provider "${provider}" has no provider-local service runtime; using Node local.`,
 	};
 }
 
@@ -482,10 +435,6 @@ function createWatchEntries(tenantRoot: string, sdkPackageRoot: string): Treesee
 	return entries;
 }
 
-function isSurfaceIncluded(plan: Pick<TreeseedIntegratedDevPlan, 'commands'>, id: TreeseedIntegratedDevCommand['id']) {
-	return plan.commands.some((command) => command.id === id);
-}
-
 function createSetupSteps(
 	tenantRoot: string,
 	setupMode: TreeseedIntegratedDevSetupMode,
@@ -533,7 +482,7 @@ function createSetupSteps(
 		{
 			id: 'wrangler',
 			label: 'Verify Wrangler executable',
-			required: usesCloudflareWebRuntime || isSurfaceIncluded(planLike, 'api'),
+			required: usesCloudflareWebRuntime,
 			status: 'planned',
 			detail: resolveTreeseedToolBinary('wrangler', { env }) ?? undefined,
 		},
@@ -579,7 +528,7 @@ function createSetupSteps(
 		},
 	];
 
-	if ((isSurfaceIncluded(planLike, 'api') || usesCloudflareWebRuntime) && existsSync(resolve(tenantRoot, 'migrations'))) {
+	if (usesCloudflareWebRuntime && existsSync(resolve(tenantRoot, 'migrations'))) {
 		const migrate = resolveOptionalScriptEntrypoint(
 			sdkPackageRoot,
 			'scripts/tenant-d1-migrate-local.ts',
@@ -610,8 +559,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const webPort = normalizePort(options.webPort, TREESEED_DEFAULT_WEB_PORT);
 	const apiHost = options.apiHost ?? TREESEED_DEFAULT_API_HOST;
 	const apiPort = normalizePort(options.apiPort, TREESEED_DEFAULT_API_PORT);
-	const managerPort = normalizePort(options.managerPort, TREESEED_DEFAULT_MANAGER_PORT);
-	const includeServices = options.includeServices ?? (surface === 'integrated' || surface === 'services');
 	const machineEnv = resolveLocalMachineEnv(tenantRoot);
 	const mergedEnv = { ...process.env, ...machineEnv, ...(options.env ?? {}) };
 	const projectId = options.projectId ?? mergedEnv.TREESEED_PROJECT_ID;
@@ -623,13 +570,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
 	const deployConfig = loadDevDeployConfig(tenantRoot);
 	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));
-	const serviceLocalRuntimes = {
-		api: selectServiceLocalRuntime('api', deployConfig?.services?.api),
-		manager: selectServiceLocalRuntime('manager', deployConfig?.services?.manager),
-		worker: selectServiceLocalRuntime('worker', deployConfig?.services?.worker),
-	};
 	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
-	const coreRunTsPath = resolve(packageRoot, 'scripts', 'run-ts.mjs');
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
@@ -649,21 +590,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			String(webPort),
 		],
 	};
-	const apiEntrypoint = resolveTenantApiEntrypoint(tenantRoot, coreRunTsPath) ?? resolveNodeEntrypoint(
-		packageRoot,
-		'src/api/server.ts',
-		'dist/api/server.js',
-	);
-	const managerEntrypoint = resolveNodeEntrypoint(
-		packageRoot,
-		'src/services/manager.ts',
-		'dist/services/manager.js',
-	);
-	const workerEntrypoint = resolveNodeEntrypoint(
-		packageRoot,
-		'src/services/worker.ts',
-		'dist/services/worker.js',
-	);
 	const watchEntries = watch ? createWatchEntries(tenantRoot, sdkPackageRoot) : [];
 	const mailpitEnabled = dockerComposeIsAvailable(mergedEnv);
 	const resetRequested = options.reset === true;
@@ -720,51 +646,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		});
 	}
 
-	if (surface === 'integrated' || surface === 'api') {
-		commands.push({
-			id: 'api',
-			label: 'Hono API',
-			command: apiEntrypoint.command,
-			args: apiEntrypoint.args,
-			cwd: tenantRoot,
-			env: {
-				...sharedEnv,
-				PORT: options.apiPort != null ? String(apiPort) : sharedEnv.PORT ?? String(apiPort),
-			},
-			localRuntime: serviceLocalRuntimes.api,
-		});
-	}
-
-	if (includeServices || surface === 'manager') {
-		commands.push({
-			id: 'manager',
-			label: 'Manager',
-			command: managerEntrypoint.command,
-			args: managerEntrypoint.args,
-			cwd: tenantRoot,
-			env: {
-				...sharedEnv,
-				PORT: options.managerPort != null ? String(managerPort) : sharedEnv.PORT ?? String(managerPort),
-				TREESEED_MANAGER_BASE_URL: options.managerPort != null
-					? `http://${apiHost}:${managerPort}`
-					: sharedEnv.TREESEED_MANAGER_BASE_URL ?? `http://${apiHost}:${managerPort}`,
-			},
-			localRuntime: serviceLocalRuntimes.manager,
-		});
-	}
-
-	if (includeServices || surface === 'worker') {
-		commands.push({
-			id: 'worker',
-			label: 'Worker',
-			command: workerEntrypoint.command,
-			args: workerEntrypoint.args,
-			cwd: tenantRoot,
-			env: sharedEnv,
-			localRuntime: serviceLocalRuntimes.worker,
-		});
-	}
-
 	const readyChecks: TreeseedIntegratedDevReadinessCheck[] = commands.map((command) => {
 		if (command.id === 'web') {
 			return {
@@ -773,15 +654,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 				required: true,
 				strategy: 'http',
 				url: webUrl ?? undefined,
-			};
-		}
-		if (command.id === 'api') {
-			return {
-				id: command.id,
-				label: command.label,
-				required: true,
-				strategy: 'http',
-				url: `${apiBaseUrl.replace(/\/$/u, '')}/readyz`,
 			};
 		}
 		return {
@@ -816,7 +688,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		commands,
 		localRuntimes: {
 			web: webLocalRuntime,
-			...serviceLocalRuntimes,
 		},
 		reset,
 	};
@@ -1635,13 +1506,7 @@ export async function runTreeseedIntegratedDev(
 							await restartCommand('web');
 						}
 						if (change.packageChanged || change.sdkChanged) {
-							await Promise.all([
-								restartCommand('api'),
-								restartCommand('manager'),
-								restartCommand('worker'),
-							]);
-						} else if (change.tenantApiChanged) {
-							await restartCommand('api');
+							await restartCommand('web');
 						}
 						if (plan.feedbackMode === 'live') {
 							writeDevReloadStamp(plan.tenantRoot);

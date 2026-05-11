@@ -277,9 +277,9 @@ function emitTypeDeclarations() {
 		resolve(srcRoot, 'services/index.ts'),
 		resolve(srcRoot, 'plugin-default.ts'),
 		resolve(srcRoot, 'index.ts'),
-		...walkFiles(resolve(srcRoot, 'api')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
-		...walkFiles(resolve(srcRoot, 'agents')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
-		...walkFiles(resolve(srcRoot, 'services')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')),
+		...(existsSync(resolve(srcRoot, 'api')) ? walkFiles(resolve(srcRoot, 'api')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')) : []),
+		...(existsSync(resolve(srcRoot, 'agents')) ? walkFiles(resolve(srcRoot, 'agents')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')) : []),
+		...(existsSync(resolve(srcRoot, 'services')) ? walkFiles(resolve(srcRoot, 'services')).filter((filePath) => filePath.endsWith('.ts') && !filePath.endsWith('.d.ts')) : []),
 	].filter((filePath) => existsSync(filePath));
 
 	if (sourceFiles.length === 0) {

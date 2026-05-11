@@ -11,9 +11,6 @@ export {
 	TREESEED_PLATFORM_RESOURCE_KINDS,
 } from './platform-resources';
 export { parseSiteConfig } from './utils/site-config-schema.js';
-export { createTreeseedApiApp } from './api/app';
-export { createRailwayTreeseedApiServer } from './api/railway';
-export { resolveApiConfig } from './api/config';
 export {
 	executeKnowledgeHubProviderLaunch,
 	validateKnowledgeHubProviderLaunchPrerequisites,
@@ -31,4 +28,3 @@ export {
 	isSiteRenderedModel,
 	siteModelRendered,
 } from './utils/site-models.ts';
-export type * from './api/types';

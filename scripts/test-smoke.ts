@@ -128,6 +128,55 @@ function mirrorDependencies(tempRoot: string, excludedPackages = new Set<string>
 		packageRoot,
 		...resolveWorkspaceRuntimePackageRoots().values(),
 	];
+	const sharedNodeModules = (() => {
+		let lastCandidate: string | null = null;
+		let current = packageRoot;
+		while (true) {
+			const candidate = resolve(current, 'node_modules');
+			if (existsSync(candidate)) {
+				lastCandidate = candidate;
+			}
+			const parent = dirname(current);
+			if (parent === current) {
+				if (lastCandidate) {
+					return lastCandidate;
+				}
+				throw new Error(`Unable to locate shared node_modules from ${packageRoot}.`);
+			}
+			current = parent;
+		}
+	})();
+
+	for (const entry of readdirSync(sharedNodeModules, { withFileTypes: true })) {
+		if (entry.name === '.bin' || entry.name === '@treeseed') {
+			continue;
+		}
+		const sourcePath = resolve(sharedNodeModules, entry.name);
+		if (entry.name.startsWith('@')) {
+			for (const scopedEntry of readdirSync(sourcePath, { withFileTypes: true })) {
+				const packageName = `${entry.name}/${scopedEntry.name}`;
+				if (excludedPackages.has(packageName)) {
+					continue;
+				}
+				const targetPath = resolve(tempRoot, 'node_modules', entry.name, scopedEntry.name);
+				if (existsSync(targetPath)) {
+					continue;
+				}
+				mkdirSync(dirname(targetPath), { recursive: true });
+				symlinkSync(resolve(sourcePath, scopedEntry.name), targetPath, scopedEntry.isDirectory() ? 'dir' : 'file');
+			}
+			continue;
+		}
+		if (excludedPackages.has(entry.name)) {
+			continue;
+		}
+		const targetPath = resolve(tempRoot, 'node_modules', entry.name);
+		if (existsSync(targetPath)) {
+			continue;
+		}
+		mkdirSync(dirname(targetPath), { recursive: true });
+		symlinkSync(sourcePath, targetPath, entry.isDirectory() ? 'dir' : 'file');
+	}
 
 	for (const packageName of runtimeDependencies) {
 		if (excludedPackages.has(packageName) || packageName === '@treeseed/core') {
@@ -209,13 +258,8 @@ try {
 			'-e',
 			[
 				'await import("@treeseed/core");',
-				'await import("@treeseed/core/agent/cli");',
-				'await import("@treeseed/core/runtime-types");',
-				'await import("@treeseed/core/contracts/messages");',
-				'await import("@treeseed/core/contracts/run");',
-				'await import("@treeseed/core/services/worker");',
-				'await import("@treeseed/core/services/workday-start");',
-				'await import("@treeseed/core/services/workday-report");',
+				'await import("@treeseed/core/site");',
+				'await import("@treeseed/core/config");',
 			].join(' '),
 		],
 		installRoot,

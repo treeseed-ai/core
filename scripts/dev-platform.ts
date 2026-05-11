@@ -32,14 +32,7 @@ function readNumberOption(name: string) {
 }
 
 function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
-	if (
-		value === 'web'
-		|| value === 'api'
-		|| value === 'manager'
-		|| value === 'worker'
-		|| value === 'services'
-		|| value === 'integrated'
-	) {
+	if (value === 'web' || value === 'integrated') {
 		return value;
 	}
 	return 'integrated';
@@ -73,7 +66,6 @@ const exitCode = await runTreeseedIntegratedDev({
 	webPort: readNumberOption('--port'),
 	apiHost: readOption('--api-host'),
 	apiPort: readNumberOption('--api-port'),
-	managerPort: readNumberOption('--manager-port'),
 	setupMode: parseSetupMode(readOption('--setup')),
 	feedbackMode: parseFeedbackMode(readOption('--feedback')),
 	openMode: parseOpenMode(readOption('--open')),

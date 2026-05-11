@@ -1,7 +1,7 @@
 {
   "name": "@treeseed/core",
-  "version": "0.8.3",
-  "description": "Treeseed integrated platform starter for Astro/Starlight web runtimes and Hono API runtimes.",
+  "version": "0.8.4",
+  "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
@@ -30,7 +30,6 @@
     "access": "public"
   },
   "bin": {
-    "treeseed-agents": "./dist/agents/cli.js",
     "treeseed-workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js"
   },
   "scripts": {
@@ -41,15 +40,6 @@
     "prepack": "npm run build:dist",
     "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
     "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
-    "dev:api": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface api",
-    "dev:workday-manager": "node ./scripts/run-ts.mjs ./src/services/workday-manager.ts",
-    "dev:worker-runner": "node ./scripts/run-ts.mjs ./src/services/worker.ts",
-    "dev:manager": "npm run dev:workday-manager",
-    "dev:worker": "npm run dev:worker-runner",
-    "dev:agents": "node ./scripts/run-ts.mjs ./src/services/agents.ts",
-    "dev:remote-runner": "node ./scripts/run-ts.mjs ./src/services/remote-runner.ts",
-    "dev:workday-start": "npm run dev:workday-manager",
-    "dev:workday-report": "npm run dev:workday-manager",
     "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
     "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
@@ -75,13 +65,14 @@
   "dependencies": {
     "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
+    "@astrojs/markdown-remark": "^6.3.11",
+    "@astrojs/mdx": "^4.3.14",
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.8.3",
+    "@treeseed/sdk": "0.8.4",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
-    "hono": "^4.8.2",
     "katex": "^0.16.22",
     "nodemailer": "^8.0.4",
     "rehype-katex": "^7.0.1",
@@ -114,34 +105,6 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "default": "./dist/api.js"
-    },
-    "./agent": {
-      "types": "./dist/agent.d.ts",
-      "default": "./dist/agent.js"
-    },
-    "./agent/cli": {
-      "types": "./dist/agents/cli.d.ts",
-      "default": "./dist/agents/cli.js"
-    },
-    "./runtime-types": {
-      "types": "./dist/agents/runtime-types.d.ts",
-      "default": "./dist/agents/runtime-types.js"
-    },
-    "./contracts/messages": {
-      "types": "./dist/agents/contracts/messages.d.ts",
-      "default": "./dist/agents/contracts/messages.js"
-    },
-    "./contracts/run": {
-      "types": "./dist/agents/contracts/run.d.ts",
-      "default": "./dist/agents/contracts/run.js"
-    },
-    "./railway": {
-      "types": "./dist/railway.d.ts",
-      "default": "./dist/railway.js"
-    },
     "./platform": {
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
@@ -173,42 +136,6 @@
     "./tenant": "./dist/tenant/bridge.js",
     "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
     "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
-    "./services/worker": {
-      "types": "./dist/services/worker.d.ts",
-      "default": "./dist/services/worker.js"
-    },
-    "./services/manager": {
-      "types": "./dist/services/manager.d.ts",
-      "default": "./dist/services/manager.js"
-    },
-    "./services/agents": {
-      "types": "./dist/services/agents.d.ts",
-      "default": "./dist/services/agents.js"
-    },
-    "./services/remote-runner": {
-      "types": "./dist/services/remote-runner.d.ts",
-      "default": "./dist/services/remote-runner.js"
-    },
-    "./services/workday-manager": {
-      "types": "./dist/services/workday-manager.d.ts",
-      "default": "./dist/services/workday-manager.js"
-    },
-    "./services/workday-start": {
-      "types": "./dist/services/workday-start.d.ts",
-      "default": "./dist/services/workday-start.js"
-    },
-    "./services/workday-report": {
-      "types": "./dist/services/workday-report.d.ts",
-      "default": "./dist/services/workday-report.js"
-    },
-    "./api/app": {
-      "types": "./dist/api/app.d.ts",
-      "default": "./dist/api/app.js"
-    },
-    "./api/auth/d1-provider": {
-      "types": "./dist/api/auth/d1-provider.d.ts",
-      "default": "./dist/api/auth/d1-provider.js"
-    },
     "./launch": {
       "types": "./dist/launch.d.ts",
       "default": "./dist/launch.js"
