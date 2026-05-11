@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.6] - 2026-05-11
+
+### Tests
+
+- chore(core): update version, dependencies, and .gitignore (955b168db6fd)
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk (81dfebec04f0)
+- Release @treeseed/core 0.8.6.
+
 ## [0.8.5] - 2026-05-11
 
 ### Dependencies
