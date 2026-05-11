@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.5] - 2026-05-11
+
+### Dependencies
+
+- chore(core): bump version and update @treeseed/sdk (6ae7ce20b477)
+- build(core): bump version and @treeseed/sdk dependency (33874f260b99)
+- Release @treeseed/core 0.8.5.
+
 ## [0.8.4] - 2026-05-11
 
 ### Tests
