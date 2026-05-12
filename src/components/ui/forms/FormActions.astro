@@ -1,0 +1,12 @@
+---
+interface Props {
+	align?: 'start' | 'end' | 'between';
+	class?: string;
+}
+
+const { align = 'end', class: className } = Astro.props as Props;
+---
+
+<div class:list={['ts-form-actions', `ts-form-actions--${align}`, className]}>
+	<slot />
+</div>

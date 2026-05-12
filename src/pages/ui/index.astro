@@ -1,0 +1,216 @@
+---
+import '../../styles/global.css';
+import '../../styles/theme.css';
+import '../../styles/ui.css';
+import '../../styles/forms.css';
+import ThemeScript from '../../components/ui/theme/ThemeScript.astro';
+import ThemeSelector from '../../components/ui/theme/ThemeSelector.astro';
+import Button from '../../components/ui/forms/Button.astro';
+import Field from '../../components/ui/forms/Field.astro';
+import TextInput from '../../components/ui/forms/TextInput.astro';
+import Select from '../../components/ui/forms/Select.astro';
+import Textarea from '../../components/ui/forms/Textarea.astro';
+import RadioGroup from '../../components/ui/forms/RadioGroup.astro';
+import FormActions from '../../components/ui/forms/FormActions.astro';
+import PasswordMeter from '../../components/ui/forms/PasswordMeter.astro';
+import Panel from '../../components/ui/surface/Panel.astro';
+import Card from '../../components/ui/surface/Card.astro';
+import EmptyState from '../../components/ui/surface/EmptyState.astro';
+import Badge from '../../components/ui/data/Badge.astro';
+import StatusPill from '../../components/ui/data/StatusPill.astro';
+import MetricGrid from '../../components/ui/data/MetricGrid.astro';
+import ActionList from '../../components/ui/data/ActionList.astro';
+import KeyValueList from '../../components/ui/data/KeyValueList.astro';
+import DataTable from '../../components/ui/data/DataTable.astro';
+import PageHeader from '../../components/ui/layout/PageHeader.astro';
+import { getBuiltInColorSchemes, normalizeThemePreference } from '../../utils/theme.ts';
+
+const selected = normalizeThemePreference({
+	scheme: Astro.url.searchParams.get('scheme'),
+	mode: Astro.url.searchParams.get('mode'),
+});
+const schemes = getBuiltInColorSchemes();
+const modes = ['system', 'light', 'dark'] as const;
+const tones = ['default', 'muted', 'accent', 'info', 'success', 'warning', 'danger'] as const;
+const themeLinks = schemes.flatMap((scheme) => modes.map((mode) => ({
+	label: `${scheme.name} / ${mode}`,
+	href: `/ui/?scheme=${scheme.id}&mode=${mode}`,
+	active: scheme.id === selected.scheme && mode === selected.mode,
+})));
+const projectMetrics = [
+	{ label: 'Open decisions', value: 7, description: 'Three are blocked by missing context.', tone: 'warning' as const },
+	{ label: 'Ready releases', value: 2, description: 'Both have verification notes attached.', tone: 'success' as const },
+	{ label: 'Active hosts', value: 14, description: 'Capacity is steady across the team.', tone: 'info' as const },
+];
+const actionItems = [
+	{
+		title: 'Review release candidate',
+		description: 'Confirm the staged package summary before the next handoff.',
+		href: '#',
+		meta: 'Waiting',
+		tone: 'warning' as const,
+		actionLabel: 'Open',
+	},
+	{
+		title: 'Resolve shared direction',
+		description: 'One proposal needs a final owner note.',
+		href: '#',
+		meta: 'Decision',
+		tone: 'accent' as const,
+		actionLabel: 'Review',
+	},
+	{
+		title: 'Host capacity checked',
+		description: 'No action required after the latest sync.',
+		meta: 'Clear',
+		tone: 'success' as const,
+	},
+];
+const tableColumns = [
+	{ key: 'name', label: 'Name' },
+	{ key: 'status', label: 'Status' },
+	{ key: 'owner', label: 'Owner' },
+];
+const tableRows = [
+	{ name: 'Direction brief', status: 'Ready', owner: 'Research' },
+	{ name: 'Release notes', status: 'Drafting', owner: 'Platform' },
+	{ name: 'Host review', status: 'Queued', owner: 'Ops' },
+];
+---
+
+<!doctype html>
+<html lang="en" data-ts-scheme={selected.scheme} data-ts-mode={selected.mode}>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>TreeSeed UI Catalog</title>
+		<ThemeScript defaultScheme={selected.scheme} defaultMode={selected.mode} />
+	</head>
+	<body>
+		<main class="ts-ui-catalog">
+			<PageHeader
+				eyebrow="Core UI"
+				title="TreeSeed primitive catalog"
+				description="A focused review surface for the first shared component set. Use the appearance controls and scheme links to inspect the same primitives across every built-in theme."
+				actions={[{ label: 'Back home', href: '/', variant: 'secondary' }]}
+			>
+				<div class="ts-ui-catalog__selector">
+					<ThemeSelector selectedScheme={selected.scheme} selectedMode={selected.mode} compact={false} />
+				</div>
+			</PageHeader>
+
+			<Panel title="Scheme and mode checks" description="Each link reloads this same catalog with a different default appearance.">
+				<div class="ts-ui-catalog__theme-links">
+					{themeLinks.map((link) => (
+						<Button href={link.href} variant={link.active ? 'primary' : 'secondary'} size="sm">
+							{link.label}
+						</Button>
+					))}
+				</div>
+			</Panel>
+
+			<Panel title="Buttons, badges, and status" description="Tones are semantic; pages should not pass arbitrary color classes.">
+				<div class="ts-ui-catalog__stack">
+					<div class="ts-ui-catalog__row">
+						<Button>Primary action</Button>
+						<Button variant="secondary">Secondary</Button>
+						<Button variant="ghost">Ghost</Button>
+						<Button variant="danger">Danger</Button>
+						<Button disabled>Disabled</Button>
+					</div>
+					<div class="ts-ui-catalog__row">
+						{tones.map((tone) => <Badge tone={tone}>{tone}</Badge>)}
+					</div>
+					<div class="ts-ui-catalog__row">
+						{tones.map((tone) => <StatusPill tone={tone} label={tone} />)}
+					</div>
+				</div>
+			</Panel>
+
+			<MetricGrid metrics={projectMetrics} />
+
+			<div class="ts-ui-catalog__grid">
+				<Card
+					eyebrow="Card"
+					title="Direction summary"
+					description="Compact cards use the same border, surface, and tone language as panels."
+					tone="accent"
+					interactive
+				>
+					<StatusPill tone="success" label="Current" />
+				</Card>
+				<Card href="#" eyebrow="Linked card" title="Open proposal" description="Cards can render anchors when a route owns the whole surface.">
+					<Badge tone="info">Proposal</Badge>
+				</Card>
+				<EmptyState
+					eyebrow="Empty state"
+					title="No queued reviews"
+					description="The empty surface keeps actions visible without introducing a custom card style."
+					actions={[{ label: 'Create review', href: '#', variant: 'secondary' }]}
+				/>
+			</div>
+
+			<Panel
+				title="Form controls"
+				description="Labels, help text, controls, radio choices, actions, and password feedback share one form vocabulary."
+			>
+				<form class="ts-ui-catalog__form">
+					<Field label="Project name" name="projectName" help="Use a short name that people can scan quickly.">
+						<TextInput name="projectName" value="Release Garden" />
+					</Field>
+					<Field label="Workspace" name="workspace">
+						<Select
+							name="workspace"
+							value="research"
+							options={[
+								{ label: 'Research', value: 'research' },
+								{ label: 'Operations', value: 'operations' },
+								{ label: 'Platform', value: 'platform' },
+							]}
+						/>
+					</Field>
+					<Field label="Notes" name="notes" full>
+						<Textarea name="notes" value="Capture the next decision and keep the release handoff visible." />
+					</Field>
+					<RadioGroup
+						name="cadence"
+						legend="Review cadence"
+						value="weekly"
+						options={[
+							{ label: 'Daily', value: 'daily', help: 'Best for launch week.' },
+							{ label: 'Weekly', value: 'weekly', help: 'A good default for steady projects.' },
+							{ label: 'Paused', value: 'paused', help: 'Hide reminders until work resumes.' },
+						]}
+					/>
+					<Field label="Password preview" name="catalogPassword" full>
+						<TextInput id="catalogPassword" name="catalogPassword" type="password" value="TreeSeed-2026" />
+					</Field>
+					<PasswordMeter inputId="catalogPassword" />
+					<FormActions align="between">
+						<Button variant="ghost" type="reset">Reset</Button>
+						<Button type="submit">Save example</Button>
+					</FormActions>
+				</form>
+			</Panel>
+
+			<div class="ts-ui-catalog__grid">
+				<Panel title="Action list" description="Rows remain dense but touch-friendly on mobile.">
+					<ActionList items={actionItems} />
+				</Panel>
+				<Panel title="Key details" description="Settings and summaries can use a consistent key/value rhythm.">
+					<KeyValueList
+						items={[
+							{ key: 'Team', value: 'Canopy Systems' },
+							{ key: 'Environment', value: 'Staging', tone: 'info' },
+							{ key: 'Risk', value: 'Low', tone: 'success' },
+						]}
+					/>
+				</Panel>
+			</div>
+
+			<Panel title="Data table" description="The table collapses into labeled mobile rows without page-specific CSS.">
+				<DataTable columns={tableColumns} rows={tableRows} caption="Review artifacts" />
+			</Panel>
+		</main>
+	</body>
+</html>

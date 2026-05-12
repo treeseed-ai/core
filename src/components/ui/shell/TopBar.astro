@@ -1,0 +1,52 @@
+---
+import Button from '../forms/Button.astro';
+import type { ButtonAction } from '../types.ts';
+
+interface Brand {
+	name: string;
+	tag?: string;
+	href: string;
+	logoSrc?: string;
+	logoAlt?: string;
+	mark?: string;
+}
+
+interface Props {
+	brand: Brand;
+	actions?: ButtonAction[];
+	class?: string;
+}
+
+const {
+	brand,
+	actions = [],
+	class: className,
+} = Astro.props as Props;
+---
+
+<div class:list={['ts-top-bar', className]}>
+	<a class="ts-shell-brand" href={brand.href}>
+		<span class="ts-shell-brand__mark">
+			{brand.logoSrc ? <img src={brand.logoSrc} alt={brand.logoAlt ?? ''} width="40" height="40" loading="eager" /> : brand.mark}
+		</span>
+		<span class="ts-shell-brand__text">
+			<span class="ts-shell-brand__name">{brand.name}</span>
+			{brand.tag ? <span class="ts-shell-brand__tag">{brand.tag}</span> : null}
+		</span>
+	</a>
+	<div class="ts-top-bar__actions">
+		<slot name="actions" />
+		{actions.map((action) => (
+			<Button
+				href={action.href}
+				type={action.type}
+				variant={action.variant ?? 'secondary'}
+				ariaLabel={action.ariaLabel}
+				disabled={action.disabled}
+				size="sm"
+			>
+				{action.label}
+			</Button>
+		))}
+	</div>
+</div>

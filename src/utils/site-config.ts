@@ -1,5 +1,5 @@
 import { RUNTIME_SITE_CONFIG, RUNTIME_TENANT } from '../tenant/runtime-config';
-import { buildTenantThemeCss } from './theme.ts';
+import { buildTreeseedThemeCss } from './theme.ts';
 
 function requireRuntimeSiteConfig() {
 	if (!RUNTIME_SITE_CONFIG) {
@@ -35,7 +35,7 @@ export const SITE_HEADER_MENU = SITE.headerMenu;
 export const SITE_FOOTER_MENU = SITE.footerMenu;
 export const SITE_FORMS = SITE.forms;
 export const SITE_EMAIL_NOTIFICATIONS = SITE.emailNotifications;
-export const SITE_THEME_CSS = buildTenantThemeCss(SITE.theme);
+export const SITE_THEME_CSS = buildTreeseedThemeCss(SITE.theme);
 
 export const PAGE_MODEL_DEFAULTS = SITE_CONFIG.models.pages.defaults;
 export const NOTE_MODEL_DEFAULTS = SITE_CONFIG.models.notes.defaults;

@@ -155,12 +155,12 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 				<StageBanner />
 			</div>
 			<div slot="title">
-				<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-7xl">
+				<h1 class="max-w-4xl font-serif text-5xl font-bold tracking-tight text-[color:var(--ts-color-text)] md:text-7xl">
 					A small TreeSeed site that doubles as documentation and a real test ground.
 				</h1>
 			</div>
 			<div slot="body">
-				<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">
+				<p class="max-w-3xl text-xl leading-10 text-[color:var(--ts-color-text-muted)]">
 					TreeSeed works best when contributors can understand the package, inspect the
 					tenant surface, and verify real workflows without reconstructing everything from
 					source code alone. This fixture keeps those paths visible by combining pages,
@@ -168,12 +168,12 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 				</p>
 			</div>
 			<div slot="actions">
-				<a href="/status/" class="border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">See what exists today</a>
-				<a href="/vision/" class="border border-[color:var(--site-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]">Read the vision</a>
+				<a href="/status/" class="border border-[color:var(--ts-color-accent)] bg-[color:var(--ts-color-accent)] px-5 py-3 text-base font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)]">See what exists today</a>
+				<a href="/vision/" class="border border-[color:var(--ts-color-border-strong)] px-5 py-3 text-base font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)]">Read the vision</a>
 			</div>
 			<div slot="aside" class="space-y-4">
-				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Right now</p>
-				<ul class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">Right now</p>
+				<ul class="space-y-4 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 					<li>A full TreeSeed content surface with pages, notes, questions, objectives, proposals, decisions, people, agents, books, and docs.</li>
 					<li>Package defaults exercised through a realistic tenant instead of isolated unit tests alone.</li>
 					<li>Forms, book exports, and navigation paths that participate in release verification.</li>
@@ -189,7 +189,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 					title="A working site for documentation, management, and verification"
 					description="TreeSeed is easiest to understand when the package runtime and the tenant experience are visible together. The fixture exists to make that relationship concrete."
 				/>
-				<div class="space-y-4 text-lg leading-9 text-[color:var(--site-text-muted)]">
+				<div class="space-y-4 text-lg leading-9 text-[color:var(--ts-color-text-muted)]">
 					<p>
 						The site is intentionally generic. It is not here to tell one project’s story.
 						It is here to show how TreeSeed can organize content, contributor roles, inquiry,
@@ -209,25 +209,25 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 			/>
 		</section>
 
-		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+		<section class="space-y-6 border-t border-[color:var(--ts-color-border)] pt-10">
 			<SectionIntro
 				eyebrow="What Makes It Useful"
 				title="The site keeps docs, inquiry, and operations in the same surface"
 				description="The fixture is designed to show how TreeSeed can turn scattered workflow concepts into one inspectable tenant."
 			/>
 			<div class="grid gap-6 md:grid-cols-2">
-				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
-					<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Content commitments</h2>
-					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--site-text-muted)]">
+				<div class="border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
+					<h2 class="font-serif text-2xl text-[color:var(--ts-color-text)]">Content commitments</h2>
+					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 						<li>Questions, objectives, proposals, and decisions stay visible instead of disappearing into process notes.</li>
 						<li>Books and docs remain queryable content, not only navigation configuration.</li>
 						<li>People and agents are explicit contributors rather than invisible supporting actors.</li>
 						<li>Notes can still capture evidence and rationale without replacing proposal and decision records.</li>
 					</ul>
 				</div>
-				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
-					<h2 class="font-serif text-2xl text-[color:var(--site-text)]">Execution posture</h2>
-					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--site-text-muted)]">
+				<div class="border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
+					<h2 class="font-serif text-2xl text-[color:var(--ts-color-text)]">Execution posture</h2>
+					<ul class="mt-4 space-y-3 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 						<li>The fixture participates directly in `check`, `build`, and smoke verification.</li>
 						<li>Shared defaults should read clearly in a generic tenant, not only in package code.</li>
 						<li>Generated book exports and forms flows are part of the package contract.</li>
@@ -237,14 +237,14 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 			</div>
 		</section>
 
-		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+		<section class="space-y-6 border-t border-[color:var(--ts-color-border)] pt-10">
 			<SectionIntro
 				eyebrow="What Exists Today"
 				title="A realistic tenant that stays intentionally generic"
 				description="The fixture is broad enough to exercise the package meaningfully, but it stays small enough to remain maintainable and easy to read."
 			/>
 			<div class="grid gap-6 lg:grid-cols-[1fr_1fr]">
-				<div class="space-y-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+				<div class="space-y-4 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 					<p>
 						The current fixture demonstrates the full TreeSeed surface: pages, notes, questions,
 						objectives, proposals, decisions, people, agents, books, docs, and forms. That gives package changes a
@@ -256,14 +256,14 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 						possible downstream use case.
 					</p>
 				</div>
-				<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
-					<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-accent-strong)]">Best current shorthand</p>
-					<p class="mt-4 font-serif text-3xl text-[color:var(--site-text)]">
+				<div class="border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
+					<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-accent-strong)]">Best current shorthand</p>
+					<p class="mt-4 font-serif text-3xl text-[color:var(--ts-color-text)]">
 						Documentation-first example, real enough to break usefully.
 					</p>
-					<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+					<p class="mt-4 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 						If you want the evidence behind that judgment, the{' '}
-						<a href="/status/" class="text-[color:var(--site-text)] underline decoration-[color:var(--site-accent)] underline-offset-4">
+						<a href="/status/" class="text-[color:var(--ts-color-text)] underline decoration-[color:var(--ts-color-accent)] underline-offset-4">
 							Project Status
 						</a>{' '}
 						page is the right next step.
@@ -272,14 +272,14 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 			</div>
 		</section>
 
-		<section class="grid gap-10 border-t border-[color:var(--site-border)] pt-10 lg:grid-cols-[1.2fr_0.8fr]">
+		<section class="grid gap-10 border-t border-[color:var(--ts-color-border)] pt-10 lg:grid-cols-[1.2fr_0.8fr]">
 			<div class="space-y-6">
 				<SectionIntro
 					eyebrow="How To Read The Site"
 					title="Follow the path that matches the question you have"
 					description="Each public page has a single job: explain the platform, ground it in implementation reality, define active work, or make collaboration legible."
 				/>
-				<div class="border-b border-[color:var(--site-border)]">
+				<div class="border-b border-[color:var(--ts-color-border)]">
 					<PathCard href="/vision/" title="Vision" meta="Why this fixture exists" description="Start with the reason TreeSeed keeps a generic working site in the repo." />
 					<PathCard href="/status/" title="Status" meta="What the fixture proves today" description="See which package surfaces the fixture is expected to exercise and why that matters." />
 					<PathCard href="/research-direction/" title="Research Direction" meta="What questions organize the work" description="Follow the implementation-facing questions that keep the fixture useful." />
@@ -287,9 +287,9 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 					<PathCard href="/contribute/" title="Contribute" meta="How to help usefully" description="Find the most useful contribution lanes for a documentation-first TreeSeed site." />
 				</div>
 			</div>
-			<div class="border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
-				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Useful feedback</p>
-				<p class="mt-4 text-base leading-8 text-[color:var(--site-text-muted)]">
+			<div class="border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
+				<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">Useful feedback</p>
+				<p class="mt-4 text-base leading-8 text-[color:var(--ts-color-text-muted)]">
 					The most helpful feedback is concrete: which defaults still feel confusing, which
 					workflows are hard to infer, and which parts of the fixture are too thin or too heavy
 					to serve as a reliable test ground.
@@ -298,7 +298,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 		</section>
 
 		{notesRendered && (
-		<section class="space-y-6 border-t border-[color:var(--site-border)] pt-10">
+		<section class="space-y-6 border-t border-[color:var(--ts-color-border)] pt-10">
 			<SectionIntro
 				eyebrow="Notes"
 				title="Working notes instead of polished announcements"
@@ -309,7 +309,7 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 		)}
 
 		{(questionsRendered || objectivesRendered || proposalsRendered || decisionsRendered || peopleRendered || agentsRendered || booksRendered) && (
-		<section class="space-y-8 border-t border-[color:var(--site-border)] pt-10">
+		<section class="space-y-8 border-t border-[color:var(--ts-color-border)] pt-10">
 			<SectionIntro
 				eyebrow="TreeSeed"
 				title="Questions, objectives, proposals, decisions, contributors, and books form one connected working surface"

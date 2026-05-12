@@ -1,0 +1,35 @@
+---
+interface NavItem {
+	label: string;
+	href: string;
+	ariaLabel?: string;
+}
+
+interface Props {
+	items: NavItem[];
+	currentPath: string;
+	label?: string;
+	class?: string;
+}
+
+const {
+	items,
+	currentPath,
+	label = 'Application',
+	class: className,
+} = Astro.props as Props;
+
+function isCurrentPath(href: string) {
+	if (href === '/') return currentPath === '/';
+	if (href.endsWith('/')) return currentPath === href || currentPath.startsWith(href);
+	return currentPath === href || currentPath.startsWith(`${href}/`);
+}
+---
+
+<nav class:list={['ts-rail-nav', className]} aria-label={label}>
+	{items.map((item) => (
+		<a class="ts-rail-nav__link" href={item.href} aria-label={item.ariaLabel} aria-current={isCurrentPath(item.href) ? 'page' : undefined}>
+			<span>{item.label}</span>
+		</a>
+	))}
+</nav>

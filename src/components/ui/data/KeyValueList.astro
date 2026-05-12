@@ -1,0 +1,28 @@
+---
+import type { Tone } from '../types.ts';
+
+interface KeyValueItem {
+	key: string;
+	value: string | number;
+	tone?: Tone;
+}
+
+interface Props {
+	items: KeyValueItem[];
+	class?: string;
+}
+
+const {
+	items,
+	class: className,
+} = Astro.props as Props;
+---
+
+<dl class:list={['ts-key-value-list', className]}>
+	{items.map((item) => (
+		<div class="ts-key-value-list__item" data-tone={item.tone ?? 'default'}>
+			<dt>{item.key}</dt>
+			<dd>{item.value}</dd>
+		</div>
+	))}
+</dl>

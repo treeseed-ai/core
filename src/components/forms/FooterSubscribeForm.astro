@@ -11,11 +11,11 @@ const shouldBypassTurnstile = import.meta.env.DEV;
 const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 ---
 
-<section id={SUBSCRIBE_ANCHOR_ID} class="mt-6 border-t border-[color:var(--site-border)] pt-4">
+<section id={SUBSCRIBE_ANCHOR_ID} class="mt-6 border-t border-[color:var(--ts-color-border)] pt-4">
 	<div class="flex flex-col items-center gap-3 text-center">
 		<div class="flex flex-col gap-1">
-			<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">Subscribe for updates</p>
-			<p class="text-sm text-[color:var(--site-text-muted)]">
+			<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">Subscribe for updates</p>
+			<p class="text-sm text-[color:var(--ts-color-text-muted)]">
 				Get occasional notes when new writing or project updates are published.
 			</p>
 		</div>
@@ -40,7 +40,7 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 			<input type="hidden" name="name" value="" />
 			<div class="flex w-full flex-col items-center justify-center gap-3 md:flex-row md:flex-wrap">
 				<input
-					class="min-h-11 w-full rounded-md border border-[color:var(--site-border-strong)] bg-white/80 px-4 py-2 md:w-auto md:min-w-[16rem] md:max-w-[18rem]"
+					class="min-h-11 w-full rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/80 px-4 py-2 md:w-auto md:min-w-[16rem] md:max-w-[18rem]"
 					type="email"
 					name="email"
 					placeholder="Email address"
@@ -50,13 +50,13 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 				{TREESEED_PUBLIC_TURNSTILE_SITE_KEY && !shouldBypassTurnstile ? (
 					<div class="js-turnstile min-h-0"></div>
 				) : shouldBypassTurnstile ? (
-					<p class="text-xs text-[color:var(--site-text-soft)]">Captcha bypassed locally.</p>
+					<p class="text-xs text-[color:var(--ts-color-text-subtle)]">Captcha bypassed locally.</p>
 				) : (
-					<p class="text-xs text-[color:var(--site-text-soft)]">Turnstile not configured.</p>
+					<p class="text-xs text-[color:var(--ts-color-text-subtle)]">Turnstile not configured.</p>
 				)}
 				<button
 					type="submit"
-					class="js-submit inline-flex min-h-11 items-center justify-center whitespace-nowrap border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+					class="js-submit inline-flex min-h-11 items-center justify-center whitespace-nowrap border border-[color:var(--ts-color-accent)] bg-[color:var(--ts-color-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)] disabled:cursor-not-allowed disabled:opacity-60"
 					disabled
 				>
 					Subscribe
@@ -106,9 +106,9 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		statusNode.textContent = subscribeMessages[code] ?? (status === 'success' ? 'Subscription complete.' : 'We could not complete the signup.');
 		statusNode.classList.remove('hidden');
 		if (status === 'success') {
-			statusNode.className = 'js-subscribe-status rounded-md border border-[color:var(--site-blue)] bg-[color:var(--site-blue-soft)] px-4 py-2 text-sm font-medium text-[color:var(--site-text)]';
+			statusNode.className = 'js-subscribe-status rounded-md border border-[color:var(--ts-color-info)] bg-[color:var(--ts-color-info-soft)] px-4 py-2 text-sm font-medium text-[color:var(--ts-color-text)]';
 		} else {
-			statusNode.className = 'js-subscribe-status rounded-md border border-[color:var(--site-warm)] bg-[color:rgba(194,139,91,0.14)] px-4 py-2 text-sm font-medium text-[color:var(--site-text)]';
+			statusNode.className = 'js-subscribe-status rounded-md border border-[color:var(--ts-color-warning)] bg-[color:var(--ts-color-warning-soft)] px-4 py-2 text-sm font-medium text-[color:var(--ts-color-text)]';
 		}
 	};
 

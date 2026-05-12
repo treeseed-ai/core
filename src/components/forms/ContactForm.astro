@@ -33,8 +33,8 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		<div class:list={[
 			'rounded-lg border px-4 py-3 text-sm font-medium',
 			status === 'success'
-				? 'border-[color:var(--site-blue)] bg-[color:var(--site-blue-soft)] text-[color:var(--site-text)]'
-				: 'border-[color:var(--site-warm)] bg-[color:rgba(194,139,91,0.14)] text-[color:var(--site-text)]',
+				? 'border-[color:var(--ts-color-info)] bg-[color:var(--ts-color-info-soft)] text-[color:var(--ts-color-text)]'
+				: 'border-[color:var(--ts-color-warning)] bg-[color:var(--ts-color-warning-soft)] text-[color:var(--ts-color-text)]',
 		]}>
 			{statusMessage}
 		</div>
@@ -47,8 +47,8 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		data-form-type="contact"
 		data-turnstile-action="contact_submit"
 	>
-		<p class="text-sm text-[color:var(--site-text-soft)]">
-			Fields marked <span class="font-semibold text-[color:var(--site-warm)]">*</span> are required.
+		<p class="text-sm text-[color:var(--ts-color-text-subtle)]">
+			Fields marked <span class="font-semibold text-[color:var(--ts-color-warning)]">*</span> are required.
 		</p>
 		<input type="hidden" name="formType" value="contact" />
 		<input type="hidden" name="formToken" value="" />
@@ -63,9 +63,9 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 
 		<div class="grid gap-5 md:grid-cols-2">
 			<label class="grid gap-2">
-				<span class="text-sm font-semibold text-[color:var(--site-text)]">Name <span aria-hidden="true" class="text-[color:var(--site-warm)]">*</span></span>
+				<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Name <span aria-hidden="true" class="text-[color:var(--ts-color-warning)]">*</span></span>
 				<input
-					class="min-h-12 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+					class="min-h-12 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 					type="text"
 					name="name"
 					autocomplete="name"
@@ -74,9 +74,9 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 				/>
 			</label>
 			<label class="grid gap-2">
-				<span class="text-sm font-semibold text-[color:var(--site-text)]">Email <span aria-hidden="true" class="text-[color:var(--site-warm)]">*</span></span>
+				<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Email <span aria-hidden="true" class="text-[color:var(--ts-color-warning)]">*</span></span>
 				<input
-					class="min-h-12 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+					class="min-h-12 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 					type="email"
 					name="email"
 					autocomplete="email"
@@ -88,18 +88,18 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 
 		<div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 			<label class="grid gap-2">
-				<span class="text-sm font-semibold text-[color:var(--site-text)]">Organization</span>
+				<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Organization</span>
 				<input
-					class="min-h-12 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+					class="min-h-12 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 					type="text"
 					name="organization"
 					autocomplete="organization"
 				/>
 			</label>
 			<label class="grid gap-2">
-				<span class="text-sm font-semibold text-[color:var(--site-text)]">Topic <span aria-hidden="true" class="text-[color:var(--site-warm)]">*</span></span>
+				<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Topic <span aria-hidden="true" class="text-[color:var(--ts-color-warning)]">*</span></span>
 				<select
-					class="min-h-12 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+					class="min-h-12 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 					name="contactType"
 					required
 					aria-required="true"
@@ -112,9 +112,9 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		</div>
 
 		<label class="grid gap-2">
-			<span class="text-sm font-semibold text-[color:var(--site-text)]">Subject <span aria-hidden="true" class="text-[color:var(--site-warm)]">*</span></span>
+			<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Subject <span aria-hidden="true" class="text-[color:var(--ts-color-warning)]">*</span></span>
 			<input
-				class="min-h-12 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+				class="min-h-12 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 				type="text"
 				name="subject"
 				required
@@ -123,9 +123,9 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		</label>
 
 		<label class="grid gap-2">
-			<span class="text-sm font-semibold text-[color:var(--site-text)]">Message <span aria-hidden="true" class="text-[color:var(--site-warm)]">*</span></span>
+			<span class="text-sm font-semibold text-[color:var(--ts-color-text)]">Message <span aria-hidden="true" class="text-[color:var(--ts-color-warning)]">*</span></span>
 			<textarea
-				class="min-h-48 rounded-md border border-[color:var(--site-border-strong)] bg-white/70 px-4 py-3"
+				class="min-h-48 rounded-md border border-[color:var(--ts-color-border-strong)] bg-white/70 px-4 py-3"
 				name="message"
 				required
 				aria-required="true"
@@ -133,24 +133,24 @@ const formsApiBaseUrl = SITE_FORMS?.apiBaseUrl ?? '/api/form/submit';
 		</label>
 
 		{TREESEED_PUBLIC_TURNSTILE_SITE_KEY && !shouldBypassTurnstile ? (
-			<div class="js-turnstile rounded-md border border-dashed border-[color:var(--site-border-strong)] p-3"></div>
+			<div class="js-turnstile rounded-md border border-dashed border-[color:var(--ts-color-border-strong)] p-3"></div>
 		) : shouldBypassTurnstile ? (
-			<p class="rounded-md border border-[color:var(--site-blue)] bg-[color:var(--site-blue-soft)] px-4 py-3 text-sm text-[color:var(--site-text)]">
+			<p class="rounded-md border border-[color:var(--ts-color-info)] bg-[color:var(--ts-color-info-soft)] px-4 py-3 text-sm text-[color:var(--ts-color-text)]">
 				Local development mode is bypassing Turnstile so you can test the form workflow without Cloudflare captcha.
 			</p>
 		) : (
-			<p class="rounded-md border border-[color:var(--site-warm)] bg-[color:rgba(194,139,91,0.14)] px-4 py-3 text-sm text-[color:var(--site-text)]">
+			<p class="rounded-md border border-[color:var(--ts-color-warning)] bg-[color:var(--ts-color-warning-soft)] px-4 py-3 text-sm text-[color:var(--ts-color-text)]">
 				Turnstile is not configured yet. Add `TREESEED_PUBLIC_TURNSTILE_SITE_KEY` before deploying forms.
 			</p>
 		)}
 
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<p class="text-sm leading-7 text-[color:var(--site-text-soft)]">
+			<p class="text-sm leading-7 text-[color:var(--ts-color-text-subtle)]">
 				By sending this message, you agree that we may reply by email about this inquiry.
 			</p>
 			<button
 				type="submit"
-				class="js-submit inline-flex min-h-12 items-center justify-center border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-6 py-3 text-base font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+				class="js-submit inline-flex min-h-12 items-center justify-center border border-[color:var(--ts-color-accent)] bg-[color:var(--ts-color-accent)] px-6 py-3 text-base font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)] disabled:cursor-not-allowed disabled:opacity-60"
 				disabled
 			>
 				Send message

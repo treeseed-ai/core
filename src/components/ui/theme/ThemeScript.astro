@@ -1,0 +1,73 @@
+---
+import {
+	getBuiltInColorSchemes,
+	normalizeThemePreference,
+	type ThemePreference,
+} from '../../../utils/theme.ts';
+
+interface Props {
+	defaultScheme?: ThemePreference['scheme'];
+	defaultMode?: ThemePreference['mode'];
+}
+
+const preference = normalizeThemePreference({
+	scheme: (Astro.props as Props).defaultScheme,
+	mode: (Astro.props as Props).defaultMode,
+});
+const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
+---
+
+<script is:inline define:vars={{ builtInSchemeIds, defaultScheme: preference.scheme, defaultMode: preference.mode }}>
+	(() => {
+		const schemeKey = 'treeseed_color_scheme';
+		const modeKey = 'treeseed_theme_mode';
+		const modes = new Set(['light', 'dark', 'system']);
+		const schemes = new Set(builtInSchemeIds);
+		const root = document.documentElement;
+
+		function readCookie(name) {
+			const pair = document.cookie
+				.split('; ')
+				.find((entry) => entry.startsWith(`${name}=`));
+			return pair ? decodeURIComponent(pair.slice(name.length + 1)) : '';
+		}
+
+		function readStored(name) {
+			try {
+				return window.localStorage.getItem(name) || '';
+			} catch {
+				return '';
+			}
+		}
+
+		function resolveScheme(value) {
+			return schemes.has(value) ? value : defaultScheme;
+		}
+
+		function resolveMode(value) {
+			return modes.has(value) ? value : defaultMode;
+		}
+
+		function resolveRenderedMode(mode) {
+			if (mode !== 'system') return mode;
+			return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		}
+
+		const scheme = resolveScheme(readCookie(schemeKey) || readStored(schemeKey) || defaultScheme);
+		const storedMode = resolveMode(readCookie(modeKey) || readStored(modeKey) || defaultMode);
+		const renderedMode = resolveRenderedMode(storedMode);
+
+		root.dataset.tsScheme = scheme;
+		root.dataset.tsMode = renderedMode;
+		if (storedMode === 'system') {
+			root.dataset.tsModeSource = 'system';
+		} else {
+			delete root.dataset.tsModeSource;
+		}
+		window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+			if (root.dataset.tsModeSource === 'system') {
+				root.dataset.tsMode = resolveRenderedMode('system');
+			}
+		});
+	})();
+</script>

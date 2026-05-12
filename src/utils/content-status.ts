@@ -11,27 +11,27 @@ export const CONTENT_STATUS_META: Record<
 	live: {
 		label: 'Live',
 		description: 'Materially exists and is maintained.',
-		tone: 'border-[color:var(--site-accent)]/35 bg-[color:var(--site-accent-soft)] text-[color:var(--site-accent-strong)]',
+		tone: 'border-[color:var(--ts-color-accent)]/35 bg-[color:var(--ts-color-accent-soft)] text-[color:var(--ts-color-accent-strong)]',
 	},
 	'in progress': {
 		label: 'In Progress',
 		description: 'Actively being built or hardened.',
-		tone: 'border-[color:var(--site-warm)]/40 bg-[color:rgba(215,176,123,0.18)] text-[color:var(--site-warm-strong)]',
+		tone: 'border-[color:var(--ts-color-warning-border)] bg-[color:var(--ts-color-warning-soft)] text-[color:var(--ts-color-warning-text)]',
 	},
 	exploratory: {
 		label: 'Exploratory',
 		description: 'Directionally important, but still unsettled.',
-		tone: 'border-[color:var(--site-blue)]/40 bg-[color:var(--site-blue-soft)] text-[color:var(--site-blue-strong)]',
+		tone: 'border-[color:var(--ts-color-info)]/40 bg-[color:var(--ts-color-info-soft)] text-[color:var(--ts-color-info-text)]',
 	},
 	planned: {
 		label: 'Planned',
 		description: 'Intended, but not started in a meaningful way.',
-		tone: 'border-[color:#9c9277]/35 bg-[color:rgba(156,146,119,0.14)] text-[color:#5f5743]',
+		tone: 'border-[color:var(--ts-color-border-strong)] bg-[color:var(--ts-color-surface-muted)] text-[color:var(--ts-color-text-muted)]',
 	},
 	speculative: {
 		label: 'Speculative',
 		description: 'Conceptual or long-range, not a current commitment.',
-		tone: 'border-[color:#a39b8e]/35 bg-[color:rgba(163,155,142,0.14)] text-[color:#4d4638]',
+		tone: 'border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface-muted)] text-[color:var(--ts-color-text-subtle)]',
 	},
 };
 

@@ -1,0 +1,45 @@
+---
+interface Props {
+	name: string;
+	id?: string;
+	value?: string;
+	placeholder?: string;
+	rows?: number;
+	required?: boolean;
+	disabled?: boolean;
+	readonly?: boolean;
+	minlength?: number;
+	maxlength?: number;
+	ariaDescribedby?: string;
+	class?: string;
+}
+
+const {
+	name,
+	id = name,
+	value,
+	placeholder,
+	rows = 4,
+	required = false,
+	disabled = false,
+	readonly = false,
+	minlength,
+	maxlength,
+	ariaDescribedby,
+	class: className,
+} = Astro.props as Props;
+---
+
+<textarea
+	class:list={['ts-control', 'ts-control--textarea', className]}
+	id={id}
+	name={name}
+	placeholder={placeholder}
+	rows={rows}
+	required={required}
+	disabled={disabled}
+	readonly={readonly}
+	minlength={minlength}
+	maxlength={maxlength}
+	aria-describedby={ariaDescribedby}
+>{value}</textarea>

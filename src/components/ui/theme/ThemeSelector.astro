@@ -1,0 +1,168 @@
+---
+import {
+	getBuiltInColorSchemes,
+	normalizeThemePreference,
+	type ThemePreference,
+} from '../../../utils/theme.ts';
+import ThemePreviewSwatch from './ThemePreviewSwatch.astro';
+
+interface Props {
+	label?: string;
+	selectedScheme?: ThemePreference['scheme'];
+	selectedMode?: ThemePreference['mode'];
+	includeHiddenFields?: boolean;
+	schemeFieldName?: string;
+	modeFieldName?: string;
+	compact?: boolean;
+}
+
+const {
+	label = 'Appearance',
+	selectedScheme,
+	selectedMode,
+	includeHiddenFields = false,
+	schemeFieldName = 'colorScheme',
+	modeFieldName = 'themeMode',
+	compact = true,
+} = Astro.props as Props;
+
+const schemes = getBuiltInColorSchemes();
+const preference = normalizeThemePreference({ scheme: selectedScheme, mode: selectedMode });
+const activeScheme = schemes.find((scheme) => scheme.id === preference.scheme) ?? schemes[0];
+const modes = [
+	{ value: 'system', label: 'System' },
+	{ value: 'light', label: 'Light' },
+	{ value: 'dark', label: 'Dark' },
+];
+---
+
+<div
+	class:list={['ts-theme-selector', compact && 'ts-theme-selector--compact']}
+	data-ts-theme-selector
+	data-selected-scheme={preference.scheme}
+	data-selected-mode={preference.mode}
+	data-scheme-field={schemeFieldName}
+	data-mode-field={modeFieldName}
+>
+	<div class="ts-theme-selector__summary">
+		<ThemePreviewSwatch swatches={activeScheme.swatches} label={`${activeScheme.name} preview`} />
+		<span class="ts-theme-selector__label">{label}</span>
+	</div>
+	<div class="ts-theme-selector__controls">
+		<label class="ts-theme-selector__field">
+			<span>Color scheme</span>
+			<select data-ts-theme-scheme-select aria-label="Color scheme">
+				{schemes.map((scheme) => (
+					<option value={scheme.id} selected={scheme.id === preference.scheme}>
+						{scheme.name}
+					</option>
+				))}
+			</select>
+		</label>
+		<label class="ts-theme-selector__field">
+			<span>Mode</span>
+			<select data-ts-theme-mode-select aria-label="Theme mode">
+				{modes.map((mode) => (
+					<option value={mode.value} selected={mode.value === preference.mode}>
+						{mode.label}
+					</option>
+				))}
+			</select>
+		</label>
+	</div>
+	{includeHiddenFields ? (
+		<>
+			<input type="hidden" name={schemeFieldName} value={preference.scheme} data-ts-theme-scheme-field />
+			<input type="hidden" name={modeFieldName} value={preference.mode} data-ts-theme-mode-field />
+		</>
+	) : null}
+</div>
+
+<script is:inline define:vars={{ schemes }}>
+	(() => {
+		const schemeKey = 'treeseed_color_scheme';
+		const modeKey = 'treeseed_theme_mode';
+		const maxAge = 60 * 60 * 24 * 365;
+		const modeValues = new Set(['light', 'dark', 'system']);
+		const schemeValues = new Set(schemes.map((scheme) => scheme.id));
+		const schemeMap = new Map(schemes.map((scheme) => [scheme.id, scheme]));
+		const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+		function cookie(name, value) {
+			const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+			document.cookie = `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`;
+		}
+
+		function store(name, value) {
+			try {
+				window.localStorage.setItem(name, value);
+			} catch {
+				// Storage can be disabled; cookies still carry the preference for SSR.
+			}
+		}
+
+		function renderedMode(mode) {
+			if (mode !== 'system') return mode;
+			return media?.matches ? 'dark' : 'light';
+		}
+
+		function applyTheme(scheme, mode, persist = true) {
+			const root = document.documentElement;
+			const safeScheme = schemeValues.has(scheme) ? scheme : 'fern';
+			const safeMode = modeValues.has(mode) ? mode : 'system';
+			root.dataset.tsScheme = safeScheme;
+			root.dataset.tsMode = renderedMode(safeMode);
+			if (safeMode === 'system') {
+				root.dataset.tsModeSource = 'system';
+			} else {
+				delete root.dataset.tsModeSource;
+			}
+			if (persist) {
+				cookie(schemeKey, safeScheme);
+				cookie(modeKey, safeMode);
+				store(schemeKey, safeScheme);
+				store(modeKey, safeMode);
+			}
+			window.dispatchEvent(new CustomEvent('treeseed:theme-change', {
+				detail: { scheme: safeScheme, mode: safeMode, renderedMode: renderedMode(safeMode) },
+			}));
+		}
+
+		function updateSwatch(selector, schemeId) {
+			const scheme = schemeMap.get(schemeId);
+			const swatch = selector.querySelector('.ts-theme-swatch');
+			if (!scheme || !swatch) return;
+			swatch.setAttribute('aria-label', `${scheme.name} preview`);
+			scheme.swatches.slice(0, 3).forEach((value, index) => {
+				swatch.style.setProperty(`--ts-preview-swatch-${index + 1}`, value);
+			});
+		}
+
+		function bind(selector) {
+			const schemeSelect = selector.querySelector('[data-ts-theme-scheme-select]');
+			const modeSelect = selector.querySelector('[data-ts-theme-mode-select]');
+			const schemeField = selector.querySelector('[data-ts-theme-scheme-field]');
+			const modeField = selector.querySelector('[data-ts-theme-mode-field]');
+			if (!(schemeSelect instanceof HTMLSelectElement) || !(modeSelect instanceof HTMLSelectElement)) return;
+
+			function sync(persist = true) {
+				const scheme = schemeSelect.value;
+				const mode = modeSelect.value;
+				if (schemeField instanceof HTMLInputElement) schemeField.value = scheme;
+				if (modeField instanceof HTMLInputElement) modeField.value = mode;
+				updateSwatch(selector, scheme);
+				applyTheme(scheme, mode, persist);
+			}
+
+			schemeSelect.addEventListener('change', () => sync(true));
+			modeSelect.addEventListener('change', () => sync(true));
+			sync(false);
+		}
+
+		document.querySelectorAll('[data-ts-theme-selector]').forEach(bind);
+		media?.addEventListener?.('change', () => {
+			const mode = document.documentElement.dataset.tsModeSource === 'system' ? 'system' : document.documentElement.dataset.tsMode;
+			applyTheme(document.documentElement.dataset.tsScheme || 'fern', mode || 'system', false);
+		});
+	})();
+</script>
