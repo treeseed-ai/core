@@ -1,5 +1,6 @@
 ---
 import {
+	buildTreeseedThemeCss,
 	getBuiltInColorSchemes,
 	normalizeThemePreference,
 	type ThemePreference,
@@ -8,16 +9,30 @@ import {
 interface Props {
 	defaultScheme?: ThemePreference['scheme'];
 	defaultMode?: ThemePreference['mode'];
+	includeCss?: boolean;
+	preferDefaultPreference?: boolean;
 }
 
 const preference = normalizeThemePreference({
 	scheme: (Astro.props as Props).defaultScheme,
 	mode: (Astro.props as Props).defaultMode,
 });
+const { includeCss = true, preferDefaultPreference = false } = Astro.props as Props;
 const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
+const themeCss = buildTreeseedThemeCss();
 ---
 
-<script is:inline define:vars={{ builtInSchemeIds, defaultScheme: preference.scheme, defaultMode: preference.mode }}>
+{includeCss ? <style is:inline set:html={themeCss}></style> : null}
+
+<script
+	is:inline
+	define:vars={{
+		builtInSchemeIds,
+		defaultScheme: preference.scheme,
+		defaultMode: preference.mode,
+		preferDefaultPreference,
+	}}
+>
 	(() => {
 		const schemeKey = 'treeseed_color_scheme';
 		const modeKey = 'treeseed_theme_mode';
@@ -34,9 +49,22 @@ const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
 
 		function readStored(name) {
 			try {
-				return window.localStorage.getItem(name) || '';
+				return window.sessionStorage.getItem(name) || window.localStorage.getItem(name) || '';
 			} catch {
 				return '';
+			}
+		}
+
+		function store(name, value) {
+			try {
+				window.sessionStorage.setItem(name, value);
+			} catch {
+				// Session storage can be disabled; local storage/cookies still carry the preference.
+			}
+			try {
+				window.localStorage.setItem(name, value);
+			} catch {
+				// Local storage can be disabled; cookies still carry the preference for SSR.
 			}
 		}
 
@@ -53,8 +81,10 @@ const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
 			return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 		}
 
-		const scheme = resolveScheme(readCookie(schemeKey) || readStored(schemeKey) || defaultScheme);
-		const storedMode = resolveMode(readCookie(modeKey) || readStored(modeKey) || defaultMode);
+		const storedScheme = readStored(schemeKey) || readCookie(schemeKey);
+		const storedModeValue = readStored(modeKey) || readCookie(modeKey);
+		const scheme = preferDefaultPreference ? resolveScheme(defaultScheme) : resolveScheme(storedScheme || defaultScheme);
+		const storedMode = preferDefaultPreference ? resolveMode(defaultMode) : resolveMode(storedModeValue || defaultMode);
 		const renderedMode = resolveRenderedMode(storedMode);
 
 		root.dataset.tsScheme = scheme;
@@ -64,6 +94,8 @@ const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
 		} else {
 			delete root.dataset.tsModeSource;
 		}
+		store(schemeKey, scheme);
+		store(modeKey, storedMode);
 		window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
 			if (root.dataset.tsModeSource === 'system') {
 				root.dataset.tsMode = resolveRenderedMode('system');

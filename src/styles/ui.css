@@ -17,8 +17,8 @@
 	gap: var(--ts-space-2);
 	justify-content: center;
 	line-height: 1.2;
-	min-height: 2.375rem;
-	padding: 0.55rem 0.85rem;
+	min-height: 2.125rem;
+	padding: 0.45rem 0.75rem;
 	text-decoration: none;
 	transition:
 		background-color 140ms ease,
@@ -30,8 +30,8 @@
 
 .ts-button[data-size='sm'] {
 	font-size: 0.8125rem;
-	min-height: 2rem;
-	padding: 0.4rem 0.7rem;
+	min-height: 1.9rem;
+	padding: 0.35rem 0.65rem;
 }
 
 .ts-button[data-variant='primary'] {
@@ -114,13 +114,13 @@
 	align-items: flex-start;
 	display: flex;
 	flex-direction: column;
-	gap: var(--ts-space-3);
+	gap: var(--ts-space-2);
 }
 
 .ts-panel__header {
 	background: var(--ts-color-surface-raised);
 	border-bottom: 1px solid var(--ts-color-border);
-	padding: var(--ts-space-4);
+	padding: var(--ts-space-3);
 }
 
 .ts-panel__heading,
@@ -139,7 +139,7 @@
 }
 
 .ts-panel__body {
-	padding: var(--ts-space-4);
+	padding: var(--ts-space-3);
 }
 
 .ts-panel__eyebrow,
@@ -184,14 +184,14 @@
 .ts-empty-state__description,
 .ts-metric-card__description {
 	color: var(--ts-color-text-muted);
-	line-height: 1.6;
+	line-height: 1.5;
 	margin: 0;
 }
 
 .ts-card {
 	display: grid;
 	gap: var(--ts-space-2);
-	padding: var(--ts-space-4);
+	padding: var(--ts-space-3);
 	text-decoration: none;
 	transition:
 		background-color 140ms ease,
@@ -208,14 +208,14 @@
 .ts-card__body {
 	color: var(--ts-color-text-muted);
 	display: grid;
-	gap: var(--ts-space-3);
+	gap: var(--ts-space-2);
 }
 
 .ts-empty-state {
 	display: grid;
-	gap: var(--ts-space-3);
+	gap: var(--ts-space-2);
 	justify-items: start;
-	padding: calc(var(--ts-space-4) * 1.25);
+	padding: var(--ts-space-3);
 }
 
 .ts-empty-state__body:empty {

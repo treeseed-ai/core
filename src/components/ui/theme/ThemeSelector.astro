@@ -29,6 +29,9 @@ const {
 const schemes = getBuiltInColorSchemes();
 const preference = normalizeThemePreference({ scheme: selectedScheme, mode: selectedMode });
 const activeScheme = schemes.find((scheme) => scheme.id === preference.scheme) ?? schemes[0];
+const initialSwatches = preference.mode === 'dark'
+	? activeScheme.modeSwatches.dark
+	: activeScheme.modeSwatches.light;
 const modes = [
 	{ value: 'system', label: 'System' },
 	{ value: 'light', label: 'Light' },
@@ -45,8 +48,11 @@ const modes = [
 	data-mode-field={modeFieldName}
 >
 	<div class="ts-theme-selector__summary">
-		<ThemePreviewSwatch swatches={activeScheme.swatches} label={`${activeScheme.name} preview`} />
-		<span class="ts-theme-selector__label">{label}</span>
+		<ThemePreviewSwatch swatches={initialSwatches} label={`${activeScheme.name} preview`} />
+		<span class="ts-theme-selector__label">
+			<span>{label}</span>
+			<small data-ts-theme-preview-label>{activeScheme.name} · {preference.mode}</small>
+		</span>
 	</div>
 	<div class="ts-theme-selector__controls">
 		<label class="ts-theme-selector__field">
@@ -95,6 +101,11 @@ const modes = [
 
 		function store(name, value) {
 			try {
+				window.sessionStorage.setItem(name, value);
+			} catch {
+				// Session storage can be disabled; local storage/cookies still carry the preference.
+			}
+			try {
 				window.localStorage.setItem(name, value);
 			} catch {
 				// Storage can be disabled; cookies still carry the preference for SSR.
@@ -128,14 +139,33 @@ const modes = [
 			}));
 		}
 
-		function updateSwatch(selector, schemeId) {
+		function modeSwatches(scheme, mode) {
+			const rendered = renderedMode(mode);
+			return scheme.modeSwatches?.[rendered] || scheme.swatches || [];
+		}
+
+		function updateSwatch(selector, schemeId, mode) {
 			const scheme = schemeMap.get(schemeId);
 			const swatch = selector.querySelector('.ts-theme-swatch');
+			const previewLabel = selector.querySelector('[data-ts-theme-preview-label]');
 			if (!scheme || !swatch) return;
 			swatch.setAttribute('aria-label', `${scheme.name} preview`);
-			scheme.swatches.slice(0, 3).forEach((value, index) => {
+			modeSwatches(scheme, mode).slice(0, 4).forEach((value, index) => {
 				swatch.style.setProperty(`--ts-preview-swatch-${index + 1}`, value);
 			});
+			if (previewLabel) {
+				previewLabel.textContent = `${scheme.name} · ${mode === 'system' ? `System ${renderedMode(mode)}` : mode}`;
+			}
+		}
+
+		function currentPreference() {
+			const root = document.documentElement;
+			const scheme = schemeValues.has(root.dataset.tsScheme) ? root.dataset.tsScheme : '';
+			const mode = root.dataset.tsModeSource === 'system' ? 'system' : root.dataset.tsMode;
+			return {
+				scheme,
+				mode: modeValues.has(mode) ? mode : '',
+			};
 		}
 
 		function bind(selector) {
@@ -145,12 +175,16 @@ const modes = [
 			const modeField = selector.querySelector('[data-ts-theme-mode-field]');
 			if (!(schemeSelect instanceof HTMLSelectElement) || !(modeSelect instanceof HTMLSelectElement)) return;
 
+			const activePreference = currentPreference();
+			if (activePreference.scheme) schemeSelect.value = activePreference.scheme;
+			if (activePreference.mode) modeSelect.value = activePreference.mode;
+
 			function sync(persist = true) {
 				const scheme = schemeSelect.value;
 				const mode = modeSelect.value;
 				if (schemeField instanceof HTMLInputElement) schemeField.value = scheme;
 				if (modeField instanceof HTMLInputElement) modeField.value = mode;
-				updateSwatch(selector, scheme);
+				updateSwatch(selector, scheme, mode);
 				applyTheme(scheme, mode, persist);
 			}
 

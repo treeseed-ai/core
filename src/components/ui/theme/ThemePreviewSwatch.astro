@@ -5,7 +5,7 @@ interface Props {
 }
 
 const { swatches, label = 'Color scheme preview' } = Astro.props as Props;
-const visibleSwatches = swatches.slice(0, 3);
+const visibleSwatches = swatches.slice(0, 4);
 const swatchStyle = visibleSwatches
 	.map((swatch, index) => `--ts-preview-swatch-${index + 1}: ${swatch}`)
 	.join('; ');

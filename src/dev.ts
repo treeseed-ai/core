@@ -40,6 +40,7 @@ export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
 const DEV_RUNTIME_FILE = '.treeseed/generated/dev/runtime.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
+const DEFAULT_SETUP_STEP_TIMEOUT_MS = 300_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_500;
 const DEFAULT_KILL_GRACE_MS = 500;
@@ -1119,6 +1120,7 @@ function runSetupStep(
 			TREESEED_PUBLIC_DEV_WATCH_RELOAD: plan.feedbackMode === 'live' ? 'true' : process.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD,
 		},
 		encoding: 'utf8',
+		timeout: DEFAULT_SETUP_STEP_TIMEOUT_MS,
 	});
 	if ((result.status ?? 1) === 0) {
 		return {
@@ -1127,10 +1129,17 @@ function runSetupStep(
 			detail: [result.stdout, result.stderr].filter(Boolean).join('\n').trim() || step.detail,
 		} satisfies TreeseedIntegratedDevSetupStep;
 	}
+	const timedOut = result.error && 'code' in result.error && result.error.code === 'ETIMEDOUT';
+	const timeoutDetail = timedOut
+		? `${step.label} timed out after ${Math.round(DEFAULT_SETUP_STEP_TIMEOUT_MS / 1000)} seconds.`
+		: null;
 	return {
 		...step,
 		status: step.required ? 'failed' : 'degraded',
-		detail: [result.stdout, result.stderr].filter(Boolean).join('\n').trim() || `Exited with ${result.status ?? 1}.`,
+		detail: [timeoutDetail, result.stdout, result.stderr]
+			.filter(Boolean)
+			.join('\n')
+			.trim() || `Exited with ${result.status ?? 1}.`,
 	} satisfies TreeseedIntegratedDevSetupStep;
 }
 
@@ -1150,6 +1159,14 @@ function runLocalSetup(
 
 	for (const step of plan.setupSteps) {
 		let result = step;
+		if (step.status === 'planned') {
+			emitEvent(options, deps.write, {
+				type: 'setup',
+				status: 'running',
+				message: `${step.label}: running`,
+				detail: step.detail,
+			});
+		}
 		if (step.id === 'workspace-links') {
 			if (plan.setupMode === 'check') {
 				result = { ...step, status: 'skipped', detail: 'Workspace links were checked in non-mutating mode.' };

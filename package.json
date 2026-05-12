@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.8.9-dev.staging.20260512T035126Z",
+  "version": "0.8.9-dev.staging.20260512T065936Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -70,7 +70,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#0.8.9-dev.staging.20260512T034516Z",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#0.8.9-dev.staging.20260512T065547Z",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
@@ -161,6 +161,7 @@
     "./components/content/ContentStatusLegend.astro": "./dist/components/content/ContentStatusLegend.astro",
     "./components/ui/theme/ThemeScript.astro": "./dist/components/ui/theme/ThemeScript.astro",
     "./components/ui/theme/ThemeSelector.astro": "./dist/components/ui/theme/ThemeSelector.astro",
+    "./components/ui/theme/ThemeMenu.astro": "./dist/components/ui/theme/ThemeMenu.astro",
     "./components/ui/theme/ThemePreviewSwatch.astro": "./dist/components/ui/theme/ThemePreviewSwatch.astro",
     "./components/ui/forms/Button.astro": "./dist/components/ui/forms/Button.astro",
     "./components/ui/forms/Field.astro": "./dist/components/ui/forms/Field.astro",

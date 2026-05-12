@@ -50,8 +50,8 @@
 	font: inherit;
 	font-size: 0.95rem;
 	line-height: 1.4;
-	min-height: 2.5rem;
-	padding: 0.55rem 0.7rem;
+	min-height: 2.25rem;
+	padding: 0.45rem 0.65rem;
 	transition:
 		background-color 140ms ease,
 		border-color 140ms ease,
@@ -116,8 +116,8 @@
 	color: var(--ts-color-text);
 	cursor: pointer;
 	display: flex;
-	gap: var(--ts-space-3);
-	padding: var(--ts-space-3);
+	gap: var(--ts-space-2);
+	padding: var(--ts-space-2);
 }
 
 .ts-radio-option:hover {

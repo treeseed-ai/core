@@ -15,6 +15,10 @@ export type TreeseedColorSchemeSummary = {
 	id: TreeseedColorSchemeId;
 	name: string;
 	swatches: string[];
+	modeSwatches: {
+		light: string[];
+		dark: string[];
+	};
 };
 
 export type ResolvedTreeseedThemeConfig = {
@@ -29,10 +33,42 @@ const DEFAULT_MODE: TreeseedThemeMode = 'system';
 const THEME_MODES = new Set<TreeseedThemeMode>(['light', 'dark', 'system']);
 
 const BUILT_IN_SCHEME_SUMMARIES: TreeseedColorSchemeSummary[] = [
-	{ id: 'fern', name: 'Fern Canopy', swatches: ['#4f7d4e', '#8bbb75', '#1f2a20'] },
-	{ id: 'lichen', name: 'Lichen Stone', swatches: ['#6f8b67', '#9ab48a', '#242923'] },
-	{ id: 'cedar', name: 'Cedar Clay', swatches: ['#b86b3c', '#d98c5f', '#2d241c'] },
-	{ id: 'tidepool', name: 'Tidepool Dusk', swatches: ['#3f8582', '#73c5bd', '#1d2928'] },
+	{
+		id: 'fern',
+		name: 'Fern Canopy',
+		swatches: ['#4f7d4e', '#2f5a35', '#ffffff', '#1f2a20'],
+		modeSwatches: {
+			light: ['#4f7d4e', '#2f5a35', '#ffffff', '#1f2a20'],
+			dark: ['#8bbb75', '#b9e69e', '#172016', '#e8f0e3'],
+		},
+	},
+	{
+		id: 'lichen',
+		name: 'Lichen Stone',
+		swatches: ['#6f8b67', '#4e6d49', '#ffffff', '#242923'],
+		modeSwatches: {
+			light: ['#6f8b67', '#4e6d49', '#ffffff', '#242923'],
+			dark: ['#9ab48a', '#c9dbbd', '#1a201d', '#e7ece5'],
+		},
+	},
+	{
+		id: 'cedar',
+		name: 'Cedar Clay',
+		swatches: ['#b86b3c', '#7d4528', '#fffdf8', '#2d241c'],
+		modeSwatches: {
+			light: ['#b86b3c', '#7d4528', '#fffdf8', '#2d241c'],
+			dark: ['#d98c5f', '#ffc59c', '#241b16', '#f1e7da'],
+		},
+	},
+	{
+		id: 'tidepool',
+		name: 'Tidepool Dusk',
+		swatches: ['#3f8582', '#286462', '#ffffff', '#1d2928'],
+		modeSwatches: {
+			light: ['#3f8582', '#286462', '#ffffff', '#1d2928'],
+			dark: ['#73c5bd', '#b8eee8', '#162123', '#e2eeee'],
+		},
+	},
 ];
 
 const BUILT_IN_SCHEMES: Record<TreeseedColorSchemeId, TreeseedSchemeTokens> = {
@@ -287,11 +323,18 @@ function schemeSelector(schemeId: string, mode: 'light' | 'dark') {
 }
 
 function systemSchemeSelector(schemeId: string) {
-	return `html[data-ts-scheme="${schemeId}"][data-ts-mode="system"], html[data-ts-scheme="${schemeId}"][data-ts-mode-source="system"]`;
+	return `html[data-ts-scheme="${schemeId}"][data-ts-mode="system"]`;
 }
 
 export function getBuiltInColorSchemes() {
-	return BUILT_IN_SCHEME_SUMMARIES.map((summary) => ({ ...summary, swatches: [...summary.swatches] }));
+	return BUILT_IN_SCHEME_SUMMARIES.map((summary) => ({
+		...summary,
+		swatches: [...summary.swatches],
+		modeSwatches: {
+			light: [...summary.modeSwatches.light],
+			dark: [...summary.modeSwatches.dark],
+		},
+	}));
 }
 
 export function resolveTreeseedThemeConfig(input?: TreeseedThemeConfig): ResolvedTreeseedThemeConfig {
@@ -314,9 +357,24 @@ export function resolveTreeseedThemeConfig(input?: TreeseedThemeConfig): Resolve
 				.join(' '),
 			swatches: [
 				schemes[schemeId].light.accent,
-				schemes[schemeId].dark.accent,
+				schemes[schemeId].light.accentStrong,
+				schemes[schemeId].light.surface,
 				schemes[schemeId].light.text,
 			],
+			modeSwatches: {
+				light: [
+					schemes[schemeId].light.accent,
+					schemes[schemeId].light.accentStrong,
+					schemes[schemeId].light.surface,
+					schemes[schemeId].light.text,
+				],
+				dark: [
+					schemes[schemeId].dark.accent,
+					schemes[schemeId].dark.accentStrong,
+					schemes[schemeId].dark.surface,
+					schemes[schemeId].dark.text,
+				],
+			},
 		}));
 
 	return {

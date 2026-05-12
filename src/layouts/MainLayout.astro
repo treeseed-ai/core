@@ -6,6 +6,7 @@ import { SITE } from '../utils/seo';
 import { SITE_FOOTER_MENU, SITE_THEME_CSS } from '../utils/site-config';
 import FooterSubscribeForm from '../components/forms/FooterSubscribeForm.astro';
 import DevWatchReload from '../components/DevWatchReload.astro';
+import ThemeScript from '../components/ui/theme/ThemeScript.astro';
 
 const { title, description, currentPath = '/' } = Astro.props;
 ---
@@ -19,6 +20,7 @@ const { title, description, currentPath = '/' } = Astro.props;
 		<meta name="description" content={description ?? SITE.description} />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml" />
+		<ThemeScript includeCss={false} />
 		{SITE_THEME_CSS && <style is:global>{SITE_THEME_CSS}</style>}
 	</head>
 	<body>

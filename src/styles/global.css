@@ -4,9 +4,9 @@
 @import "./prose.css";
 
 @theme {
-	--font-sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-	--font-serif: "Source Serif 4", "Palatino Linotype", "Iowan Old Style", serif;
-	--font-mono: "IBM Plex Mono", ui-monospace, monospace;
+	--font-sans: "Aptos", "SF Pro Text", "Segoe UI Variable", "Segoe UI", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, serif;
+	--font-mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html {
