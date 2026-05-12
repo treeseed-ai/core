@@ -113,9 +113,9 @@ const isBookPage = Boolean(getBookForPath(Astro.url.pathname));
 	.book-font-controls__buttons {
 		display: inline-flex;
 		align-items: center;
-		border: 1px solid var(--site-border-strong);
+		border: 1px solid var(--ts-color-border-strong);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--site-bg-elevated) 78%, white 22%);
+		background: color-mix(in srgb, var(--ts-color-canvas-subtle) 78%, white 22%);
 	}
 
 	.book-font-controls__button {
@@ -126,7 +126,7 @@ const isBookPage = Boolean(getBookForPath(Astro.url.pathname));
 		height: 2rem;
 		border: 0;
 		background: transparent;
-		color: var(--site-text);
+		color: var(--ts-color-text);
 		font-size: 1rem;
 		font-weight: 700;
 		line-height: 1;
@@ -135,13 +135,13 @@ const isBookPage = Boolean(getBookForPath(Astro.url.pathname));
 	}
 
 	.book-font-controls__button + .book-font-controls__button {
-		border-inline-start: 1px solid var(--site-border-strong);
+		border-inline-start: 1px solid var(--ts-color-border-strong);
 	}
 
 	.book-font-controls__button:hover,
 	.book-font-controls__button:focus-visible {
-		background: color-mix(in srgb, var(--site-blue-soft) 66%, white 34%);
-		color: var(--site-blue-strong);
+		background: color-mix(in srgb, var(--ts-color-info-soft) 66%, white 34%);
+		color: var(--ts-color-info-text);
 	}
 
 	.book-font-controls__button::after {
@@ -151,10 +151,10 @@ const isBookPage = Boolean(getBookForPath(Astro.url.pathname));
 		inset-block-start: calc(100% + 0.45rem);
 		transform: translateX(-50%) translateY(-0.2rem);
 		padding: 0.3rem 0.5rem;
-		border: 1px solid var(--site-border-strong);
+		border: 1px solid var(--ts-color-border-strong);
 		border-radius: 0.45rem;
-		background: color-mix(in srgb, var(--site-bg-elevated) 88%, white 12%);
-		color: var(--site-text);
+		background: color-mix(in srgb, var(--ts-color-canvas-subtle) 88%, white 12%);
+		color: var(--ts-color-text);
 		font-size: 0.76rem;
 		font-weight: 700;
 		letter-spacing: 0.04em;

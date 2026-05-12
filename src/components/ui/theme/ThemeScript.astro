@@ -1,0 +1,105 @@
+---
+import {
+	buildTreeseedThemeCss,
+	getBuiltInColorSchemes,
+	normalizeThemePreference,
+	type ThemePreference,
+} from '../../../utils/theme.ts';
+
+interface Props {
+	defaultScheme?: ThemePreference['scheme'];
+	defaultMode?: ThemePreference['mode'];
+	includeCss?: boolean;
+	preferDefaultPreference?: boolean;
+}
+
+const preference = normalizeThemePreference({
+	scheme: (Astro.props as Props).defaultScheme,
+	mode: (Astro.props as Props).defaultMode,
+});
+const { includeCss = true, preferDefaultPreference = false } = Astro.props as Props;
+const builtInSchemeIds = getBuiltInColorSchemes().map((scheme) => scheme.id);
+const themeCss = buildTreeseedThemeCss();
+---
+
+{includeCss ? <style is:inline set:html={themeCss}></style> : null}
+
+<script
+	is:inline
+	define:vars={{
+		builtInSchemeIds,
+		defaultScheme: preference.scheme,
+		defaultMode: preference.mode,
+		preferDefaultPreference,
+	}}
+>
+	(() => {
+		const schemeKey = 'treeseed_color_scheme';
+		const modeKey = 'treeseed_theme_mode';
+		const modes = new Set(['light', 'dark', 'system']);
+		const schemes = new Set(builtInSchemeIds);
+		const root = document.documentElement;
+
+		function readCookie(name) {
+			const pair = document.cookie
+				.split('; ')
+				.find((entry) => entry.startsWith(`${name}=`));
+			return pair ? decodeURIComponent(pair.slice(name.length + 1)) : '';
+		}
+
+		function readStored(name) {
+			try {
+				return window.sessionStorage.getItem(name) || window.localStorage.getItem(name) || '';
+			} catch {
+				return '';
+			}
+		}
+
+		function store(name, value) {
+			try {
+				window.sessionStorage.setItem(name, value);
+			} catch {
+				// Session storage can be disabled; local storage/cookies still carry the preference.
+			}
+			try {
+				window.localStorage.setItem(name, value);
+			} catch {
+				// Local storage can be disabled; cookies still carry the preference for SSR.
+			}
+		}
+
+		function resolveScheme(value) {
+			return schemes.has(value) ? value : defaultScheme;
+		}
+
+		function resolveMode(value) {
+			return modes.has(value) ? value : defaultMode;
+		}
+
+		function resolveRenderedMode(mode) {
+			if (mode !== 'system') return mode;
+			return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		}
+
+		const storedScheme = readStored(schemeKey) || readCookie(schemeKey);
+		const storedModeValue = readStored(modeKey) || readCookie(modeKey);
+		const scheme = preferDefaultPreference ? resolveScheme(defaultScheme) : resolveScheme(storedScheme || defaultScheme);
+		const storedMode = preferDefaultPreference ? resolveMode(defaultMode) : resolveMode(storedModeValue || defaultMode);
+		const renderedMode = resolveRenderedMode(storedMode);
+
+		root.dataset.tsScheme = scheme;
+		root.dataset.tsMode = renderedMode;
+		if (storedMode === 'system') {
+			root.dataset.tsModeSource = 'system';
+		} else {
+			delete root.dataset.tsModeSource;
+		}
+		store(schemeKey, scheme);
+		store(modeKey, storedMode);
+		window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+			if (root.dataset.tsModeSource === 'system') {
+				root.dataset.tsMode = resolveRenderedMode('system');
+			}
+		});
+	})();
+</script>

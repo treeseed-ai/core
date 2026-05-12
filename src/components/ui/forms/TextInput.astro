@@ -1,0 +1,58 @@
+---
+interface Props {
+	name: string;
+	id?: string;
+	type?: 'text' | 'email' | 'url' | 'password' | 'search' | 'number' | 'tel';
+	value?: string | number;
+	placeholder?: string;
+	autocomplete?: string;
+	required?: boolean;
+	disabled?: boolean;
+	readonly?: boolean;
+	minlength?: number;
+	maxlength?: number;
+	pattern?: string;
+	inputmode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search';
+	ariaDescribedby?: string;
+	class?: string;
+	[key: string]: unknown;
+}
+
+const {
+	name,
+	id = name,
+	type = 'text',
+	value,
+	placeholder,
+	autocomplete,
+	required = false,
+	disabled = false,
+	readonly = false,
+	minlength,
+	maxlength,
+	pattern,
+	inputmode,
+	ariaDescribedby,
+	class: className,
+	...inputAttributes
+} = Astro.props as Props;
+---
+
+<input
+	{...inputAttributes}
+	class:list={['ts-control', className]}
+	id={id}
+	name={name}
+	type={type}
+	value={value}
+	placeholder={placeholder}
+	autocomplete={autocomplete}
+	required={required}
+	disabled={disabled}
+	readonly={readonly}
+	minlength={minlength}
+	maxlength={maxlength}
+	pattern={pattern}
+	inputmode={inputmode}
+	aria-describedby={ariaDescribedby}
+/>

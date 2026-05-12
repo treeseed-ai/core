@@ -1,0 +1,110 @@
+---
+import '../../../styles/tokens.css';
+import '../../../styles/theme.css';
+import '../../../styles/ui.css';
+import '../../../styles/forms.css';
+import '../../../styles/app-shell.css';
+import ThemeScript from '../theme/ThemeScript.astro';
+import RailNav from './RailNav.astro';
+import BottomNav from './BottomNav.astro';
+import TopBar from './TopBar.astro';
+import Button from '../forms/Button.astro';
+import type { ButtonAction } from '../types.ts';
+import type { ThemePreference } from '../../../utils/theme.ts';
+
+interface Brand {
+	name: string;
+	tag?: string;
+	href: string;
+	logoSrc?: string;
+	logoAlt?: string;
+	mark?: string;
+}
+
+interface NavItem {
+	label: string;
+	href: string;
+	ariaLabel?: string;
+}
+
+interface Props {
+	title: string;
+	description: string;
+	currentPath: string;
+	appearance: ThemePreference;
+	brand: Brand;
+	navItems: NavItem[];
+	quickActions?: ButtonAction[];
+	bottomNavItems?: NavItem[];
+}
+
+const {
+	title,
+	description,
+	currentPath,
+	appearance,
+	brand,
+	navItems,
+	quickActions = [],
+	bottomNavItems = navItems.slice(0, 5),
+} = Astro.props as Props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<ThemeScript defaultScheme={appearance.scheme} defaultMode={appearance.mode} preferDefaultPreference />
+	</head>
+	<body>
+		<a class="ts-skip-link" href="#main-content">Skip to content</a>
+		<div class="ts-app-shell">
+			<aside class="ts-app-shell__rail">
+				<TopBar brand={brand} />
+				<div class="ts-app-shell__rail-context">
+					<slot name="railContext" />
+				</div>
+				<RailNav items={navItems} currentPath={currentPath} />
+				{quickActions.length > 0 ? (
+					<div class="ts-app-shell__quick-actions">
+						<p class="ts-app-shell__eyebrow">Quick actions</p>
+						<div class="ts-app-shell__quick-list">
+							{quickActions.map((action) => (
+								<Button
+									href={action.href}
+									type={action.type}
+									variant={action.variant ?? 'secondary'}
+									ariaLabel={action.ariaLabel}
+									disabled={action.disabled}
+									size="sm"
+								>
+									{action.label}
+								</Button>
+							))}
+						</div>
+					</div>
+				) : null}
+			</aside>
+			<main class="ts-app-shell__main" id="main-content">
+				<TopBar brand={brand} class="ts-app-shell__mobile-top">
+				</TopBar>
+				<header class="ts-app-shell__header">
+					<div class="ts-app-shell__title">
+						<h1>{title}</h1>
+						<p>{description}</p>
+					</div>
+					<div class="ts-app-shell__header-actions">
+						<slot name="headerAction" />
+					</div>
+				</header>
+				<slot name="projectContext" />
+				<slot />
+			</main>
+			{bottomNavItems.length > 0 ? <BottomNav items={bottomNavItems} currentPath={currentPath} /> : null}
+		</div>
+		<slot name="sensitiveModal" />
+	</body>
+</html>

@@ -46,32 +46,32 @@ const download = activeBook
 			currentPath={currentPath}
 		>
 			<div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
-				<aside class="space-y-6 border border-[color:var(--site-border)] bg-[color:var(--site-surface)] p-6">
+				<aside class="space-y-6 border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
 					<div class="space-y-3">
-						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">
 							{activeBook?.sectionLabel ?? 'Knowledge'}
 						</p>
-						<a href="/knowledge/" class="block text-sm font-medium text-[color:var(--site-text-muted)] hover:text-[color:var(--site-text)]">Knowledge home</a>
+						<a href="/knowledge/" class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Knowledge home</a>
 						{activeBook?.landingPath && (
-							<a href={activeBook.landingPath} class="block text-sm font-medium text-[color:var(--site-text-muted)] hover:text-[color:var(--site-text)]">Open book landing page</a>
+							<a href={activeBook.landingPath} class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Open book landing page</a>
 						)}
 						{download && (
 							<a
 								href={download.href}
-								class="inline-flex border border-[color:var(--site-accent)] bg-[color:var(--site-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--site-text)] transition hover:border-[color:var(--site-blue)] hover:bg-[color:var(--site-blue-soft)]"
+								class="inline-flex border border-[color:var(--ts-color-accent)] bg-[color:var(--ts-color-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)]"
 							>
 								{download.title}
 							</a>
 						)}
 					</div>
-					<ul class="space-y-2 text-sm text-[color:var(--site-text-muted)]">
+					<ul class="space-y-2 text-sm text-[color:var(--ts-color-text-muted)]">
 						{sidebarEntries.map((entry) => (
 							<li>
 								<a
 									href={entry.path}
 									class:list={[
-										'hover:text-[color:var(--site-text)]',
-										entry.path === currentPath && 'font-semibold text-[color:var(--site-text)]',
+										'hover:text-[color:var(--ts-color-text)]',
+										entry.path === currentPath && 'font-semibold text-[color:var(--ts-color-text)]',
 									]}
 								>
 									{entry.title ?? entry.slug}
@@ -81,15 +81,15 @@ const download = activeBook
 					</ul>
 				</aside>
 				<article class="space-y-6">
-					<header class="space-y-4 border-b border-[color:var(--site-border)] pb-6">
-						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--site-blue-strong)]">
+					<header class="space-y-4 border-b border-[color:var(--ts-color-border)] pb-6">
+						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">
 							{activeBook?.sectionLabel ?? 'Knowledge'}
 						</p>
-						<h1 class="font-serif text-5xl font-bold tracking-tight text-[color:var(--site-text)] md:text-6xl">
+						<h1 class="font-serif text-5xl font-bold tracking-tight text-[color:var(--ts-color-text)] md:text-6xl">
 							{document.entry.data.title ?? document.entry.slug}
 						</h1>
 						{document.entry.data.summary && (
-							<p class="max-w-3xl text-xl leading-10 text-[color:var(--site-text-muted)]">{document.entry.data.summary}</p>
+							<p class="max-w-3xl text-xl leading-10 text-[color:var(--ts-color-text-muted)]">{document.entry.data.summary}</p>
 						)}
 					</header>
 					<div class="prose-karyon max-w-none">

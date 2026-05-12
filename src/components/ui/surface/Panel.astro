@@ -1,0 +1,54 @@
+---
+import Button from '../forms/Button.astro';
+import type { ButtonAction, Tone } from '../types.ts';
+
+interface Props {
+	eyebrow?: string;
+	title?: string;
+	description?: string;
+	tone?: Tone;
+	actions?: ButtonAction[];
+	class?: string;
+}
+
+const {
+	eyebrow,
+	title,
+	description,
+	tone = 'default',
+	actions = [],
+	class: className,
+} = Astro.props as Props;
+---
+
+<section class:list={['ts-panel', className]} data-tone={tone}>
+	{eyebrow || title || description || actions.length > 0 || Astro.slots.has('actions') ? (
+		<header class="ts-panel__header">
+			<div class="ts-panel__heading">
+				{eyebrow ? <p class="ts-panel__eyebrow">{eyebrow}</p> : null}
+				{title ? <h2 class="ts-panel__title">{title}</h2> : null}
+				{description ? <p class="ts-panel__description">{description}</p> : null}
+			</div>
+			{actions.length > 0 || Astro.slots.has('actions') ? (
+				<div class="ts-panel__actions">
+					{actions.map((action) => (
+						<Button
+							href={action.href}
+							type={action.type}
+							variant={action.variant ?? 'secondary'}
+							ariaLabel={action.ariaLabel}
+							disabled={action.disabled}
+							size="sm"
+						>
+							{action.label}
+						</Button>
+					))}
+					<slot name="actions" />
+				</div>
+			) : null}
+		</header>
+	) : null}
+	<div class="ts-panel__body">
+		<slot />
+	</div>
+</section>

@@ -1,0 +1,20 @@
+---
+import type { Tone } from '../types.ts';
+
+interface Props {
+	tone?: Tone;
+	label?: string;
+	class?: string;
+}
+
+const {
+	tone = 'default',
+	label,
+	class: className,
+} = Astro.props as Props;
+---
+
+<span class:list={['ts-status-pill', className]} data-tone={tone}>
+	<span class="ts-status-pill__dot" aria-hidden="true"></span>
+	<span><slot>{label}</slot></span>
+</span>

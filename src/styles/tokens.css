@@ -1,24 +1,64 @@
 :root {
-	--site-bg: #f4ede0;
-	--site-bg-elevated: #ede4d2;
-	--site-bg-soft: #f8f3e9;
-	--site-panel: rgba(244, 237, 224, 0.86);
-	--site-panel-strong: #e7dcc8;
-	--site-border: rgba(88, 77, 61, 0.16);
-	--site-border-strong: rgba(104, 132, 98, 0.34);
-	--site-grid: rgba(132, 154, 132, 0.14);
-	--site-text: #2e261c;
-	--site-text-muted: #4d4638;
-	--site-text-soft: #6b665b;
-	--site-accent: #c7dbc4;
-	--site-accent-strong: #5f7c5f;
-	--site-accent-soft: #e9f0e5;
-	--site-blue: #86aac0;
-	--site-blue-strong: #456679;
-	--site-blue-soft: #e4eef3;
-	--site-warm: #d7b07b;
-	--site-warm-strong: #7c5a2d;
-	--site-shadow: 0 24px 56px rgba(75, 60, 32, 0.08);
-	--site-radius: 0.65rem;
-	--site-max: 76rem;
+	--font-sans: "Aptos", "SF Pro Text", "Segoe UI Variable", "Segoe UI", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, serif;
+	--font-mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+	--ts-color-canvas: #f3f7ef;
+	--ts-color-canvas-subtle: #e8efe1;
+	--ts-color-surface: #ffffff;
+	--ts-color-surface-muted: #e8efe1;
+	--ts-color-surface-raised: #fafcf7;
+	--ts-color-surface-overlay: rgba(255, 255, 255, 0.88);
+
+	--ts-color-text: #1f2a20;
+	--ts-color-text-muted: #51604d;
+	--ts-color-text-subtle: #51604d;
+	--ts-color-text-inverse: #ffffff;
+	--ts-color-link: #3a6f75;
+	--ts-color-link-hover: #3f6f3f;
+
+	--ts-color-border: #cdd8c6;
+	--ts-color-border-muted: #cdd8c6;
+	--ts-color-border-strong: #aebca6;
+	--ts-color-focus: #3a6f75;
+
+	--ts-color-accent: #4f7d4e;
+	--ts-color-accent-hover: #3f6f3f;
+	--ts-color-accent-strong: #2f5a35;
+	--ts-color-accent-soft: #dcebd6;
+	--ts-color-accent-text: #ffffff;
+
+	--ts-color-info: #3a6f75;
+	--ts-color-info-soft: color-mix(in srgb, #3a6f75 18%, #ffffff);
+	--ts-color-info-text: #3a6f75;
+	--ts-color-info-border: color-mix(in srgb, #3a6f75 42%, #cdd8c6);
+
+	--ts-color-success: #287243;
+	--ts-color-success-soft: color-mix(in srgb, #287243 18%, #ffffff);
+	--ts-color-success-text: #287243;
+	--ts-color-success-border: color-mix(in srgb, #287243 42%, #cdd8c6);
+
+	--ts-color-warning: #8a6a1f;
+	--ts-color-warning-soft: color-mix(in srgb, #8a6a1f 18%, #ffffff);
+	--ts-color-warning-text: #8a6a1f;
+	--ts-color-warning-border: color-mix(in srgb, #8a6a1f 42%, #cdd8c6);
+
+	--ts-color-danger: #a23e35;
+	--ts-color-danger-soft: color-mix(in srgb, #a23e35 16%, #ffffff);
+	--ts-color-danger-text: #a23e35;
+	--ts-color-danger-border: color-mix(in srgb, #a23e35 42%, #cdd8c6);
+
+	--ts-color-shadow: 0 1px 2px rgba(31, 35, 40, 0.08);
+	--ts-color-grid: rgba(80, 100, 74, 0.12);
+
+	--ts-radius-sm: 0.375rem;
+	--ts-radius-md: 0.5rem;
+	--ts-radius-lg: 0.75rem;
+	--ts-space-1: 0.25rem;
+	--ts-space-2: 0.5rem;
+	--ts-space-3: 0.75rem;
+	--ts-space-4: 1rem;
+	--ts-content-width: 76rem;
+	--ts-reading-width: 78ch;
+	--ts-shell-width: 1200px;
 }

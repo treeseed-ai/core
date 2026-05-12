@@ -1,0 +1,18 @@
+---
+interface Props {
+	swatches: string[];
+	label?: string;
+}
+
+const { swatches, label = 'Color scheme preview' } = Astro.props as Props;
+const visibleSwatches = swatches.slice(0, 4);
+const swatchStyle = visibleSwatches
+	.map((swatch, index) => `--ts-preview-swatch-${index + 1}: ${swatch}`)
+	.join('; ');
+---
+
+<span class="ts-theme-swatch" style={swatchStyle} role="img" aria-label={label}>
+	{visibleSwatches.map((_, index) => (
+		<span class="ts-theme-swatch__dot" data-swatch-index={index + 1} aria-hidden="true"></span>
+	))}
+</span>

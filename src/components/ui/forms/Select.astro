@@ -1,0 +1,44 @@
+---
+interface SelectOption {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
+
+interface Props {
+	name: string;
+	id?: string;
+	value?: string;
+	options: SelectOption[];
+	required?: boolean;
+	disabled?: boolean;
+	ariaDescribedby?: string;
+	class?: string;
+}
+
+const {
+	name,
+	id = name,
+	value,
+	options,
+	required = false,
+	disabled = false,
+	ariaDescribedby,
+	class: className,
+} = Astro.props as Props;
+---
+
+<select
+	class:list={['ts-control', 'ts-control--select', className]}
+	id={id}
+	name={name}
+	required={required}
+	disabled={disabled}
+	aria-describedby={ariaDescribedby}
+>
+	{options.map((option) => (
+		<option value={option.value} selected={option.value === value} disabled={option.disabled}>
+			{option.label}
+		</option>
+	))}
+</select>

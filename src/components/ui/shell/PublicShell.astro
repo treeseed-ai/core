@@ -1,0 +1,108 @@
+---
+import '../../../styles/tokens.css';
+import '../../../styles/theme.css';
+import '../../../styles/ui.css';
+import '../../../styles/forms.css';
+import '../../../styles/app-shell.css';
+import ThemeScript from '../theme/ThemeScript.astro';
+import ThemeMenu from '../theme/ThemeMenu.astro';
+import TopBar from './TopBar.astro';
+import Button from '../forms/Button.astro';
+import type { ButtonAction } from '../types.ts';
+import type { ThemePreference } from '../../../utils/theme.ts';
+
+interface Brand {
+	name: string;
+	tag?: string;
+	href: string;
+	logoSrc?: string;
+	logoAlt?: string;
+	mark?: string;
+}
+
+interface NavItem {
+	label: string;
+	href: string;
+	ariaLabel?: string;
+}
+
+interface Props {
+	title: string;
+	description: string;
+	currentPath: string;
+	appearance: ThemePreference;
+	brand: Brand;
+	navItems: NavItem[];
+	actions?: ButtonAction[];
+	showAppearanceControl?: boolean;
+	preferServerAppearance?: boolean;
+}
+
+const {
+	title,
+	description,
+	currentPath,
+	appearance,
+	brand,
+	navItems,
+	actions = [],
+	showAppearanceControl = true,
+	preferServerAppearance = false,
+} = Astro.props as Props;
+
+function isCurrentPath(href: string) {
+	if (href === '/') return currentPath === '/';
+	return currentPath === href || currentPath.startsWith(href);
+}
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<ThemeScript
+			defaultScheme={appearance.scheme}
+			defaultMode={appearance.mode}
+			preferDefaultPreference={preferServerAppearance}
+		/>
+	</head>
+	<body>
+		<a class="ts-skip-link" href="#main-content">Skip to content</a>
+		<div class="ts-public-shell">
+			<header class="ts-public-shell__header">
+				<TopBar brand={brand}>
+					<Fragment slot="actions">
+						{showAppearanceControl ? <ThemeMenu selectedScheme={appearance.scheme} selectedMode={appearance.mode} /> : null}
+						{actions.map((action) => (
+							<Button
+								href={action.href}
+								type={action.type}
+								variant={action.variant ?? 'secondary'}
+								ariaLabel={action.ariaLabel}
+								disabled={action.disabled}
+								size="sm"
+							>
+								{action.label}
+							</Button>
+						))}
+						<slot name="actions" />
+					</Fragment>
+				</TopBar>
+				<nav class="ts-public-shell__nav" aria-label="Primary">
+					{navItems.map((item) => (
+						<a class="ts-public-shell__link" href={item.href} aria-label={item.ariaLabel} aria-current={isCurrentPath(item.href) ? 'page' : undefined}>
+							{item.label}
+						</a>
+					))}
+				</nav>
+			</header>
+			<main class="ts-public-shell__main" id="main-content">
+				<slot />
+			</main>
+			<slot name="footer" />
+		</div>
+	</body>
+</html>

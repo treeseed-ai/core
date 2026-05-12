@@ -66,7 +66,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 
 		.docs-footer-page-inner,
 		.docs-site-footer-inner {
-			width: min(100%, var(--site-max));
+			width: min(100%, var(--ts-content-width));
 			margin-inline: auto;
 			padding-inline: 1rem;
 		}
@@ -121,7 +121,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 
 		.docs-site-footer {
 			margin-top: 0;
-			border-top: 2px solid var(--site-border-strong);
+			border-top: 2px solid var(--ts-color-border-strong);
 			padding-top: 2rem;
 		}
 
@@ -146,14 +146,14 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 			font-weight: 600;
 			letter-spacing: 0.16em;
 			text-transform: uppercase;
-			color: var(--site-blue-strong);
+			color: var(--ts-color-info-text);
 		}
 
 		.docs-footer-title,
 		.docs-footer-column-title {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: var(--site-text);
+			color: var(--ts-color-text);
 		}
 
 		.docs-footer-copy,
@@ -161,7 +161,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 			margin-top: 0.75rem;
 			font-size: 1rem;
 			line-height: 2;
-			color: var(--site-text-muted);
+			color: var(--ts-color-text-muted);
 		}
 
 		.docs-footer-links {
@@ -176,7 +176,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 
 		.docs-footer-links a:hover,
 		.docs-footer-links a:focus-visible {
-			color: var(--site-text);
+			color: var(--ts-color-text);
 		}
 
 		@media (min-width: 40rem) {

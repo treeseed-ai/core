@@ -18,7 +18,7 @@ import {
 import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
 import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
-import { buildTenantThemeCss } from '../../src/utils/theme.ts';
+import { buildTreeseedThemeCss, normalizeThemePreference } from '../../src/utils/theme.ts';
 
 describe('site config parsing', () => {
 	it('loads grouped header and footer menus from config.yaml', () => {
@@ -148,66 +148,110 @@ site:
   projectStage: Founding
   projectStageDetail: Still early
   theme:
-    surfaces:
-      background: '#fefaf1'
-      panel: rgba(254, 250, 241, 0.9)
-    text:
-      body: '#241c14'
-    accent:
-      base: '#d4dfc8'
-      strong: '#557255'
-    info:
-      base: '#7aa4c2'
+    defaultScheme: cedar
+    defaultMode: dark
+    schemes:
+      cedar:
+        light:
+          canvas: '#fefaf1'
+          accent: '#d4dfc8'
+          accentStrong: '#557255'
+          info: '#7aa4c2'
+        dark:
+          accent: '#d98c5f'
 models: {}
 		`);
 
 		expect(parsed.site.theme).toEqual({
-			surfaces: {
-				background: '#fefaf1',
-				backgroundElevated: undefined,
-				backgroundSoft: undefined,
-				panel: 'rgba(254, 250, 241, 0.9)',
-				panelStrong: undefined,
+			defaultScheme: 'cedar',
+			defaultMode: 'dark',
+			schemes: {
+				cedar: {
+					light: {
+						canvas: '#fefaf1',
+						accent: '#d4dfc8',
+						accentStrong: '#557255',
+						info: '#7aa4c2',
+					},
+					dark: {
+						accent: '#d98c5f',
+					},
+				},
 			},
-			text: {
-				body: '#241c14',
-				muted: undefined,
-				soft: undefined,
-			},
-			border: undefined,
-			accent: {
-				base: '#d4dfc8',
-				strong: '#557255',
-				soft: undefined,
-			},
-			info: {
-				base: '#7aa4c2',
-				strong: undefined,
-				soft: undefined,
-			},
-			warm: undefined,
 		});
 	});
 
 	it('builds tenant theme css from palette overrides', () => {
-		const css = buildTenantThemeCss({
-			surfaces: {
-				background: '#fefaf1',
-			},
-			accent: {
-				base: '#d4dfc8',
-				soft: '#eef4e8',
-			},
-			info: {
-				strong: '#35586d',
+		const css = buildTreeseedThemeCss({
+			defaultScheme: 'cedar',
+			defaultMode: 'system',
+			schemes: {
+				cedar: {
+					light: {
+						canvas: '#fefaf1',
+						accent: '#d4dfc8',
+						accentSoft: '#eef4e8',
+						infoText: '#35586d',
+					},
+				},
 			},
 		});
 
-		expect(css).toContain('--site-bg: #fefaf1;');
-		expect(css).toContain('--site-accent: #d4dfc8;');
-		expect(css).toContain('--site-accent-soft: #eef4e8;');
-		expect(css).toContain('--site-blue-strong: #35586d;');
-		expect(css).not.toContain('--site-text:');
+		expect(css).toContain('html[data-ts-scheme="cedar"][data-ts-mode="light"]');
+		expect(css).toContain('@media (prefers-color-scheme: dark)');
+		expect(css).toContain('--ts-color-canvas: #fefaf1;');
+		expect(css).toContain('--ts-color-accent: #d4dfc8;');
+		expect(css).toContain('--ts-color-accent-soft: #eef4e8;');
+		expect(css).toContain('--ts-color-info-text: #35586d;');
+		expect(css).toContain('--ts-color-text:');
+		expect(css).not.toContain(`--${'site'}-`);
+	});
+
+	it('normalizes anonymous theme preferences', () => {
+		expect(normalizeThemePreference({ colorScheme: 'tidepool', themeMode: 'dark' })).toEqual({
+			scheme: 'tidepool',
+			mode: 'dark',
+		});
+		expect(normalizeThemePreference({ scheme: 'Lichen Stone', mode: 'sepia' })).toEqual({
+			scheme: 'fern',
+			mode: 'system',
+		});
+	});
+
+	it('rejects invalid theme mode, scheme ids, and token names', () => {
+		const baseConfig = `
+site:
+  logo:
+    src: /logo.png
+    alt: Example logo
+  name: Example
+  statement: Example statement
+  siteUrl: https://example.com
+  githubRepository: https://github.com/example/repo
+  discordLink: https://discord.gg/example
+  headerMenu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  footerMenu:
+    - label: Explore
+      items:
+        - label: Home
+          href: /
+  emailNotifications:
+    contactRouting:
+      default:
+        - hello@example.com
+    subscribeRecipients:
+      - hello@example.com
+  summary: Example summary
+  projectStage: Founding
+  projectStageDetail: Still early
+`;
+		expect(() => parseSiteConfig(`${baseConfig}  theme:\n    defaultMode: sepia\nmodels: {}\n`)).toThrow('defaultMode');
+		expect(() => parseSiteConfig(`${baseConfig}  theme:\n    defaultScheme: Fern\nmodels: {}\n`)).toThrow('defaultScheme');
+		expect(() => parseSiteConfig(`${baseConfig}  theme:\n    schemes:\n      fern:\n        light:\n          madeUp: '#fff'\nmodels: {}\n`)).toThrow('Unknown theme token');
 	});
 
 	it('accepts aliased snake_case site config keys', () => {

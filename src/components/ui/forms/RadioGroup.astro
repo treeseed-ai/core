@@ -1,0 +1,55 @@
+---
+interface RadioOption {
+	label: string;
+	value: string;
+	help?: string;
+	disabled?: boolean;
+}
+
+interface Props {
+	name: string;
+	legend: string;
+	value?: string;
+	options: RadioOption[];
+	required?: boolean;
+	class?: string;
+}
+
+const {
+	name,
+	legend,
+	value,
+	options,
+	required = false,
+	class: className,
+} = Astro.props as Props;
+---
+
+<fieldset class:list={['ts-radio-group', className]}>
+	<legend class="ts-radio-group__legend">
+		{legend}
+		{required ? <span class="ts-field__required" aria-hidden="true">*</span> : null}
+	</legend>
+	<div class="ts-radio-group__options">
+		{options.map((option) => {
+			const optionId = `${name}-${option.value}`;
+			return (
+				<label class="ts-radio-option" for={optionId} data-disabled={option.disabled ? 'true' : undefined}>
+					<input
+						id={optionId}
+						type="radio"
+						name={name}
+						value={option.value}
+						checked={option.value === value}
+						required={required}
+						disabled={option.disabled}
+					/>
+					<span class="ts-radio-option__body">
+						<span class="ts-radio-option__label">{option.label}</span>
+						{option.help ? <span class="ts-radio-option__help">{option.help}</span> : null}
+					</span>
+				</label>
+			);
+		})}
+	</div>
+</fieldset>

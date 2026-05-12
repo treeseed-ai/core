@@ -1,0 +1,52 @@
+---
+import type { ButtonSize, ButtonVariant } from '../types.ts';
+
+interface Props {
+	href?: string;
+	type?: 'button' | 'submit' | 'reset';
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	disabled?: boolean;
+	ariaLabel?: string;
+	class?: string;
+}
+
+const {
+	href,
+	type = 'button',
+	variant = 'primary',
+	size = 'md',
+	disabled = false,
+	ariaLabel,
+	class: className,
+} = Astro.props as Props;
+
+const classes = ['ts-button', className].filter(Boolean).join(' ');
+---
+
+{
+	href ? (
+		<a
+			href={disabled ? undefined : href}
+			class={classes}
+			data-variant={variant}
+			data-size={size}
+			aria-label={ariaLabel}
+			aria-disabled={disabled ? 'true' : undefined}
+			tabindex={disabled ? -1 : undefined}
+		>
+			<slot />
+		</a>
+	) : (
+		<button
+			type={type}
+			class={classes}
+			data-variant={variant}
+			data-size={size}
+			disabled={disabled}
+			aria-label={ariaLabel}
+		>
+			<slot />
+		</button>
+	)
+}

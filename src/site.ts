@@ -12,7 +12,7 @@ import type { TreeseedSiteExtensionContribution, TreeseedSiteRouteContribution }
 import { parseSiteConfig } from './utils/site-config-schema.js';
 import { buildTenantBookRuntime } from '@treeseed/sdk/platform/books-data';
 import { getStarlightSidebarConfigFromRuntime } from './utils/starlight-nav';
-import { buildTenantThemeCss } from './utils/theme.ts';
+import { buildTreeseedThemeCss } from './utils/theme.ts';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { getTreeseedContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
@@ -63,6 +63,7 @@ const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resou
 	{ pattern: '/404', resourcePath: 'pages/404.astro' },
 	{ pattern: '/contact', resourcePath: 'pages/contact.astro' },
 	{ pattern: '/feed.xml', resourcePath: 'pages/feed.xml', model: 'notes' },
+	{ pattern: '/ui', resourcePath: 'pages/ui/index.astro' },
 	{ pattern: '/[slug]', resourcePath: 'pages/[slug].astro', model: 'pages' },
 	{ pattern: '/agents', resourcePath: 'pages/agents/index.astro', model: 'agents' },
 	{ pattern: '/agents/[slug]', resourcePath: 'pages/agents/[slug].astro', model: 'agents' },
@@ -285,7 +286,7 @@ export function createTreeseedSite(
 	const bookRuntime = buildTenantBookRuntime(tenantConfig, { projectRoot });
 	const docsRendered = isSiteRenderedModel(tenantConfig, 'docs');
 	const booksRendered = isSiteRenderedModel(tenantConfig, 'books');
-	const tenantThemeCss = buildTenantThemeCss(siteConfig.site.theme);
+	const tenantThemeCss = buildTreeseedThemeCss(siteConfig.site.theme);
 	const siteLayers = buildTreeseedSiteLayers(pluginRuntime, {
 		coreRoot: fileURLToPath(new URL('.', import.meta.url)),
 		projectRoot,
