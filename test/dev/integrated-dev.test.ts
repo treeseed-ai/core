@@ -341,6 +341,23 @@ surfaces:
 		expect(plan.localRuntimes).toHaveProperty('agents');
 	});
 
+	it('plans the all surface as the full task runtime without the legacy agents loop', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'all',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
+
+		expect(plan.surface).toBe('all');
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.localRuntimes).toHaveProperty('web');
+		expect(plan.localRuntimes).toHaveProperty('api');
+		expect(plan.localRuntimes).toHaveProperty('manager');
+		expect(plan.localRuntimes).toHaveProperty('worker');
+		expect(plan.localRuntimes).not.toHaveProperty('agents');
+	});
+
 	it('plans explicit API and service surfaces with Node runtimes', () => {
 		const apiPlan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,

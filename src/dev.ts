@@ -48,7 +48,7 @@ const INITIAL_RESTART_BACKOFF_MS = 1_000;
 const MAX_RESTART_BACKOFF_MS = 15_000;
 const SETUP_RETRY_BACKOFF_MS = 3_000;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'services';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'all' | 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'services';
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
 export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
@@ -379,6 +379,8 @@ function surfaceCommandIds(surface: TreeseedIntegratedDevSurface): TreeseedInteg
 			return ['agents'];
 		case 'services':
 			return ['api', 'manager', 'worker', 'agents'];
+		case 'all':
+			return ['web', 'api', 'manager', 'worker'];
 		case 'integrated':
 		default:
 			return ['web', 'api', 'manager', 'worker'];
@@ -393,6 +395,7 @@ function parseSurfaceValue(value: string): TreeseedIntegratedDevSurface | null {
 		value === 'worker' ||
 		value === 'agents' ||
 		value === 'services' ||
+		value === 'all' ||
 		value === 'integrated'
 	) ? value : null;
 }

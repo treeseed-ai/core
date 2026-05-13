@@ -39,6 +39,7 @@ function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface |
 		value === 'worker' ||
 		value === 'agents' ||
 		value === 'services' ||
+		value === 'all' ||
 		value === 'integrated'
 	) {
 		return value;
