@@ -31,7 +31,7 @@ function readNumberOption(name: string) {
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
+function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface | undefined {
 	if (
 		value === 'web' ||
 		value === 'api' ||
@@ -43,7 +43,7 @@ function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
 	) {
 		return value;
 	}
-	return 'integrated';
+	return undefined;
 }
 
 function parseSetupMode(value: string | undefined): TreeseedIntegratedDevSetupMode | undefined {
@@ -69,6 +69,7 @@ function parseOpenMode(value: string | undefined): TreeseedIntegratedDevOpenMode
 
 const exitCode = await runTreeseedIntegratedDev({
 	surface: parseSurface(readOption('--surface')),
+	surfaces: readOption('--surfaces'),
 	watch: readFlag('--watch'),
 	webHost: readOption('--host'),
 	webPort: readNumberOption('--port'),
