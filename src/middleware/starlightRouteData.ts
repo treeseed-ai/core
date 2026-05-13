@@ -27,6 +27,12 @@ const findTopLevelGroup = (sidebar: SidebarEntry[], label: string) =>
 const flattenLinks = (entries: SidebarEntry[]): SidebarLink[] =>
 	entries.flatMap((entry) => (entry.type === 'link' ? [copyLink(entry)] : flattenLinks(entry.entries)));
 
+const findTopLevelGroupForPath = (sidebar: SidebarEntry[], currentPath: string) =>
+	sidebar.find((entry): entry is SidebarGroup =>
+		entry.type === 'group' &&
+		flattenLinks(entry.entries).some((link) => normalizeHref(link.href) === normalizeHref(currentPath)),
+	);
+
 const buildPagination = (entries: SidebarEntry[], currentHref: string): PaginationLinks => {
 	const flatLinks = flattenLinks(entries);
 	const currentIndex = flatLinks.findIndex((link) => normalizeHref(link.href) === normalizeHref(currentHref));
@@ -52,20 +58,6 @@ const setRouteSidebar = (
 	route.pagination = paginationSource ? buildPagination(paginationSource, currentPath) : { prev: undefined, next: undefined };
 };
 
-const defaultRuntime: TreeseedBookRuntime = {
-	BOOKS: [],
-	BOOKS_LINK: {
-		label: 'Books',
-		link: TREESEED_LINKS.home,
-	},
-	TREESEED_LIBRARY_DOWNLOAD: {
-		downloadFileName: 'treeseed-knowledge.md',
-		downloadHref: '/books/treeseed-knowledge.md',
-		downloadTitle: 'TreeSeed Knowledge Library',
-	},
-	TREESEED_LINKS,
-};
-
 function runtimeTenantModelRendered(modelName: TreeseedContentCollection) {
 	const featureValue = RUNTIME_TENANT.features?.[modelName as keyof typeof RUNTIME_TENANT.features];
 	const siteValue = RUNTIME_TENANT.site?.[modelName as keyof typeof RUNTIME_TENANT.site];
@@ -80,7 +72,26 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 		setRouteSidebar(route, currentPath, [], null);
 		return;
 	}
-	const runtime = (await loadHostedBookRuntime(context.locals)) ?? defaultRuntime;
+	let runtime: TreeseedBookRuntime | null = null;
+	try {
+		runtime = await loadHostedBookRuntime(context.locals);
+	} catch {
+		runtime = null;
+	}
+
+	if (!runtime) {
+		const bookGroup = findTopLevelGroupForPath(route.sidebar, currentPath);
+		if (bookGroup) {
+			setRouteSidebar(route, currentPath, [copyEntry(bookGroup)], bookGroup.entries);
+			return;
+		}
+
+		if (currentPath === normalizeHref(TREESEED_LINKS.home)) {
+			setRouteSidebar(route, currentPath, [], null);
+		}
+		return;
+	}
+
 	route.sidebar = buildStarlightSidebarEntriesFromRuntime(runtime, currentPath);
 
 	const activeBook = runtime.BOOKS.find((book) =>

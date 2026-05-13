@@ -3,11 +3,8 @@ import EditLink from '@astrojs/starlight/components/EditLink.astro';
 import LastUpdated from '@astrojs/starlight/components/LastUpdated.astro';
 import Pagination from '@astrojs/starlight/components/Pagination.astro';
 import config from 'virtual:starlight/user-config';
-import FooterSubscribeForm from '../forms/FooterSubscribeForm.astro';
+import PublicFooter from '../ui/shell/PublicFooter.astro';
 import DevWatchReload from '../DevWatchReload.astro';
-import { PROJECT_STAGE } from '../../utils/content-status';
-import { SITE } from '../../utils/seo';
-import { SITE_FOOTER_MENU } from '../../utils/site-config';
 ---
 
 <div class="docs-footer-shell">
@@ -28,32 +25,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 		</div>
 	</div>
 
-	<footer class="docs-site-footer">
-		<div class="docs-site-footer-inner">
-			<div class="docs-footer-grid">
-				<div class="docs-footer-column">
-					<p class="docs-footer-title">{SITE.name}</p>
-					<p class="docs-footer-copy">{SITE.summary}</p>
-				</div>
-				<div class="docs-footer-column">
-					<p class="docs-footer-heading">Project stage</p>
-					<p class="docs-footer-column-title">{PROJECT_STAGE.label}</p>
-					<p class="docs-footer-copy">{PROJECT_STAGE.description}</p>
-				</div>
-				{SITE_FOOTER_MENU.map((group) => (
-					<div class="docs-footer-column">
-						<p class="docs-footer-heading">{group.label}</p>
-						<div class="docs-footer-links">
-							{group.items.map((item) => (
-								<a href={item.href}>{item.label}</a>
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-			<FooterSubscribeForm currentPath={Astro.url.pathname} />
-		</div>
-	</footer>
+	<PublicFooter currentPath={Astro.url.pathname} />
 	<DevWatchReload />
 </div>
 
@@ -65,7 +37,7 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 		}
 
 		.docs-footer-page-inner,
-		.docs-site-footer-inner {
+		.docs-footer-shell :global(.ts-public-footer__inner) {
 			width: min(100%, var(--ts-content-width));
 			margin-inline: auto;
 			padding-inline: 1rem;
@@ -119,76 +91,20 @@ import { SITE_FOOTER_MENU } from '../../utils/site-config';
 			color: var(--sl-color-white);
 		}
 
-		.docs-site-footer {
+		.docs-footer-shell :global(.ts-public-footer) {
 			margin-top: 0;
-			border-top: 2px solid var(--ts-color-border-strong);
-			padding-top: 2rem;
-		}
-
-		.docs-site-footer-inner {
-			padding-bottom: 3.75rem;
-		}
-
-		.docs-footer-grid {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
-			gap: 2rem;
-			padding-bottom: 2rem;
-		}
-
-		.docs-footer-column {
-			width: 16rem;
-		}
-
-		.docs-footer-heading {
-			font-size: var(--sl-text-sm);
-			font-weight: 600;
-			letter-spacing: 0.16em;
-			text-transform: uppercase;
-			color: var(--ts-color-info-text);
-		}
-
-		.docs-footer-title,
-		.docs-footer-column-title {
-			font-size: 1.25rem;
-			font-weight: 700;
-			color: var(--ts-color-text);
-		}
-
-		.docs-footer-copy,
-		.docs-footer-links {
-			margin-top: 0.75rem;
-			font-size: 1rem;
-			line-height: 2;
-			color: var(--ts-color-text-muted);
-		}
-
-		.docs-footer-links {
-			display: flex;
-			flex-direction: column;
-			gap: 0.5rem;
-		}
-
-		.docs-footer-links a {
-			text-decoration: none;
-		}
-
-		.docs-footer-links a:hover,
-		.docs-footer-links a:focus-visible {
-			color: var(--ts-color-text);
 		}
 
 		@media (min-width: 40rem) {
 			.docs-footer-page-inner,
-			.docs-site-footer-inner {
+			.docs-footer-shell :global(.ts-public-footer__inner) {
 				padding-inline: 1.5rem;
 			}
 		}
 
 		@media (min-width: 64rem) {
 			.docs-footer-page-inner,
-			.docs-site-footer-inner {
+			.docs-footer-shell :global(.ts-public-footer__inner) {
 				padding-inline: 2rem;
 			}
 		}

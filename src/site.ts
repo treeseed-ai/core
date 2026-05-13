@@ -1,9 +1,10 @@
 import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 import tailwindcss from '@tailwindcss/vite';
@@ -15,6 +16,7 @@ import { getStarlightSidebarConfigFromRuntime } from './utils/starlight-nav';
 import { buildTreeseedThemeCss } from './utils/theme.ts';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { getTreeseedContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
+import { getTenantContentRoot } from '@treeseed/sdk/platform/tenant-config';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import type { TreeseedContentCollection } from '@treeseed/sdk/platform/contracts';
 import {
@@ -64,7 +66,6 @@ const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resou
 	{ pattern: '/contact', resourcePath: 'pages/contact.astro' },
 	{ pattern: '/feed.xml', resourcePath: 'pages/feed.xml', model: 'notes' },
 	{ pattern: '/ui', resourcePath: 'pages/ui/index.astro' },
-	{ pattern: '/[slug]', resourcePath: 'pages/[slug].astro', model: 'pages' },
 	{ pattern: '/agents', resourcePath: 'pages/agents/index.astro', model: 'agents' },
 	{ pattern: '/agents/[slug]', resourcePath: 'pages/agents/[slug].astro', model: 'agents' },
 	{ pattern: '/books', resourcePath: 'pages/books/index.astro', model: 'books' },
@@ -82,6 +83,58 @@ const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resou
 	{ pattern: '/questions', resourcePath: 'pages/questions/index.astro', model: 'questions' },
 	{ pattern: '/questions/[slug]', resourcePath: 'pages/questions/[slug].astro', model: 'questions' },
 ];
+
+const DYNAMIC_PAGE_ROUTE_ENTRY = { pattern: '/[slug]', resourcePath: 'pages/[slug].astro', model: 'pages' as const };
+
+function collectMarkdownFiles(rootPath: string): string[] {
+	if (!existsSync(rootPath)) {
+		return [];
+	}
+
+	const stats = statSync(rootPath);
+	if (stats.isFile()) {
+		return /\.(md|mdx)$/iu.test(rootPath) ? [rootPath] : [];
+	}
+
+	return readdirSync(rootPath, { withFileTypes: true }).flatMap((entry) => {
+		const fullPath = resolve(rootPath, entry.name);
+		if (entry.isDirectory()) {
+			return collectMarkdownFiles(fullPath);
+		}
+
+		return entry.isFile() && /\.(md|mdx)$/iu.test(entry.name) ? [fullPath] : [];
+	});
+}
+
+function readFrontmatter(filePath: string): Record<string, unknown> | null {
+	const raw = readFileSync(filePath, 'utf8');
+	const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+	if (!match) {
+		return null;
+	}
+
+	return parseYaml(match[1]) as Record<string, unknown>;
+}
+
+function collectLocalPageRouteEntries(tenantConfig: TreeseedTenantConfig, projectRoot: string) {
+	const pagesRoot = resolve(projectRoot, getTenantContentRoot(tenantConfig, 'pages'));
+	const slugs = new Set<string>();
+
+	for (const filePath of collectMarkdownFiles(pagesRoot)) {
+		const frontmatter = readFrontmatter(filePath);
+		const slug = typeof frontmatter?.slug === 'string' ? frontmatter.slug.replace(/^\/+|\/+$/g, '') : '';
+		if (!slug || slug.includes('/')) {
+			continue;
+		}
+		slugs.add(slug);
+	}
+
+	return [...slugs].sort().map((slug) => ({
+		pattern: `/${slug}`,
+		resourcePath: 'pages/[slug].astro',
+		model: 'pages' as const,
+	}));
+}
 
 function createTreeseedRoutesIntegration(tenantConfig: TreeseedTenantConfig, routes: SiteRoute[] = []) {
 	return {
@@ -304,13 +357,16 @@ export function createTreeseedSite(
 	const injectedProjectRoot = JSON.stringify(projectRoot);
 	const injectedSiteConfig = JSON.stringify(siteConfig);
 	const injectedDeployConfig = JSON.stringify(deployConfig);
+	const injectedBookRuntime = JSON.stringify(bookRuntime);
 	const resolvedGlobalCss = resolveTreeseedStyleEntrypoint(siteLayers, 'styles/global.css');
 	const serverRendered =
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
 	const allowedDomains = deriveTreeseedAstroAllowedDomains(deployConfig, { siteUrl: siteConfig.site.siteUrl });
 	const publishedRuntime = getTreeseedContentServingMode() === 'published_runtime';
+	const pageRoutes = publishedRuntime ? [DYNAMIC_PAGE_ROUTE_ENTRY] : collectLocalPageRouteEntries(tenantConfig, projectRoot);
 	const packageRoutes = [
 		...PACKAGE_ROUTE_ENTRIES,
+		...pageRoutes,
 		...(docsRendered && publishedRuntime
 			? [
 				{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro', model: 'docs' as const },
@@ -345,6 +401,7 @@ export function createTreeseedSite(
 				__TREESEED_PROJECT_ROOT__: injectedProjectRoot,
 				__TREESEED_SITE_CONFIG__: injectedSiteConfig,
 				__TREESEED_DEPLOY_CONFIG__: injectedDeployConfig,
+				__TREESEED_BOOK_RUNTIME__: injectedBookRuntime,
 			},
 			plugins: [
 				createTenantThemeVitePlugin(tenantThemeCss),

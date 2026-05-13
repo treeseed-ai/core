@@ -51,7 +51,7 @@ const download = activeBook
 						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">
 							{activeBook?.sectionLabel ?? 'Knowledge'}
 						</p>
-						<a href="/knowledge/" class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Knowledge home</a>
+						<a href={runtime?.TREESEED_LINKS.home ?? '/books/'} class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Books home</a>
 						{activeBook?.landingPath && (
 							<a href={activeBook.landingPath} class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Open book landing page</a>
 						)}

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.10] - 2026-05-13
+
+### Added
+
+- feat(ui): overhaul site shell and expand dev-platform surfaces (424dd99d03b6)
+
+### Tests
+
+- build(build): update package metadata (beb5fb31c4e5)
+
+### Dependencies
+
+- Release @treeseed/core 0.8.10.
+
 ## [0.8.9] - 2026-05-12
 
 ### Tests

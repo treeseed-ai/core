@@ -5,16 +5,20 @@ const WATCH_INTERVAL_MS = 900;
 const WATCH_DEBOUNCE_MS = 350;
 
 export type TreeseedDevWatchEntry = {
-	kind: 'tenant' | 'package' | 'sdk';
+	kind: 'tenant' | 'core' | 'sdk' | 'agent' | 'cli';
 	root: string;
+	restartRequired?: boolean;
 };
 
 export type TreeseedDevWatchChange = {
 	changedPaths: string[];
 	tenantChanged: boolean;
 	tenantApiChanged: boolean;
-	packageChanged: boolean;
+	coreChanged: boolean;
 	sdkChanged: boolean;
+	agentChanged: boolean;
+	cliChanged: boolean;
+	commandImplementationChanged: boolean;
 };
 
 export type TreeseedDevWatchController = {
@@ -151,11 +155,20 @@ export function classifyChanges(changedPaths: string[], watchEntries: TreeseedDe
 		sdkChanged: changedPaths.some((filePath) =>
 			watchEntries.some((entry) => entry.kind === 'sdk' && matchesEntry(filePath, entry)),
 		),
-		packageChanged: changedPaths.some((filePath) =>
-			watchEntries.some((entry) => entry.kind === 'package' && matchesEntry(filePath, entry)),
+		coreChanged: changedPaths.some((filePath) =>
+			watchEntries.some((entry) => entry.kind === 'core' && matchesEntry(filePath, entry)),
+		),
+		agentChanged: changedPaths.some((filePath) =>
+			watchEntries.some((entry) => entry.kind === 'agent' && matchesEntry(filePath, entry)),
+		),
+		cliChanged: changedPaths.some((filePath) =>
+			watchEntries.some((entry) => entry.kind === 'cli' && matchesEntry(filePath, entry)),
 		),
 		tenantChanged,
 		tenantApiChanged: tenantChanged && changedPaths.some(isTenantApiInput),
+		commandImplementationChanged: changedPaths.some((filePath) =>
+			watchEntries.some((entry) => entry.restartRequired === true && matchesEntry(filePath, entry)),
+		),
 	};
 }
 

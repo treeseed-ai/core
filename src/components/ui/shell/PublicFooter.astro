@@ -1,0 +1,39 @@
+---
+import FooterSubscribeForm from '../../forms/FooterSubscribeForm.astro';
+import { PROJECT_STAGE } from '../../../utils/content-status';
+import { SITE } from '../../../utils/seo';
+import { SITE_FOOTER_MENU } from '../../../utils/site-config';
+
+interface Props {
+	currentPath?: string;
+}
+
+const { currentPath = Astro.url.pathname } = Astro.props as Props;
+---
+
+<footer class="ts-public-footer">
+	<div class="ts-public-footer__inner">
+		<div class="ts-public-footer__grid">
+			<div class="ts-public-footer__column">
+				<p class="ts-public-footer__title">{SITE.name}</p>
+				<p class="ts-public-footer__copy">{SITE.summary}</p>
+			</div>
+			<div class="ts-public-footer__column">
+				<p class="ts-public-footer__heading">Project stage</p>
+				<p class="ts-public-footer__column-title">{PROJECT_STAGE.label}</p>
+				<p class="ts-public-footer__copy">{PROJECT_STAGE.description}</p>
+			</div>
+			{SITE_FOOTER_MENU.map((group) => (
+				<div class="ts-public-footer__column">
+					<p class="ts-public-footer__heading">{group.label}</p>
+					<div class="ts-public-footer__links">
+						{group.items.map((item) => (
+							<a href={item.href}>{item.label}</a>
+						))}
+					</div>
+				</div>
+			))}
+		</div>
+		<FooterSubscribeForm currentPath={currentPath} />
+	</div>
+</footer>

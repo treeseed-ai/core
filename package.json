@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -70,7 +70,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.8.9",
+    "@treeseed/sdk": "0.8.10",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
@@ -184,6 +184,7 @@
     "./components/ui/layout/PageHeader.astro": "./dist/components/ui/layout/PageHeader.astro",
     "./components/ui/shell/AppShell.astro": "./dist/components/ui/shell/AppShell.astro",
     "./components/ui/shell/PublicShell.astro": "./dist/components/ui/shell/PublicShell.astro",
+    "./components/ui/shell/PublicFooter.astro": "./dist/components/ui/shell/PublicFooter.astro",
     "./components/ui/shell/RailNav.astro": "./dist/components/ui/shell/RailNav.astro",
     "./components/ui/shell/BottomNav.astro": "./dist/components/ui/shell/BottomNav.astro",
     "./components/ui/shell/TopBar.astro": "./dist/components/ui/shell/TopBar.astro",

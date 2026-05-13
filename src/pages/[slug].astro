@@ -8,7 +8,7 @@ import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../utils/site
 
 export const prerender = false;
 
-const slug = String(Astro.params.slug ?? '');
+const slug = String(Astro.params.slug ?? Astro.url.pathname.replace(/^\/+|\/+$/g, ''));
 const publishedRuntime = isPublishedRuntimeContentMode();
 const localEntry = publishedRuntime ? null : (await getCollection('pages')).find((candidate) => candidate.data.slug === slug) ?? null;
 const publishedEntry = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'pages', slug) : null;

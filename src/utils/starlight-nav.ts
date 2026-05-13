@@ -1,6 +1,12 @@
 import type { SidebarEntry, SidebarGroup, SidebarLink } from '@astrojs/starlight/route-data';
 import type { TreeseedBookDefinition } from '@treeseed/sdk/platform/contracts';
-import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
+import {
+	BOOKS as RUNTIME_BOOKS,
+	BOOKS_LINK as RUNTIME_BOOKS_LINK,
+	TREESEED_LIBRARY_DOWNLOAD as RUNTIME_TREESEED_LIBRARY_DOWNLOAD,
+	TREESEED_LINKS as RUNTIME_TREESEED_LINKS,
+	type TreeseedBookRuntime,
+} from '@treeseed/sdk/platform/books-data';
 
 interface DocsDownload {
 	downloadFileName: string;
@@ -9,6 +15,8 @@ interface DocsDownload {
 }
 
 type StarlightRuntime = TreeseedBookRuntime;
+
+declare const __TREESEED_BOOK_RUNTIME__: StarlightRuntime | undefined;
 
 export const normalizeHref = (href: string) => (href.endsWith('/') ? href : `${href}/`);
 
@@ -108,21 +116,24 @@ export function getDocsDownloadForPathFromRuntime(runtime: StarlightRuntime, pat
 	};
 }
 
-export const BOOKS: TreeseedBookRuntime['BOOKS'] = [];
-export const BOOKS_LINK: TreeseedBookRuntime['BOOKS_LINK'] = {
+export const BOOKS: TreeseedBookRuntime['BOOKS'] = RUNTIME_BOOKS ?? [];
+export const BOOKS_LINK: TreeseedBookRuntime['BOOKS_LINK'] = RUNTIME_BOOKS_LINK ?? {
 	label: 'Books',
-	link: '/knowledge/',
+	link: '/books/',
 };
-export const TREESEED_LIBRARY_DOWNLOAD: TreeseedBookRuntime['TREESEED_LIBRARY_DOWNLOAD'] = {
+export const TREESEED_LIBRARY_DOWNLOAD: TreeseedBookRuntime['TREESEED_LIBRARY_DOWNLOAD'] = RUNTIME_TREESEED_LIBRARY_DOWNLOAD ?? {
 	downloadFileName: 'treeseed-knowledge.md',
 	downloadHref: '/books/treeseed-knowledge.md',
 	downloadTitle: 'TreeSeed Knowledge Library',
 };
-export const TREESEED_LINKS: TreeseedBookRuntime['TREESEED_LINKS'] = {
-	home: '/knowledge/',
+export const TREESEED_LINKS: TreeseedBookRuntime['TREESEED_LINKS'] = RUNTIME_TREESEED_LINKS ?? {
+	home: '/books/',
 };
 
-const runtime: StarlightRuntime = { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS };
+const runtime: StarlightRuntime =
+	typeof __TREESEED_BOOK_RUNTIME__ !== 'undefined'
+		? __TREESEED_BOOK_RUNTIME__
+		: { BOOKS, BOOKS_LINK, TREESEED_LIBRARY_DOWNLOAD, TREESEED_LINKS };
 
 export function buildBookSidebar(bookSlug: string) {
 	return buildBookSidebarFromRuntime(runtime, bookSlug);

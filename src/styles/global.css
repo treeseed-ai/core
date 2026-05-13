@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 @import "./tokens.css";
+@import "./theme.css";
+@import "./ui.css";
+@import "./forms.css";
+@import "./app-shell.css";
 @import "./prose.css";
 
 @theme {
@@ -573,9 +577,10 @@ button:focus-visible {
 	width: 100vw;
 	margin-left: calc(50% - 50vw);
 	margin-right: calc(50% - 50vw);
-	margin-bottom: -8rem;
+	margin-bottom: 0;
 	background: var(--ts-color-canvas-subtle);
 	border-top: 1px solid color-mix(in srgb, var(--ts-color-info) 36%, var(--ts-color-surface) 12%);
+	border-bottom: 1px solid var(--ts-color-border);
 }
 
 .site-footer-cta::before {

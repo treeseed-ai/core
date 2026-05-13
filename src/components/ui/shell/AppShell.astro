@@ -9,6 +9,7 @@ import RailNav from './RailNav.astro';
 import BottomNav from './BottomNav.astro';
 import TopBar from './TopBar.astro';
 import Button from '../forms/Button.astro';
+import DevWatchReload from '../../DevWatchReload.astro';
 import type { ButtonAction } from '../types.ts';
 import type { ThemePreference } from '../../../utils/theme.ts';
 
@@ -106,5 +107,6 @@ const {
 			{bottomNavItems.length > 0 ? <BottomNav items={bottomNavItems} currentPath={currentPath} /> : null}
 		</div>
 		<slot name="sensitiveModal" />
+		<DevWatchReload />
 	</body>
 </html>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import type { SpawnOptions } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,7 +8,7 @@ import {
 	runTreeseedIntegratedDev,
 	runTreeseedIntegratedDevReset,
 } from '../../src/dev.ts';
-import { shouldIgnoreWatchPath } from '../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../src/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -42,6 +42,36 @@ class FakeChildProcess {
 
 describe('Treeseed integrated dev orchestration', () => {
 	const tenantRoot = resolve(process.cwd(), '.fixtures/treeseed-fixtures/sites/working-site');
+	let fakeAgentPackageRoot: string | null = null;
+
+	afterAll(() => {
+		if (fakeAgentPackageRoot) {
+			rmSync(fakeAgentPackageRoot, { recursive: true, force: true });
+		}
+	});
+
+	function getFakeAgentPackageRoot() {
+		if (fakeAgentPackageRoot) return fakeAgentPackageRoot;
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-agent-package-'));
+		mkdirSync(resolve(root, 'scripts'), { recursive: true });
+		mkdirSync(resolve(root, 'src/api'), { recursive: true });
+		mkdirSync(resolve(root, 'src/services'), { recursive: true });
+		writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/agent', type: 'module' }, null, 2));
+		writeFileSync(resolve(root, 'scripts/run-ts.mjs'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/api/server.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/workday-manager.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/worker.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/agents.ts'), 'export {};\n');
+		fakeAgentPackageRoot = root;
+		return root;
+	}
+
+	function withAgentPackageEnv(env: NodeJS.ProcessEnv = {}) {
+		return {
+			...env,
+			TREESEED_AGENT_PACKAGE_ROOT: getFakeAgentPackageRoot(),
+		};
+	}
 
 	function writeTempTenant(siteConfig: string) {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-runtime-'));
@@ -51,15 +81,15 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
-	it('creates an integrated web plan with local defaults', () => {
+	it('creates an integrated web and API plan with local defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_SMTP_HOST: 'smtp.mailgun.org',
 				TREESEED_SMTP_PORT: '587',
 				TREESEED_SMTP_USERNAME: 'hosted-user',
 				TREESEED_SMTP_PASSWORD: 'hosted-password',
-			},
+			}),
 		});
 
 		expect(plan.surface).toBe('integrated');
@@ -68,8 +98,9 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.openMode).toBe('auto');
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
 		expect(plan.localRuntimes.web.selected).toBe('cloudflare-wrangler-local');
+		expect(plan.localRuntimes.api.selected).toBe('node-local');
 		expect(plan.commands[0]?.localRuntime?.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--local', '--config']));
 		expect(plan.setupSteps.map((step) => step.id)).toEqual(
@@ -77,10 +108,11 @@ describe('Treeseed integrated dev orchestration', () => {
 		);
 		expect(plan.readyChecks.map((check) => check.id)).toEqual(
 			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
-				? ['web', 'mailpit']
-				: ['web'],
+				? ['web', 'api', 'mailpit']
+				: ['web', 'api'],
 		);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
+		expect(plan.commands[0]?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
@@ -88,6 +120,8 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PASSWORD).toBe('');
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT).toBe('1025');
+		expect(plan.commands[1]?.label).toBe('Treeseed API');
+		expect(plan.commands[1]?.env.PORT).toBe('3000');
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {
@@ -147,7 +181,7 @@ surfaces:
 		}
 	});
 
-	it('does not start processing services from the core web runtime', () => {
+	it('does not start processing services from the default integrated runtime', () => {
 		const tempRoot = writeTempTenant(`name: Test
 slug: test
 siteUrl: https://example.com
@@ -161,10 +195,18 @@ services:
       runtime: auto
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'integrated', setupMode: 'off', env: {} });
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: tempRoot,
+				surface: 'integrated',
+				setupMode: 'off',
+				env: withAgentPackageEnv(),
+			});
 
-			expect(plan.commands.map((command) => command.id)).toEqual(['web']);
-			expect(plan.localRuntimes).not.toHaveProperty('api');
+			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
+			expect(plan.localRuntimes).toHaveProperty('api');
+			expect(plan.localRuntimes).not.toHaveProperty('manager');
+			expect(plan.localRuntimes).not.toHaveProperty('worker');
+			expect(plan.localRuntimes).not.toHaveProperty('agents');
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
 		}
@@ -195,10 +237,10 @@ surfaces:
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			watch: true,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_API_BASE_URL: 'https://override.example.com',
 				PORT: '4400',
-			},
+			}),
 		});
 
 		expect(plan.apiBaseUrl).toBe('https://override.example.com');
@@ -218,25 +260,103 @@ surfaces:
 		expect(shouldIgnoreWatchPath(resolve(publicRoot, 'images/logo.png'), publicRoot)).toBe(false);
 	});
 
+	it('classifies dev changes by restart scope', () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-watch-'));
+		try {
+			const tenantSource = resolve(root, 'tenant/src/pages/index.astro');
+			const tenantConfig = resolve(root, 'tenant/treeseed.site.yaml');
+			const sdkSource = resolve(root, 'packages/sdk/src/index.ts');
+			const agentSource = resolve(root, 'packages/agent/src/services/worker.ts');
+			const cliDevHandler = resolve(root, 'packages/cli/src/cli/handlers/dev.ts');
+			const entries = [
+				{ kind: 'tenant' as const, root: resolve(root, 'tenant/src') },
+				{ kind: 'tenant' as const, root: resolve(root, 'tenant/treeseed.site.yaml') },
+				{ kind: 'sdk' as const, root: resolve(root, 'packages/sdk/src') },
+				{ kind: 'agent' as const, root: resolve(root, 'packages/agent/src') },
+				{ kind: 'cli' as const, root: cliDevHandler, restartRequired: true },
+			];
+
+			expect(classifyChanges([tenantSource], entries)).toMatchObject({
+				tenantChanged: true,
+				tenantApiChanged: false,
+				sdkChanged: false,
+				agentChanged: false,
+				commandImplementationChanged: false,
+			});
+			expect(classifyChanges([tenantConfig], entries)).toMatchObject({
+				tenantChanged: true,
+				tenantApiChanged: true,
+			});
+			expect(classifyChanges([sdkSource, agentSource], entries)).toMatchObject({
+				sdkChanged: true,
+				agentChanged: true,
+				commandImplementationChanged: false,
+			});
+			expect(classifyChanges([cliDevHandler], entries)).toMatchObject({
+				cliChanged: true,
+				commandImplementationChanged: true,
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it('lets explicit API port override the shared web environment value', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			apiPort: 4401,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_API_BASE_URL: 'https://override.example.com',
 				PORT: '4400',
-			},
+			}),
 		});
 
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:4401');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:4401');
+		expect(plan.commands[1]?.env.PORT).toBe('4401');
+	});
+
+	it('plans explicit API and service surfaces with Node runtimes', () => {
+		const apiPlan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'api',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
+		expect(apiPlan.webUrl).toBeNull();
+		expect(apiPlan.commands.map((command) => command.id)).toEqual(['api']);
+		expect(apiPlan.localRuntimes).not.toHaveProperty('web');
+		expect(apiPlan.readyChecks.map((check) => check.id)).toEqual(['api']);
+
+		const servicesPlan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'services',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
+		expect(servicesPlan.commands.map((command) => command.id)).toEqual(['api', 'manager', 'worker', 'agents']);
+		expect(servicesPlan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(['api']);
+		expect(servicesPlan.readyChecks.filter((check) => !check.required).map((check) => check.id)).toEqual([
+			'manager',
+			'worker',
+			'agents',
+		]);
 	});
 
 	it('emits a structured plan and exits without spawning services', async () => {
 		const output: string[] = [];
 		const exitCode = await runTreeseedIntegratedDev(
-			{ cwd: tenantRoot, plan: true, json: true, setupMode: 'off' },
+			{
+				cwd: tenantRoot,
+				plan: true,
+				json: true,
+				setupMode: 'off',
+				env: withAgentPackageEnv({
+					GH_TOKEN: 'test-token',
+					TREESEED_API_AUTH_SECRET: 'test-secret',
+				}),
+			},
 			{
 				spawn() {
 					throw new Error('plan mode should not spawn child processes');
@@ -251,7 +371,11 @@ surfaces:
 		expect(exitCode).toBe(0);
 		const parsed = JSON.parse(output.join(''));
 		expect(parsed.kind).toBe('treeseed.dev.plan');
-		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web']);
+		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api']);
+		expect(parsed.payload.restartPolicy.commandImplementationChangesRequireRestart).toBe(true);
+		expect(parsed.payload.restartPolicy.agentChanges).toBe('defer');
+		expect(parsed.payload.commands[0].env.GH_TOKEN).toBe('[redacted]');
+		expect(parsed.payload.commands[0].env.TREESEED_API_AUTH_SECRET).toBe('[redacted]');
 	});
 
 	it('replaces an active previous dev runtime before spawning services', async () => {
@@ -454,13 +578,14 @@ surfaces:
 		}
 	});
 
-	it('starts the web child process and reports failure', async () => {
+	it('restarts a crashed required child process instead of exiting', async () => {
 		const spawns: Array<{ command: string; args: string[]; options: SpawnOptions }> = [];
-		const children = Array.from({ length: 1 }, () => new FakeChildProcess());
+		const children = Array.from({ length: 2 }, () => new FakeChildProcess());
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		let settled = false;
 
 		const promise = runTreeseedIntegratedDev(
-			{ cwd: tenantRoot, setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
+			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
 			{
 				spawn(command, args, options) {
 					spawns.push({ command, args, options });
@@ -474,20 +599,37 @@ surfaces:
 				fetch: async () => ({ ok: true }) as Response,
 			},
 		);
+		promise.then(() => {
+			settled = true;
+		});
 
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
 		expect(spawns).toHaveLength(1);
 		children[0]?.exit(1);
-		await expect(promise).resolves.toBe(1);
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 1_100));
+		expect(spawns).toHaveLength(2);
+		expect(settled).toBe(false);
+		signalHandlers.get('SIGINT')?.();
+		await expect(promise).resolves.toBe(130);
 		expect(signalHandlers.size).toBe(0);
 	});
 
 	it('shuts down children on parent signals', async () => {
-		const children = Array.from({ length: 1 }, () => new FakeChildProcess());
+		const children = Array.from({ length: 1 }, () => {
+			const child = new FakeChildProcess();
+			const kill = child.kill.bind(child);
+			child.kill = (signal?: string | number) => {
+				kill(signal);
+				child.exit(null, typeof signal === 'string' ? signal as NodeJS.Signals : null);
+				return true;
+			};
+			return child;
+		});
 		let spawnCount = 0;
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 		const promise = runTreeseedIntegratedDev(
-			{ cwd: tenantRoot, setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
+			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
 			{
 				spawn() {
 					spawnCount += 1;
@@ -548,7 +690,7 @@ surfaces:
 		await expect(promise).resolves.toBe(130);
 	});
 
-	it('starts the watcher only after readiness and rebaselines before observing changes', async () => {
+	it('starts the watcher immediately and rebaselines before observing changes', async () => {
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 		let releaseFetch: (() => void) | null = null;
 		let startWatchCount = 0;
@@ -588,11 +730,11 @@ surfaces:
 		);
 
 		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
-		expect(startWatchCount).toBe(0);
+		expect(startWatchCount).toBe(1);
+		expect(rebaselineCount).toBeGreaterThan(0);
 		releaseFetch?.();
 		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
 		expect(startWatchCount).toBe(1);
-		expect(rebaselineCount).toBeGreaterThan(0);
 
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
@@ -601,6 +743,7 @@ surfaces:
 	it('sends shutdown signals to child process groups when pids are available', async () => {
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
+		const child = new FakeChildProcess(12345);
 
 		const promise = runTreeseedIntegratedDev(
 			{
@@ -613,10 +756,11 @@ surfaces:
 			},
 			{
 				spawn() {
-					return new FakeChildProcess(12345) as never;
+					return child as never;
 				},
 				killProcess(pid, signal) {
 					killCalls.push({ pid, signal });
+					child.exit(null, signal);
 				},
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);

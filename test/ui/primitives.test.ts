@@ -28,6 +28,7 @@ const componentEntrypoints = [
 	'./components/ui/layout/PageHeader.astro',
 	'./components/ui/shell/AppShell.astro',
 	'./components/ui/shell/PublicShell.astro',
+	'./components/ui/shell/PublicFooter.astro',
 	'./components/ui/shell/RailNav.astro',
 	'./components/ui/shell/BottomNav.astro',
 	'./components/ui/shell/TopBar.astro',
