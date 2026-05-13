@@ -32,7 +32,15 @@ function readNumberOption(name: string) {
 }
 
 function parseSurface(value: string | undefined): TreeseedIntegratedDevSurface {
-	if (value === 'web' || value === 'integrated') {
+	if (
+		value === 'web' ||
+		value === 'api' ||
+		value === 'manager' ||
+		value === 'worker' ||
+		value === 'agents' ||
+		value === 'services' ||
+		value === 'integrated'
+	) {
 		return value;
 	}
 	return 'integrated';

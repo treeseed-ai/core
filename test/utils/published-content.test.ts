@@ -139,10 +139,10 @@ describe('published content helpers', () => {
 			],
 			BOOKS_LINK: {
 				label: 'Books',
-				link: '/knowledge/',
+				link: '/books/',
 			},
 			TREESEED_LINKS: {
-				home: '/knowledge/',
+				home: '/books/',
 			},
 			TREESEED_LIBRARY_DOWNLOAD: {
 				downloadFileName: 'treeseed-knowledge.md',
@@ -171,7 +171,7 @@ describe('published content helpers', () => {
 		expect(sidebar[0]).toMatchObject({
 			type: 'link',
 			label: 'Books',
-			href: '/knowledge/',
+			href: '/books/',
 		});
 		expect(sidebar[1]).toMatchObject({
 			type: 'group',

@@ -41,6 +41,8 @@
 	color: var(--ts-color-text);
 	display: flex;
 	gap: var(--ts-space-2);
+	min-width: 0;
+	max-width: 100%;
 	text-decoration: none;
 }
 
@@ -53,14 +55,20 @@
 	display: inline-flex;
 	flex: 0 0 auto;
 	font-weight: 800;
-	height: 2rem;
+	height: 3rem;
 	justify-content: center;
-	width: 2rem;
+	max-height: 3rem;
+	max-width: 3rem;
+	overflow: hidden;
+	width: 3rem;
 }
 
 .ts-shell-brand__mark img {
 	display: block;
 	height: 100%;
+	max-height: 100%;
+	max-width: 100%;
+	object-fit: contain;
 	width: 100%;
 }
 
@@ -98,6 +106,7 @@
 	flex-wrap: wrap;
 	gap: var(--ts-space-1);
 	justify-content: flex-end;
+	min-width: 0;
 }
 
 .ts-app-shell__rail-context,
@@ -242,9 +251,9 @@
 	font-size: 0.875rem;
 	font-weight: 650;
 	justify-content: center;
-	line-height: 1.15;
-	min-height: 2.25rem;
-	padding: 0.45rem 0.65rem;
+	line-height: 1.2;
+	min-height: 2.5rem;
+	padding: 0.55rem 0.75rem;
 	text-align: center;
 	white-space: nowrap;
 }
@@ -298,6 +307,12 @@
 	padding: var(--ts-space-3);
 }
 
+.ts-public-shell--content .ts-public-shell__main {
+	margin-inline: auto;
+	max-width: var(--ts-content-width);
+	width: 100%;
+}
+
 .ts-public-shell__header {
 	display: grid;
 	gap: var(--ts-space-2);
@@ -305,9 +320,12 @@
 }
 
 .ts-public-shell__nav {
+	align-items: center;
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--ts-space-2);
+	gap: var(--ts-space-1);
+	justify-content: flex-end;
+	min-width: 0;
 }
 
 .ts-public-shell__link {
@@ -319,6 +337,7 @@
 }
 
 .ts-public-shell__link[aria-current='page'],
+.ts-public-shell__summary--active,
 .ts-public-shell__link:hover {
 	background: var(--ts-color-surface-raised);
 	border-color: var(--ts-color-border);
@@ -326,9 +345,182 @@
 	text-decoration: none;
 }
 
+.ts-public-shell__nav-group {
+	position: relative;
+}
+
+.ts-public-shell__summary {
+	align-items: center;
+	cursor: pointer;
+	display: inline-flex;
+	gap: 0.35rem;
+	list-style: none;
+}
+
+.ts-public-shell__summary::-webkit-details-marker {
+	display: none;
+}
+
+.ts-public-shell__summary span {
+	color: var(--ts-color-text-subtle);
+	font-size: 0.75rem;
+	transition: transform 160ms ease;
+}
+
+.ts-public-shell__nav-group[open] .ts-public-shell__summary span {
+	transform: rotate(180deg);
+}
+
+.ts-public-shell__menu {
+	background: var(--ts-color-surface-overlay);
+	border: 1px solid var(--ts-color-border-strong);
+	border-radius: var(--ts-radius-md);
+	box-shadow: var(--ts-color-shadow);
+	display: grid;
+	gap: 0.15rem;
+	inset-block-start: calc(100% + 0.35rem);
+	inset-inline-end: 0;
+	min-width: 13rem;
+	padding: var(--ts-space-1);
+	position: absolute;
+	z-index: 40;
+}
+
+.ts-public-shell__menu-link {
+	border-radius: var(--ts-radius-sm);
+	color: var(--ts-color-text-muted);
+	font-size: 0.9rem;
+	font-weight: 600;
+	padding: 0.5rem 0.65rem;
+	text-decoration: none;
+}
+
+.ts-public-shell__menu-link[aria-current='page'],
+.ts-public-shell__menu-link:hover,
+.ts-public-shell__menu-link:focus-visible {
+	background: var(--ts-color-surface-muted);
+	color: var(--ts-color-text);
+	text-decoration: none;
+}
+
+.ts-public-shell__icon-link {
+	align-items: center;
+	border: 1px solid transparent;
+	border-radius: var(--ts-radius-md);
+	color: var(--ts-color-text-muted);
+	display: inline-flex;
+	height: 2.25rem;
+	justify-content: center;
+	text-decoration: none;
+	width: 2.25rem;
+}
+
+.ts-public-shell__icon-link:hover,
+.ts-public-shell__icon-link:focus-visible {
+	background: var(--ts-color-surface-raised);
+	border-color: var(--ts-color-border);
+	color: var(--ts-color-text);
+	text-decoration: none;
+}
+
+.ts-public-shell__icon-link svg {
+	fill: currentColor;
+	height: 1.15rem;
+	width: 1.15rem;
+}
+
+.ts-public-shell__icon-link--stroke svg {
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.8;
+}
+
 .ts-public-shell__main {
 	display: grid;
 	gap: var(--ts-space-3);
+	padding-top: clamp(1.25rem, 3vw, 2.25rem);
+}
+
+.ts-public-footer {
+	border-top: 2px solid var(--ts-color-border-strong);
+	display: block;
+	margin-top: 4rem;
+	padding-top: 2rem;
+	width: 100%;
+}
+
+.site-footer-cta + .ts-public-footer {
+	margin-top: 0;
+}
+
+.ts-public-footer__inner {
+	display: grid;
+	gap: 2rem;
+	margin-inline: auto;
+	max-width: var(--ts-content-width);
+	padding-bottom: 3.75rem;
+	width: 100%;
+}
+
+.ts-public-footer__grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2rem;
+	justify-content: center;
+}
+
+.ts-public-footer__column {
+	align-content: start;
+	display: grid;
+	gap: 0.75rem;
+	width: 16rem;
+}
+
+.ts-public-footer__title,
+.ts-public-footer__column-title {
+	color: var(--ts-color-text);
+	font-size: 1.25rem;
+	font-weight: 750;
+	line-height: 1.2;
+	margin: 0;
+}
+
+.ts-public-footer__heading {
+	color: var(--ts-color-info-text);
+	font-size: 0.82rem;
+	font-weight: 750;
+	letter-spacing: 0.14em;
+	line-height: 1.2;
+	margin: 0;
+	text-transform: uppercase;
+}
+
+.ts-public-footer__copy,
+.ts-public-footer__links {
+	color: var(--ts-color-text-muted);
+	font-size: 1rem;
+	line-height: 1.9;
+	margin: 0;
+}
+
+.ts-public-footer__links {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.ts-public-footer__links a {
+	color: var(--ts-color-text-muted);
+	display: block;
+	text-decoration: none;
+}
+
+.ts-public-footer__links a:hover,
+.ts-public-footer__links a:focus-visible {
+	color: var(--ts-color-text);
+	text-decoration: underline;
 }
 
 @media (min-width: 48rem) {
@@ -387,12 +579,19 @@
 	}
 
 	.ts-top-bar {
-		align-items: flex-start;
-		flex-direction: column;
+		align-items: center;
+		flex-wrap: wrap;
 	}
 
 	.ts-top-bar__actions {
+		justify-content: flex-end;
+	}
+
+	.ts-public-shell__nav {
 		justify-content: flex-start;
-		width: 100%;
+	}
+
+	.ts-public-shell__menu {
+		inset-inline: 0 auto;
 	}
 }

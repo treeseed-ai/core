@@ -3,7 +3,6 @@ import config from 'virtual:starlight/user-config';
 
 import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
 import Search from '@astrojs/starlight/components/Search.astro';
-import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
 import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
 import DesktopSidebarToggle from './DesktopSidebarToggle.astro';
 import BookFontControls from './BookFontControls.astro';
@@ -18,7 +17,15 @@ const hasToc = Boolean(toc);
 
 <div class="header">
 	<div class="title-wrapper sl-flex">
-		<SiteTitle />
+		<a class="ts-shell-brand" href="/">
+			<span class="ts-shell-brand__mark">
+				<img src={SITE.logo.src} alt={SITE.logo.alt} width="60" height="60" loading="eager" />
+			</span>
+			<span class="ts-shell-brand__text">
+				<span class="ts-shell-brand__name">{SITE.name}</span>
+				<span class="ts-shell-brand__tag">{SITE.statement}</span>
+			</span>
+		</a>
 	</div>
 	<div class="sl-hidden md:sl-flex print:hidden right-group">
 		<div class="desktop-sidebar-toggles" aria-label="Reading controls">

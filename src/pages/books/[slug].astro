@@ -9,14 +9,14 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const books = publishedRuntime ? [] : (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
-const localBook = publishedRuntime ? null : books.find((candidate) => candidate.id === slug) ?? null;
+const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const localBook = books.find((candidate) => candidate.id === slug || candidate.data.slug === slug) ?? null;
 const publishedBook = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'books', slug) : null;
-const book = publishedRuntime ? publishedBook?.entry ?? null : localBook;
+const book = publishedRuntime ? publishedBook?.entry ?? localBook : localBook;
 if (!book) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localBook ? await render(localBook) : null;
+const rendered = localBook ? await render(localBook) : null;
 const Content = rendered?.Content ?? null;
 ---
 
@@ -25,7 +25,7 @@ const Content = rendered?.Content ?? null;
 		<RouteNotFound title="Book not found" description="The requested book could not be found in this Treeseed." currentPath="/books/" />
 	) : (
 		<BookLayout entry={book.data} currentPath="/books/">
-			{publishedRuntime ? <PublishedContentBody html={publishedBook?.html ?? ''} /> : <Content />}
+			{publishedBook?.html ? <PublishedContentBody html={publishedBook.html} /> : Content ? <Content /> : null}
 		</BookLayout>
 	)
 }

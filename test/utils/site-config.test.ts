@@ -18,7 +18,7 @@ import {
 import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
 import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 import { parseSiteConfig } from '../../src/utils/site-config-schema.js';
-import { buildTreeseedThemeCss, normalizeThemePreference } from '../../src/utils/theme.ts';
+import { buildTreeseedThemeCss, getBuiltInColorSchemes, normalizeThemePreference, resolveTreeseedThemeConfig } from '../../src/utils/theme.ts';
 
 describe('site config parsing', () => {
 	it('loads grouped header and footer menus from config.yaml', () => {
@@ -205,6 +205,63 @@ models: {}
 		expect(css).toContain('--ts-color-info-text: #35586d;');
 		expect(css).toContain('--ts-color-text:');
 		expect(css).not.toContain(`--${'site'}-`);
+	});
+
+	it('keeps built-in color schemes modular and complete', () => {
+		const summaries = getBuiltInColorSchemes();
+		const resolved = resolveTreeseedThemeConfig();
+		const requiredTokens = [
+			'canvas',
+			'canvasSubtle',
+			'surface',
+			'surfaceMuted',
+			'surfaceRaised',
+			'surfaceOverlay',
+			'text',
+			'textMuted',
+			'textSubtle',
+			'textInverse',
+			'link',
+			'linkHover',
+			'border',
+			'borderMuted',
+			'borderStrong',
+			'focus',
+			'accent',
+			'accentHover',
+			'accentStrong',
+			'accentSoft',
+			'accentText',
+			'info',
+			'infoSoft',
+			'infoText',
+			'infoBorder',
+			'success',
+			'successSoft',
+			'successText',
+			'successBorder',
+			'warning',
+			'warningSoft',
+			'warningText',
+			'warningBorder',
+			'danger',
+			'dangerSoft',
+			'dangerText',
+			'dangerBorder',
+			'shadow',
+			'grid',
+		];
+
+		expect(summaries.map((scheme) => scheme.id)).toEqual(['fern', 'lichen', 'cedar', 'tidepool']);
+		for (const summary of summaries) {
+			expect(summary.modeSwatches.light).toHaveLength(4);
+			expect(summary.modeSwatches.dark).toHaveLength(4);
+			for (const mode of ['light', 'dark'] as const) {
+				for (const token of requiredTokens) {
+					expect(resolved.schemes[summary.id][mode], `${summary.id}.${mode}.${token}`).toHaveProperty(token);
+				}
+			}
+		}
 	});
 
 	it('normalizes anonymous theme preferences', () => {

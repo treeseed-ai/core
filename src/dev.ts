@@ -44,13 +44,17 @@ const DEFAULT_SETUP_STEP_TIMEOUT_MS = 300_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_500;
 const DEFAULT_KILL_GRACE_MS = 500;
+const INITIAL_RESTART_BACKOFF_MS = 1_000;
+const MAX_RESTART_BACKOFF_MS = 15_000;
+const SETUP_RETRY_BACKOFF_MS = 3_000;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'web';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'services';
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
 export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
 export type TreeseedLocalRuntimeMode = 'auto' | 'provider' | 'local';
 export type TreeseedSelectedLocalRuntime = 'astro-local' | 'cloudflare-wrangler-local' | 'node-local';
+export type TreeseedIntegratedDevCommandId = 'web' | 'api' | 'manager' | 'worker' | 'agents';
 
 export type TreeseedLocalRuntimeSelection = {
 	requested: TreeseedLocalRuntimeMode;
@@ -84,7 +88,7 @@ export type TreeseedIntegratedDevOptions = {
 };
 
 export type TreeseedIntegratedDevCommand = {
-	id: 'web';
+	id: TreeseedIntegratedDevCommandId;
 	label: string;
 	command: string;
 	args: string[];
@@ -142,6 +146,13 @@ export type TreeseedIntegratedDevPlan = {
 	watchEntries: TreeseedIntegratedDevWatchEntry[];
 	commands: TreeseedIntegratedDevCommand[];
 	localRuntimes: Record<string, TreeseedLocalRuntimeSelection>;
+	restartPolicy: {
+		initialBackoffMs: number;
+		maxBackoffMs: number;
+		setupRetryBackoffMs: number;
+		commandImplementationChangesRequireRestart: boolean;
+		agentChanges: 'defer';
+	};
 	reset: TreeseedIntegratedDevResetPlan | null;
 };
 
@@ -208,6 +219,14 @@ function resolvePackageRoot(packageName: string, tenantRoot: string) {
 		currentDir = parentDir;
 	}
 	return currentDir;
+}
+
+function resolveOptionalPackageRoot(packageName: string, tenantRoot: string) {
+	try {
+		return resolvePackageRoot(packageName, tenantRoot);
+	} catch {
+		return null;
+	}
 }
 
 function resolveNodeEntrypoint(packageDir: string, sourceRelativePath: string, distRelativePath: string) {
@@ -333,6 +352,35 @@ function webUrlFor(host: string, port: number) {
 	return `http://${browserHost(host)}:${port}`;
 }
 
+function surfaceCommandIds(surface: TreeseedIntegratedDevSurface): TreeseedIntegratedDevCommandId[] {
+	switch (surface) {
+		case 'web':
+			return ['web'];
+		case 'api':
+			return ['api'];
+		case 'manager':
+			return ['manager'];
+		case 'worker':
+			return ['worker'];
+		case 'agents':
+			return ['agents'];
+		case 'services':
+			return ['api', 'manager', 'worker', 'agents'];
+		case 'integrated':
+		default:
+			return ['web', 'api'];
+	}
+}
+
+function nodeLocalRuntime(label: string): TreeseedLocalRuntimeSelection {
+	return {
+		requested: 'local',
+		provider: 'local',
+		selected: 'node-local',
+		reason: `${label} runs as a local Node.js process.`,
+	};
+}
+
 function dockerComposeIsAvailable(env: NodeJS.ProcessEnv) {
 	const docker = resolveTreeseedToolBinary('docker', { env });
 	if (!docker) return false;
@@ -401,7 +449,11 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 	};
 }
 
-function createWatchEntries(tenantRoot: string, sdkPackageRoot: string): TreeseedIntegratedDevWatchEntry[] {
+function createWatchEntries(tenantRoot: string, roots: {
+	sdkPackageRoot: string;
+	agentPackageRoot?: string | null;
+	cliPackageRoot?: string | null;
+}): TreeseedIntegratedDevWatchEntry[] {
 	const entries: TreeseedIntegratedDevWatchEntry[] = [
 		{ kind: 'tenant', root: resolve(tenantRoot, 'src') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'content') },
@@ -416,20 +468,34 @@ function createWatchEntries(tenantRoot: string, sdkPackageRoot: string): Treesee
 
 	if (!packageRoot.split(sep).includes('node_modules')) {
 		entries.push(
-			{ kind: 'package', root: resolve(packageRoot, 'src') },
-			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'dev-platform.ts') },
-			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'build-tenant-worker.ts') },
-			{ kind: 'package', root: resolve(packageRoot, 'scripts', 'run-ts.mjs') },
-			{ kind: 'package', root: resolve(packageRoot, 'package.json') },
+			{ kind: 'core', root: resolve(packageRoot, 'src') },
+			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'build-tenant-worker.ts') },
+			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'run-ts.mjs') },
+			{ kind: 'core', root: resolve(packageRoot, 'package.json') },
+			{ kind: 'core', root: resolve(packageRoot, 'src', 'dev.ts'), restartRequired: true },
+			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'dev-platform.ts'), restartRequired: true },
 		);
 	}
-	if (!sdkPackageRoot.split(sep).includes('node_modules')) {
+	if (!roots.sdkPackageRoot.split(sep).includes('node_modules')) {
 		entries.push(
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'src') },
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'tenant-astro-command.ts') },
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'tenant-d1-migrate-local.ts') },
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'scripts', 'run-ts.mjs') },
-			{ kind: 'sdk', root: resolve(sdkPackageRoot, 'package.json') },
+			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'src') },
+			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'tenant-astro-command.ts') },
+			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'tenant-d1-migrate-local.ts') },
+			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'run-ts.mjs') },
+			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'package.json') },
+		);
+	}
+	if (roots.agentPackageRoot && !roots.agentPackageRoot.split(sep).includes('node_modules')) {
+		entries.push(
+			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'src') },
+			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'package.json') },
+			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'scripts', 'run-ts.mjs') },
+		);
+	}
+	if (roots.cliPackageRoot && !roots.cliPackageRoot.split(sep).includes('node_modules')) {
+		entries.push(
+			{ kind: 'cli', root: resolve(roots.cliPackageRoot, 'src', 'cli', 'handlers', 'dev.ts'), restartRequired: true },
+			{ kind: 'cli', root: resolve(roots.cliPackageRoot, 'dist', 'cli', 'handlers', 'dev.js'), restartRequired: true },
 		);
 	}
 
@@ -457,6 +523,9 @@ function createSetupSteps(
 		];
 	}
 
+	const hasWebCommand = planLike.commands.some((command) => command.id === 'web');
+	const hasLocalRuntimeCommand = planLike.commands.some((command) => command.id !== 'web');
+	const needsCloudflareLocalRuntime = usesCloudflareWebRuntime || hasLocalRuntimeCommand;
 	const coreScripts = [
 		['starlight-patch', 'Patch Starlight content path', 'scripts/patch-starlight-content-path.ts', 'dist/scripts/patch-starlight-content-path.js'],
 		['books', 'Generate book/public artifacts', 'scripts/aggregate-book.ts', 'dist/scripts/aggregate-book.js'],
@@ -483,11 +552,11 @@ function createSetupSteps(
 		{
 			id: 'wrangler',
 			label: 'Verify Wrangler executable',
-			required: usesCloudflareWebRuntime,
+			required: needsCloudflareLocalRuntime,
 			status: 'planned',
 			detail: resolveTreeseedToolBinary('wrangler', { env }) ?? undefined,
 		},
-		...(usesCloudflareWebRuntime ? [
+		...(needsCloudflareLocalRuntime ? [
 			{
 				id: 'wrangler-config',
 				label: 'Generate local Wrangler config',
@@ -495,6 +564,8 @@ function createSetupSteps(
 				status: 'planned',
 				detail: generatedLocalWranglerPath(tenantRoot),
 			} satisfies TreeseedIntegratedDevSetupStep,
+		] : []),
+		...(usesCloudflareWebRuntime && hasWebCommand ? [
 			{
 				id: 'web-build',
 				label: 'Build local Cloudflare web runtime',
@@ -504,7 +575,7 @@ function createSetupSteps(
 				status: tenantBuild ? 'planned' : 'failed',
 				detail: tenantBuild ? undefined : 'Unable to resolve the tenant build script.',
 			} satisfies TreeseedIntegratedDevSetupStep,
-		] : coreScripts.map(([id, label, source, dist]) => {
+		] : (hasWebCommand ? coreScripts.map(([id, label, source, dist]) => {
 			const script = resolveOptionalScriptEntrypoint(packageRoot, source, dist);
 			return {
 				id,
@@ -515,7 +586,7 @@ function createSetupSteps(
 				status: script ? 'planned' : 'skipped',
 				detail: script ? undefined : `Script not found at ${source}.`,
 			} satisfies TreeseedIntegratedDevSetupStep;
-		})),
+		}) : [])),
 		{
 			id: 'mailpit',
 			label: mailpitEnabled ? 'Start Mailpit email runtime' : 'Disable Mailpit email runtime',
@@ -529,7 +600,7 @@ function createSetupSteps(
 		},
 	];
 
-	if (usesCloudflareWebRuntime && existsSync(resolve(tenantRoot, 'migrations'))) {
+	if (needsCloudflareLocalRuntime && existsSync(resolve(tenantRoot, 'migrations'))) {
 		const migrate = resolveOptionalScriptEntrypoint(
 			sdkPackageRoot,
 			'scripts/tenant-d1-migrate-local.ts',
@@ -547,6 +618,69 @@ function createSetupSteps(
 	}
 
 	return steps;
+}
+
+function createAgentCommand(
+	id: Extract<TreeseedIntegratedDevCommandId, 'api' | 'manager' | 'worker' | 'agents'>,
+	tenantRoot: string,
+	agentPackageRoot: string,
+	sharedEnv: NodeJS.ProcessEnv,
+	apiHost: string,
+	apiPort: number,
+): TreeseedIntegratedDevCommand {
+	const configs = {
+		api: {
+			label: 'Treeseed API',
+			source: 'src/api/server.ts',
+			dist: 'dist/api/server.js',
+			extraEnv: {
+				HOST: apiHost,
+				PORT: String(apiPort),
+				TREESEED_API_REPO_ROOT: tenantRoot,
+			},
+		},
+		manager: {
+			label: 'Workday Manager',
+			source: 'src/services/workday-manager.ts',
+			dist: 'dist/services/workday-manager.js',
+			extraEnv: {},
+		},
+		worker: {
+			label: 'Worker Runner',
+			source: 'src/services/worker.ts',
+			dist: 'dist/services/worker.js',
+			extraEnv: {},
+		},
+		agents: {
+			label: 'Agents Loop',
+			source: 'src/services/agents.ts',
+			dist: 'dist/services/agents.js',
+			extraEnv: {},
+		},
+	} satisfies Record<Extract<TreeseedIntegratedDevCommandId, 'api' | 'manager' | 'worker' | 'agents'>, {
+		label: string;
+		source: string;
+		dist: string;
+		extraEnv: NodeJS.ProcessEnv;
+	}>;
+	const config = configs[id];
+	const entrypoint = resolveNodeEntrypoint(agentPackageRoot, config.source, config.dist);
+	return {
+		id,
+		label: config.label,
+		command: entrypoint.command,
+		args: entrypoint.args,
+		cwd: tenantRoot,
+		env: {
+			...sharedEnv,
+			TREESEED_AGENT_REPO_ROOT: tenantRoot,
+			TREESEED_AGENT_D1_DATABASE: sharedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
+			TREESEED_AGENT_D1_PERSIST_TO: sharedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO,
+			TREESEED_ENVIRONMENT: sharedEnv.TREESEED_ENVIRONMENT ?? 'local',
+			...config.extraEnv,
+		},
+		localRuntime: nodeLocalRuntime(config.label),
+	};
 }
 
 export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOptions = {}): TreeseedIntegratedDevPlan {
@@ -567,8 +701,11 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const apiBaseUrl = options.apiHost != null || options.apiPort != null
 		? `http://${apiHost}:${apiPort}`
 		: mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
-	const webUrl = surface === 'integrated' || surface === 'web' ? webUrlFor(webHost, webPort) : null;
+	const selectedCommandIds = surfaceCommandIds(surface);
+	const webUrl = selectedCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
+	const agentPackageRoot = resolveOptionalPackageRoot('@treeseed/agent', tenantRoot);
+	const cliPackageRoot = resolveOptionalPackageRoot('@treeseed/cli', tenantRoot);
 	const deployConfig = loadDevDeployConfig(tenantRoot);
 	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));
 	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
@@ -591,7 +728,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			String(webPort),
 		],
 	};
-	const watchEntries = watch ? createWatchEntries(tenantRoot, sdkPackageRoot) : [];
+	const watchEntries = watch ? createWatchEntries(tenantRoot, { sdkPackageRoot, agentPackageRoot, cliPackageRoot }) : [];
 	const mailpitEnabled = dockerComposeIsAvailable(mergedEnv);
 	const resetRequested = options.reset === true;
 
@@ -633,7 +770,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 
 	const commands: TreeseedIntegratedDevCommand[] = [];
 
-	if (surface === 'integrated' || surface === 'web') {
+	if (selectedCommandIds.includes('web')) {
 		commands.push({
 			id: 'web',
 			label: usesCloudflareWebRuntime ? 'Cloudflare Wrangler UI' : 'Astro UI',
@@ -646,15 +783,22 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			localRuntime: webLocalRuntime,
 		});
 	}
+	if (selectedCommandIds.some((id) => id !== 'web') && !agentPackageRoot) {
+		throw new Error('Unable to resolve @treeseed/agent for local API or agent service surfaces.');
+	}
+	for (const id of selectedCommandIds) {
+		if (id === 'web') continue;
+		commands.push(createAgentCommand(id, tenantRoot, agentPackageRoot!, sharedEnv, apiHost, apiPort));
+	}
 
 	const readyChecks: TreeseedIntegratedDevReadinessCheck[] = commands.map((command) => {
-		if (command.id === 'web') {
+		if (command.id === 'web' || command.id === 'api') {
 			return {
 				id: command.id,
 				label: command.label,
 				required: true,
 				strategy: 'http',
-				url: webUrl ?? undefined,
+				url: command.id === 'web' ? webUrl ?? undefined : `${apiBaseUrl.replace(/\/+$/u, '')}/healthz`,
 			};
 		}
 		return {
@@ -688,7 +832,18 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		watchEntries,
 		commands,
 		localRuntimes: {
-			web: webLocalRuntime,
+			...(commands.some((command) => command.id === 'web') ? { web: webLocalRuntime } : {}),
+			...(commands.some((command) => command.id === 'api') ? { api: nodeLocalRuntime('Treeseed API') } : {}),
+			...(commands.some((command) => command.id === 'manager') ? { manager: nodeLocalRuntime('Workday Manager') } : {}),
+			...(commands.some((command) => command.id === 'worker') ? { worker: nodeLocalRuntime('Worker Runner') } : {}),
+			...(commands.some((command) => command.id === 'agents') ? { agents: nodeLocalRuntime('Agents Loop') } : {}),
+		},
+		restartPolicy: {
+			initialBackoffMs: INITIAL_RESTART_BACKOFF_MS,
+			maxBackoffMs: MAX_RESTART_BACKOFF_MS,
+			setupRetryBackoffMs: SETUP_RETRY_BACKOFF_MS,
+			commandImplementationChangesRequireRestart: true,
+			agentChanges: 'defer',
 		},
 		reset,
 	};
@@ -822,6 +977,26 @@ function defaultWrite(line: string, stream: 'stdout' | 'stderr') {
 	target.write(line);
 }
 
+function shouldRedactEnvValue(key: string) {
+	return /(TOKEN|SECRET|PASSWORD|PASSPHRASE|PRIVATE|CREDENTIAL|AUTH)/iu.test(key);
+}
+
+function redactEnvironment(env: NodeJS.ProcessEnv) {
+	return Object.fromEntries(
+		Object.entries(env).map(([key, value]) => [key, value == null || !shouldRedactEnvValue(key) ? value : '[redacted]']),
+	);
+}
+
+function serializeDevPlanForOutput(plan: TreeseedIntegratedDevPlan): TreeseedIntegratedDevPlan {
+	return {
+		...plan,
+		commands: plan.commands.map((command) => ({
+			...command,
+			env: redactEnvironment(command.env),
+		})),
+	};
+}
+
 function resolveLocalMachineEnv(tenantRoot: string) {
 	try {
 		return resolveTreeseedMachineEnvironmentValues(tenantRoot, 'local') as NodeJS.ProcessEnv;
@@ -847,7 +1022,7 @@ function readDevRuntimeState(tenantRoot: string): DevRuntimeState | null {
 			return null;
 		}
 		return {
-			pid: parsed.pid,
+			pid: parsed.pid!,
 			tenantRoot: parsed.tenantRoot,
 			startedAt: parsed.startedAt,
 		};
@@ -1033,7 +1208,7 @@ export function runTreeseedIntegratedDevReset(
 
 function writePlan(plan: TreeseedIntegratedDevPlan, options: Pick<TreeseedIntegratedDevOptions, 'json'>, write: TreeseedIntegratedDevDependencies['write']) {
 	if (options.json) {
-		write(`${JSON.stringify({ schemaVersion: 1, kind: 'treeseed.dev.plan', ok: true, payload: plan }, null, 2)}\n`, 'stdout');
+		write(`${JSON.stringify({ schemaVersion: 1, kind: 'treeseed.dev.plan', ok: true, payload: serializeDevPlanForOutput(plan) }, null, 2)}\n`, 'stdout');
 		return;
 	}
 	write(`Treeseed dev plan\n`, 'stdout');
@@ -1338,19 +1513,16 @@ export async function runTreeseedIntegratedDev(
 		return 1;
 	}
 
-	const setupResults = runLocalSetup(plan, options, { spawnSync: spawnSyncProcess, write });
-	const failedSetup = setupResults.find((step) => step.status === 'failed' && step.required);
-	if (failedSetup) {
-		emitEvent(options, write, { type: 'error', message: failedSetupMessage(failedSetup), detail: failedSetup });
-		return 1;
-	}
-
 	writeCurrentDevRuntimeState(tenantRoot);
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
 	const requiredSurfaceIds = new Set<string>(plan.readyChecks.filter((check) => check.required).map((check) => check.id));
 	const exited = new Map<string, { code: number | null; signal: NodeJS.Signals | null }>();
+	const restartAttempts = new Map<TreeseedIntegratedDevCommand['id'], number>();
+	const restartTimers = new Map<TreeseedIntegratedDevCommand['id'], NodeJS.Timeout>();
+	let setupRetryTimer: NodeJS.Timeout | null = null;
+	let readinessInProgress = false;
 	let watchController: WatchController | null = null;
 	let settled = false;
 	let readinessComplete = false;
@@ -1371,6 +1543,17 @@ export async function runTreeseedIntegratedDev(
 			watchController = null;
 		}
 
+		function clearTimers() {
+			if (setupRetryTimer) {
+				clearTimeout(setupRetryTimer);
+				setupRetryTimer = null;
+			}
+			for (const timer of restartTimers.values()) {
+				clearTimeout(timer);
+			}
+			restartTimers.clear();
+		}
+
 		function finalize(exitCode: number) {
 			if (settled) {
 				return;
@@ -1381,6 +1564,7 @@ export async function runTreeseedIntegratedDev(
 
 		async function finalizeAsync(exitCode: number) {
 			stopWatching();
+			clearTimers();
 			await Promise.all(
 				[...children.values()].map((managed) => stopManagedProcess(managed, 'SIGTERM', killProcess, shutdownGraceMs)),
 			);
@@ -1396,6 +1580,51 @@ export async function runTreeseedIntegratedDev(
 				exitCode === 0 ? 'stdout' : 'stderr',
 			);
 			resolveExitCode(exitCode);
+		}
+
+		function restartDelayFor(id: TreeseedIntegratedDevCommand['id']) {
+			const attempts = restartAttempts.get(id) ?? 0;
+			return Math.min(MAX_RESTART_BACKOFF_MS, INITIAL_RESTART_BACKOFF_MS * (2 ** attempts));
+		}
+
+		function markRestartAttempt(id: TreeseedIntegratedDevCommand['id']) {
+			const attempts = restartAttempts.get(id) ?? 0;
+			restartAttempts.set(id, attempts + 1);
+		}
+
+		function runSetupOnce() {
+			const setupResults = runLocalSetup(plan, options, { spawnSync: spawnSyncProcess, write });
+			const failedSetup = setupResults.find((step) => step.status === 'failed' && step.required);
+			if (failedSetup) {
+				emitEvent(options, write, { type: 'error', message: failedSetupMessage(failedSetup), detail: failedSetup });
+				return false;
+			}
+			return true;
+		}
+
+		function scheduleSetupRetry(reason: string) {
+			if (setupRetryTimer || settled) {
+				return;
+			}
+			emitEvent(options, write, {
+				type: 'restart',
+				status: 'retrying',
+				message: `${reason} Retrying local setup in ${Math.round(SETUP_RETRY_BACKOFF_MS / 1000)}s.`,
+			}, 'stderr');
+			setupRetryTimer = setTimeout(() => {
+				setupRetryTimer = null;
+				if (settled) return;
+				if (!runSetupOnce()) {
+					scheduleSetupRetry('Local setup is still failing.');
+					return;
+				}
+				for (const command of plan.commands) {
+					if (!children.has(command.id)) {
+						spawnCommand(command);
+					}
+				}
+				void waitForReadiness();
+			}, SETUP_RETRY_BACKOFF_MS);
 		}
 
 		function spawnCommand(command: TreeseedIntegratedDevCommand) {
@@ -1436,9 +1665,10 @@ export async function runTreeseedIntegratedDev(
 						surface: command.id,
 						exitCode,
 						signal,
-						message: `${command.label} exited unexpectedly during ${readinessComplete ? 'supervision' : 'startup'} with ${signal ?? exitCode}.`,
+						message: `${command.label} exited unexpectedly during ${readinessComplete ? 'supervision' : 'startup'} with ${signal ?? exitCode}; restarting.`,
 					});
-					finalize(exitCode === 0 ? 1 : exitCode);
+					children.delete(command.id);
+					scheduleCommandRestart(command.id);
 					return;
 				}
 				const status = exitCode === 0 ? 'idle' : 'degraded';
@@ -1459,6 +1689,26 @@ export async function runTreeseedIntegratedDev(
 			return child;
 		}
 
+		function scheduleCommandRestart(id: TreeseedIntegratedDevCommand['id']) {
+			const command = commandsById.get(id);
+			if (!command || settled || restartTimers.has(id)) {
+				return;
+			}
+			const delayMs = restartDelayFor(id);
+			markRestartAttempt(id);
+			emitEvent(options, write, {
+				type: 'restart',
+				surface: id,
+				status: 'scheduled',
+				message: `Restarting ${command.label} in ${Math.round(delayMs / 1000)}s.`,
+			}, 'stderr');
+			const timer = setTimeout(() => {
+				restartTimers.delete(id);
+				void restartCommand(id);
+			}, delayMs);
+			restartTimers.set(id, timer);
+		}
+
 		async function restartCommand(id: TreeseedIntegratedDevCommand['id']) {
 			const command = commandsById.get(id);
 			if (!command || settled) {
@@ -1475,6 +1725,7 @@ export async function runTreeseedIntegratedDev(
 			}
 			spawnCommand(command);
 			emitEvent(options, write, { type: 'restart', surface: id, message: `Restarted ${command.label}.` });
+			void waitForReadiness();
 		}
 
 		function startLiveWatch() {
@@ -1499,31 +1750,50 @@ export async function runTreeseedIntegratedDev(
 							detail: {
 								tenantChanged: change.tenantChanged,
 								tenantApiChanged: change.tenantApiChanged,
-								packageChanged: change.packageChanged,
+								coreChanged: change.coreChanged,
 								sdkChanged: change.sdkChanged,
+								agentChanged: change.agentChanged,
+								cliChanged: change.cliChanged,
+								commandImplementationChanged: change.commandImplementationChanged,
 							},
 						});
-						if (
-							commandsById.get('web')?.localRuntime?.selected === 'cloudflare-wrangler-local'
-							&& (change.tenantChanged || change.packageChanged || change.sdkChanged)
-						) {
-							const web = children.get('web');
-							if (web) {
-								await stopManagedProcess(web, 'SIGTERM', killProcess, Math.min(shutdownGraceMs, 500));
-								children.delete('web');
-								exited.delete('web');
-							}
-							const setupResults = runLocalSetup(plan, options, { spawnSync: spawnSyncProcess, write });
-							const failedSetup = setupResults.find((step) => step.status === 'failed' && step.required);
-							if (failedSetup) {
-								emitEvent(options, write, { type: 'error', message: failedSetupMessage(failedSetup), detail: failedSetup });
-								finalize(1);
+						if (change.commandImplementationChanged) {
+							emitEvent(options, write, {
+								type: 'replace',
+								status: 'restart-required',
+								message: 'The dev command implementation changed. Stop and rerun `npx trsd dev` to load the new supervisor.',
+								detail: change.changedPaths,
+							}, 'stderr');
+							return;
+						}
+						if (change.agentChanged) {
+							emitEvent(options, write, {
+								type: 'restart',
+								status: 'deferred',
+								message: 'Agent service changes detected; running agent services will keep their current code until the next workday or a manual restart.',
+								detail: change.changedPaths,
+							});
+						}
+						if (change.tenantChanged || change.tenantApiChanged || change.coreChanged || change.sdkChanged) {
+							if (!runSetupOnce()) {
+								scheduleSetupRetry('Local setup failed after a development change.');
 								return;
 							}
-							await restartCommand('web');
 						}
-						if (change.packageChanged || change.sdkChanged) {
-							await restartCommand('web');
+						const restartIds = new Set<TreeseedIntegratedDevCommand['id']>();
+						if ((change.tenantChanged || change.coreChanged || change.sdkChanged) && commandsById.has('web')) {
+							restartIds.add('web');
+						}
+						if ((change.tenantApiChanged || change.sdkChanged) && commandsById.has('api')) {
+							restartIds.add('api');
+						}
+						if (change.sdkChanged) {
+							for (const id of commandsById.keys()) {
+								restartIds.add(id);
+							}
+						}
+						for (const id of restartIds) {
+							await restartCommand(id);
 						}
 						if (plan.feedbackMode === 'live') {
 							writeDevReloadStamp(plan.tenantRoot);
@@ -1539,32 +1809,47 @@ export async function runTreeseedIntegratedDev(
 		}
 
 		async function waitForReadiness() {
+			if (readinessInProgress) {
+				return;
+			}
+			readinessInProgress = true;
 			const readinessTimeoutMs = options.readinessTimeoutMs ?? DEFAULT_READINESS_TIMEOUT_MS;
 			const processReadyGraceMs = options.processReadyGraceMs ?? DEFAULT_PROCESS_READY_GRACE_MS;
+			let allRequiredReady = true;
 			for (const check of plan.readyChecks) {
 				if (settled) {
+					readinessInProgress = false;
 					return;
 				}
 				let ready = false;
-					if (check.strategy === 'http' && check.url) {
-						ready = await waitForHttpReady(fetchFn, check.url, readinessTimeoutMs);
-					} else {
-						const commandId = check.id as TreeseedIntegratedDevCommand['id'];
-						await delay(processReadyGraceMs);
-						ready = !exited.has(commandId) && children.has(commandId);
-					}
+				if (check.strategy === 'http' && check.url) {
+					ready = await waitForHttpReady(fetchFn, check.url, readinessTimeoutMs);
+				} else {
+					const commandId = check.id as TreeseedIntegratedDevCommand['id'];
+					await delay(processReadyGraceMs);
+					ready = !exited.has(commandId) && children.has(commandId);
+				}
 				if (settled) {
+					readinessInProgress = false;
 					return;
 				}
 				if (!ready && check.required) {
+					allRequiredReady = false;
 					emitEvent(options, write, {
 						type: 'error',
 						surface: check.id,
 						url: check.url,
-						message: `${check.label} did not become ready${check.url ? ` at ${check.url}` : ''}.`,
+						message: `${check.label} did not become ready${check.url ? ` at ${check.url}` : ''}; keeping dev alive and retrying.`,
 					});
-					finalize(1);
-					return;
+					if (check.id !== 'mailpit') {
+						scheduleCommandRestart(check.id as TreeseedIntegratedDevCommand['id']);
+					} else {
+						scheduleSetupRetry('Mailpit readiness failed.');
+					}
+					continue;
+				}
+				if (ready && check.id !== 'mailpit') {
+					restartAttempts.set(check.id as TreeseedIntegratedDevCommand['id'], 0);
 				}
 				emitEvent(options, write, {
 					type: 'ready',
@@ -1574,6 +1859,11 @@ export async function runTreeseedIntegratedDev(
 					message: `${check.label} is ${ready ? 'ready' : 'degraded'}.`,
 				});
 			}
+			readinessInProgress = false;
+			if (!allRequiredReady) {
+				startLiveWatch();
+				return;
+			}
 			readinessComplete = true;
 			if (plan.webUrl) {
 				emitEvent(options, write, { type: 'ready', url: plan.webUrl, message: `Treeseed dev ready at ${plan.webUrl}.` });
@@ -1581,12 +1871,12 @@ export async function runTreeseedIntegratedDev(
 			if (shouldOpenBrowser(plan)) {
 				try {
 					await openBrowser(plan.webUrl!);
-					emitEvent(options, write, { type: 'open', url: plan.webUrl, message: `Opened ${plan.webUrl}.` });
+					emitEvent(options, write, { type: 'open', url: plan.webUrl ?? undefined, message: `Opened ${plan.webUrl}.` });
 				} catch (error) {
 					emitEvent(options, write, {
 						type: 'open',
 						status: 'degraded',
-						url: plan.webUrl,
+						url: plan.webUrl ?? undefined,
 						message: `Could not open ${plan.webUrl}.`,
 						detail: error instanceof Error ? error.message : String(error),
 					});
@@ -1595,17 +1885,22 @@ export async function runTreeseedIntegratedDev(
 			startLiveWatch();
 		}
 
-		for (const command of plan.commands) {
-			spawnCommand(command);
-		}
-
-		void waitForReadiness().catch((error) => {
-			emitEvent(options, write, {
-				type: 'error',
-				message: 'Dev readiness failed.',
-				detail: error instanceof Error ? error.message : String(error),
+		startLiveWatch();
+		if (runSetupOnce()) {
+			for (const command of plan.commands) {
+				spawnCommand(command);
+			}
+			void waitForReadiness().catch((error) => {
+				readinessInProgress = false;
+				emitEvent(options, write, {
+					type: 'error',
+					message: 'Dev readiness failed; keeping supervisor alive.',
+					detail: error instanceof Error ? error.message : String(error),
+				});
+				scheduleSetupRetry('Readiness failed unexpectedly.');
 			});
-			finalize(1);
-		});
+		} else {
+			scheduleSetupRetry('Initial local setup failed.');
+		}
 	});
 }

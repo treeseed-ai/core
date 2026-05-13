@@ -55,6 +55,11 @@ const themeCss = buildTreeseedThemeCss();
 			}
 		}
 
+		function cookie(name, value) {
+			const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+			document.cookie = `${name}=${encodeURIComponent(value)}; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax${secure}`;
+		}
+
 		function store(name, value) {
 			try {
 				window.sessionStorage.setItem(name, value);
@@ -66,6 +71,7 @@ const themeCss = buildTreeseedThemeCss();
 			} catch {
 				// Local storage can be disabled; cookies still carry the preference for SSR.
 			}
+			cookie(name, value);
 		}
 
 		function resolveScheme(value) {
@@ -81,8 +87,8 @@ const themeCss = buildTreeseedThemeCss();
 			return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 		}
 
-		const storedScheme = readStored(schemeKey) || readCookie(schemeKey);
-		const storedModeValue = readStored(modeKey) || readCookie(modeKey);
+		const storedScheme = readCookie(schemeKey) || readStored(schemeKey);
+		const storedModeValue = readCookie(modeKey) || readStored(modeKey);
 		const scheme = preferDefaultPreference ? resolveScheme(defaultScheme) : resolveScheme(storedScheme || defaultScheme);
 		const storedMode = preferDefaultPreference ? resolveMode(defaultMode) : resolveMode(storedModeValue || defaultMode);
 		const renderedMode = resolveRenderedMode(storedMode);
