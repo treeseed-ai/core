@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { dirname, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
@@ -227,6 +227,16 @@ function resolveOptionalPackageRoot(packageName: string, tenantRoot: string) {
 	} catch {
 		return null;
 	}
+}
+
+function resolvePackageRootEnvOverride(env: NodeJS.ProcessEnv, envName: string, tenantRoot: string) {
+	const value = env[envName]?.trim();
+	if (!value) return null;
+	const root = isAbsolute(value) ? value : resolve(tenantRoot, value);
+	if (!existsSync(resolve(root, 'package.json'))) {
+		throw new Error(`${envName} must point to a package root containing package.json.`);
+	}
+	return root;
 }
 
 function resolveNodeEntrypoint(packageDir: string, sourceRelativePath: string, distRelativePath: string) {
@@ -704,7 +714,8 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const selectedCommandIds = surfaceCommandIds(surface);
 	const webUrl = selectedCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
-	const agentPackageRoot = resolveOptionalPackageRoot('@treeseed/agent', tenantRoot);
+	const agentPackageRoot = resolvePackageRootEnvOverride(mergedEnv, 'TREESEED_AGENT_PACKAGE_ROOT', tenantRoot)
+		?? resolveOptionalPackageRoot('@treeseed/agent', tenantRoot);
 	const cliPackageRoot = resolveOptionalPackageRoot('@treeseed/cli', tenantRoot);
 	const deployConfig = loadDevDeployConfig(tenantRoot);
 	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));

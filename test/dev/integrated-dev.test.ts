@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import type { SpawnOptions } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -42,6 +42,36 @@ class FakeChildProcess {
 
 describe('Treeseed integrated dev orchestration', () => {
 	const tenantRoot = resolve(process.cwd(), '.fixtures/treeseed-fixtures/sites/working-site');
+	let fakeAgentPackageRoot: string | null = null;
+
+	afterAll(() => {
+		if (fakeAgentPackageRoot) {
+			rmSync(fakeAgentPackageRoot, { recursive: true, force: true });
+		}
+	});
+
+	function getFakeAgentPackageRoot() {
+		if (fakeAgentPackageRoot) return fakeAgentPackageRoot;
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-agent-package-'));
+		mkdirSync(resolve(root, 'scripts'), { recursive: true });
+		mkdirSync(resolve(root, 'src/api'), { recursive: true });
+		mkdirSync(resolve(root, 'src/services'), { recursive: true });
+		writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/agent', type: 'module' }, null, 2));
+		writeFileSync(resolve(root, 'scripts/run-ts.mjs'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/api/server.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/workday-manager.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/worker.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/agents.ts'), 'export {};\n');
+		fakeAgentPackageRoot = root;
+		return root;
+	}
+
+	function withAgentPackageEnv(env: NodeJS.ProcessEnv = {}) {
+		return {
+			...env,
+			TREESEED_AGENT_PACKAGE_ROOT: getFakeAgentPackageRoot(),
+		};
+	}
 
 	function writeTempTenant(siteConfig: string) {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-runtime-'));
@@ -54,12 +84,12 @@ describe('Treeseed integrated dev orchestration', () => {
 	it('creates an integrated web and API plan with local defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_SMTP_HOST: 'smtp.mailgun.org',
 				TREESEED_SMTP_PORT: '587',
 				TREESEED_SMTP_USERNAME: 'hosted-user',
 				TREESEED_SMTP_PASSWORD: 'hosted-password',
-			},
+			}),
 		});
 
 		expect(plan.surface).toBe('integrated');
@@ -165,7 +195,12 @@ services:
       runtime: auto
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'integrated', setupMode: 'off', env: {} });
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: tempRoot,
+				surface: 'integrated',
+				setupMode: 'off',
+				env: withAgentPackageEnv(),
+			});
 
 			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
 			expect(plan.localRuntimes).toHaveProperty('api');
@@ -202,10 +237,10 @@ surfaces:
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			watch: true,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_API_BASE_URL: 'https://override.example.com',
 				PORT: '4400',
-			},
+			}),
 		});
 
 		expect(plan.apiBaseUrl).toBe('https://override.example.com');
@@ -270,10 +305,10 @@ surfaces:
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			apiPort: 4401,
-			env: {
+			env: withAgentPackageEnv({
 				TREESEED_API_BASE_URL: 'https://override.example.com',
 				PORT: '4400',
-			},
+			}),
 		});
 
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:4401');
@@ -283,13 +318,23 @@ surfaces:
 	});
 
 	it('plans explicit API and service surfaces with Node runtimes', () => {
-		const apiPlan = createTreeseedIntegratedDevPlan({ cwd: tenantRoot, surface: 'api', setupMode: 'off', env: {} });
+		const apiPlan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'api',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
 		expect(apiPlan.webUrl).toBeNull();
 		expect(apiPlan.commands.map((command) => command.id)).toEqual(['api']);
 		expect(apiPlan.localRuntimes).not.toHaveProperty('web');
 		expect(apiPlan.readyChecks.map((check) => check.id)).toEqual(['api']);
 
-		const servicesPlan = createTreeseedIntegratedDevPlan({ cwd: tenantRoot, surface: 'services', setupMode: 'off', env: {} });
+		const servicesPlan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'services',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
 		expect(servicesPlan.commands.map((command) => command.id)).toEqual(['api', 'manager', 'worker', 'agents']);
 		expect(servicesPlan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(['api']);
 		expect(servicesPlan.readyChecks.filter((check) => !check.required).map((check) => check.id)).toEqual([
@@ -307,10 +352,10 @@ surfaces:
 				plan: true,
 				json: true,
 				setupMode: 'off',
-				env: {
+				env: withAgentPackageEnv({
 					GH_TOKEN: 'test-token',
 					TREESEED_API_AUTH_SECRET: 'test-secret',
-				},
+				}),
 			},
 			{
 				spawn() {
