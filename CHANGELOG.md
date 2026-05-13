@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.11] - 2026-05-13
+
+### Added
+
+- feat(dev): add 'all' surface to integrated dev environment (f668520aed58)
+
+### Tests
+
+- build(build): update package metadata (a0e66bc377a2)
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk dependency (e206fa299db4)
+- Release @treeseed/core 0.8.11.
+
 ## [0.8.10] - 2026-05-13
 
 ### Added
