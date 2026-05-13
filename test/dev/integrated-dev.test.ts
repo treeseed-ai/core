@@ -59,6 +59,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/agent', type: 'module' }, null, 2));
 		writeFileSync(resolve(root, 'scripts/run-ts.mjs'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/api/server.ts'), 'export {};\n');
+		writeFileSync(resolve(root, 'src/services/manager.ts'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/services/workday-manager.ts'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/services/worker.ts'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/services/agents.ts'), 'export {};\n');
@@ -81,7 +82,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
-	it('creates an integrated web and API plan with local defaults', () => {
+	it('creates an integrated full platform plan with local defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			env: withAgentPackageEnv({
@@ -98,15 +99,23 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.openMode).toBe('auto');
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
 		expect(plan.localRuntimes.web.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.localRuntimes.api.selected).toBe('node-local');
+		expect(plan.localRuntimes.manager.selected).toBe('node-local');
+		expect(plan.localRuntimes.worker.selected).toBe('node-local');
+		expect(plan.localRuntimes).not.toHaveProperty('agents');
 		expect(plan.commands[0]?.localRuntime?.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--local', '--config']));
 		expect(plan.setupSteps.map((step) => step.id)).toEqual(
 			expect.arrayContaining(['workspace-links', 'wrangler', 'wrangler-config', 'web-build', 'mailpit']),
 		);
 		expect(plan.readyChecks.map((check) => check.id)).toEqual(
+			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
+				? ['web', 'api', 'manager', 'worker', 'mailpit']
+				: ['web', 'api', 'manager', 'worker'],
+		);
+		expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
 			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
 				? ['web', 'api', 'mailpit']
 				: ['web', 'api'],
@@ -122,6 +131,9 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT).toBe('1025');
 		expect(plan.commands[1]?.label).toBe('Treeseed API');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
+		expect(plan.commands[2]?.label).toBe('Manager');
+		expect(plan.commands[2]?.args).toEqual(expect.arrayContaining(['--mode', 'loop']));
+		expect(plan.commands[2]?.env.TREESEED_MANAGER_MODE).toBe('loop');
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {
@@ -181,7 +193,7 @@ surfaces:
 		}
 	});
 
-	it('does not start processing services from the default integrated runtime', () => {
+	it('starts manager and worker but not agents from the default integrated runtime', () => {
 		const tempRoot = writeTempTenant(`name: Test
 slug: test
 siteUrl: https://example.com
@@ -202,10 +214,10 @@ services:
 				env: withAgentPackageEnv(),
 			});
 
-			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
+			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
 			expect(plan.localRuntimes).toHaveProperty('api');
-			expect(plan.localRuntimes).not.toHaveProperty('manager');
-			expect(plan.localRuntimes).not.toHaveProperty('worker');
+			expect(plan.localRuntimes).toHaveProperty('manager');
+			expect(plan.localRuntimes).toHaveProperty('worker');
 			expect(plan.localRuntimes).not.toHaveProperty('agents');
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
@@ -312,9 +324,38 @@ surfaces:
 		});
 
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:4401');
-		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api']);
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:4401');
 		expect(plan.commands[1]?.env.PORT).toBe('4401');
+	});
+
+	it('plans comma-separated surfaces in canonical order without duplicates', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surfaces: 'worker,web,integrated,agents,api',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
+
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker', 'agents']);
+		expect(plan.localRuntimes).toHaveProperty('agents');
+	});
+
+	it('plans the all surface as the full task runtime without the legacy agents loop', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			surface: 'all',
+			setupMode: 'off',
+			env: withAgentPackageEnv(),
+		});
+
+		expect(plan.surface).toBe('all');
+		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.localRuntimes).toHaveProperty('web');
+		expect(plan.localRuntimes).toHaveProperty('api');
+		expect(plan.localRuntimes).toHaveProperty('manager');
+		expect(plan.localRuntimes).toHaveProperty('worker');
+		expect(plan.localRuntimes).not.toHaveProperty('agents');
 	});
 
 	it('plans explicit API and service surfaces with Node runtimes', () => {
@@ -371,7 +412,7 @@ surfaces:
 		expect(exitCode).toBe(0);
 		const parsed = JSON.parse(output.join(''));
 		expect(parsed.kind).toBe('treeseed.dev.plan');
-		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api']);
+		expect(parsed.payload.commands.map((command: { id: string }) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
 		expect(parsed.payload.restartPolicy.commandImplementationChangesRequireRestart).toBe(true);
 		expect(parsed.payload.restartPolicy.agentChanges).toBe('defer');
 		expect(parsed.payload.commands[0].env.GH_TOKEN).toBe('[redacted]');

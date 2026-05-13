@@ -48,7 +48,7 @@ const INITIAL_RESTART_BACKOFF_MS = 1_000;
 const MAX_RESTART_BACKOFF_MS = 15_000;
 const SETUP_RETRY_BACKOFF_MS = 3_000;
 
-export type TreeseedIntegratedDevSurface = 'integrated' | 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'services';
+export type TreeseedIntegratedDevSurface = 'integrated' | 'all' | 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'services';
 export type TreeseedIntegratedDevSetupMode = 'auto' | 'check' | 'off';
 export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
@@ -65,6 +65,7 @@ export type TreeseedLocalRuntimeSelection = {
 
 export type TreeseedIntegratedDevOptions = {
 	surface?: TreeseedIntegratedDevSurface;
+	surfaces?: string;
 	watch?: boolean;
 	cwd?: string;
 	stdio?: SpawnOptions['stdio'];
@@ -362,6 +363,8 @@ function webUrlFor(host: string, port: number) {
 	return `http://${browserHost(host)}:${port}`;
 }
 
+const CANONICAL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents'];
+
 function surfaceCommandIds(surface: TreeseedIntegratedDevSurface): TreeseedIntegratedDevCommandId[] {
 	switch (surface) {
 		case 'web':
@@ -376,10 +379,42 @@ function surfaceCommandIds(surface: TreeseedIntegratedDevSurface): TreeseedInteg
 			return ['agents'];
 		case 'services':
 			return ['api', 'manager', 'worker', 'agents'];
+		case 'all':
+			return ['web', 'api', 'manager', 'worker'];
 		case 'integrated':
 		default:
-			return ['web', 'api'];
+			return ['web', 'api', 'manager', 'worker'];
 	}
+}
+
+function parseSurfaceValue(value: string): TreeseedIntegratedDevSurface | null {
+	return (
+		value === 'web' ||
+		value === 'api' ||
+		value === 'manager' ||
+		value === 'worker' ||
+		value === 'agents' ||
+		value === 'services' ||
+		value === 'all' ||
+		value === 'integrated'
+	) ? value : null;
+}
+
+function selectedSurfaceCommandIds(options: Pick<TreeseedIntegratedDevOptions, 'surface' | 'surfaces'>) {
+	const values = (options.surfaces?.trim() || options.surface || 'integrated')
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+	const selected = new Set<TreeseedIntegratedDevCommandId>();
+	for (const value of values.length > 0 ? values : ['integrated']) {
+		const surface = parseSurfaceValue(value);
+		if (!surface) continue;
+		for (const id of surfaceCommandIds(surface)) {
+			selected.add(id);
+		}
+	}
+	const selectedIds = CANONICAL_COMMAND_IDS.filter((id) => selected.has(id));
+	return selectedIds.length > 0 ? selectedIds : surfaceCommandIds('integrated');
 }
 
 function nodeLocalRuntime(label: string): TreeseedLocalRuntimeSelection {
@@ -638,7 +673,13 @@ function createAgentCommand(
 	apiHost: string,
 	apiPort: number,
 ): TreeseedIntegratedDevCommand {
-	const configs = {
+	const configs: Record<Extract<TreeseedIntegratedDevCommandId, 'api' | 'manager' | 'worker' | 'agents'>, {
+		label: string;
+		source: string;
+		dist: string;
+		extraArgs?: string[];
+		extraEnv: NodeJS.ProcessEnv;
+	}> = {
 		api: {
 			label: 'Treeseed API',
 			source: 'src/api/server.ts',
@@ -650,10 +691,13 @@ function createAgentCommand(
 			},
 		},
 		manager: {
-			label: 'Workday Manager',
-			source: 'src/services/workday-manager.ts',
-			dist: 'dist/services/workday-manager.js',
-			extraEnv: {},
+			label: 'Manager',
+			source: 'src/services/manager.ts',
+			dist: 'dist/services/manager.js',
+			extraArgs: ['--mode', 'loop'],
+			extraEnv: {
+				TREESEED_MANAGER_MODE: 'loop',
+			},
 		},
 		worker: {
 			label: 'Worker Runner',
@@ -667,19 +711,14 @@ function createAgentCommand(
 			dist: 'dist/services/agents.js',
 			extraEnv: {},
 		},
-	} satisfies Record<Extract<TreeseedIntegratedDevCommandId, 'api' | 'manager' | 'worker' | 'agents'>, {
-		label: string;
-		source: string;
-		dist: string;
-		extraEnv: NodeJS.ProcessEnv;
-	}>;
+	};
 	const config = configs[id];
 	const entrypoint = resolveNodeEntrypoint(agentPackageRoot, config.source, config.dist);
 	return {
 		id,
 		label: config.label,
 		command: entrypoint.command,
-		args: entrypoint.args,
+		args: [...entrypoint.args, ...(config.extraArgs ?? [])],
 		cwd: tenantRoot,
 		env: {
 			...sharedEnv,
@@ -711,7 +750,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const apiBaseUrl = options.apiHost != null || options.apiPort != null
 		? `http://${apiHost}:${apiPort}`
 		: mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
-	const selectedCommandIds = surfaceCommandIds(surface);
+	const selectedCommandIds = selectedSurfaceCommandIds(options);
 	const webUrl = selectedCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
 	const agentPackageRoot = resolvePackageRootEnvOverride(mergedEnv, 'TREESEED_AGENT_PACKAGE_ROOT', tenantRoot)
@@ -845,7 +884,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		localRuntimes: {
 			...(commands.some((command) => command.id === 'web') ? { web: webLocalRuntime } : {}),
 			...(commands.some((command) => command.id === 'api') ? { api: nodeLocalRuntime('Treeseed API') } : {}),
-			...(commands.some((command) => command.id === 'manager') ? { manager: nodeLocalRuntime('Workday Manager') } : {}),
+			...(commands.some((command) => command.id === 'manager') ? { manager: nodeLocalRuntime('Manager') } : {}),
 			...(commands.some((command) => command.id === 'worker') ? { worker: nodeLocalRuntime('Worker Runner') } : {}),
 			...(commands.some((command) => command.id === 'agents') ? { agents: nodeLocalRuntime('Agents Loop') } : {}),
 		},
