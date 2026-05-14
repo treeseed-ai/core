@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.13] - 2026-05-14
+
+### Added
+
+- feat(core): improve dev orchestration and log filtering (384235955171)
+
+### Dependencies
+
+- Release @treeseed/core 0.8.13.
+
 ## [0.8.12] - 2026-05-14
 
 ### Dependencies
