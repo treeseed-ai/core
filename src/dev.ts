@@ -714,6 +714,7 @@ function createAgentCommand(
 	};
 	const config = configs[id];
 	const entrypoint = resolveNodeEntrypoint(agentPackageRoot, config.source, config.dist);
+	const explicitAgentPersistTo = sharedEnv.TREESEED_AGENT_D1_PERSIST_TO?.trim();
 	return {
 		id,
 		label: config.label,
@@ -724,7 +725,7 @@ function createAgentCommand(
 			...sharedEnv,
 			TREESEED_AGENT_REPO_ROOT: tenantRoot,
 			TREESEED_AGENT_D1_DATABASE: sharedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
-			TREESEED_AGENT_D1_PERSIST_TO: sharedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO,
+			...(explicitAgentPersistTo ? { TREESEED_AGENT_D1_PERSIST_TO: explicitAgentPersistTo } : {}),
 			TREESEED_ENVIRONMENT: sharedEnv.TREESEED_ENVIRONMENT ?? 'local',
 			...config.extraEnv,
 		},
@@ -785,6 +786,8 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const sharedEnv: NodeJS.ProcessEnv = {
 		...mergedEnv,
 		TREESEED_LOCAL_DEV_MODE: mergedEnv.TREESEED_LOCAL_DEV_MODE ?? 'cloudflare',
+		TREESEED_SITE_URL: mergedEnv.TREESEED_SITE_URL ?? webUrl,
+		BETTER_AUTH_URL: mergedEnv.BETTER_AUTH_URL ?? webUrl,
 		TREESEED_API_BASE_URL: apiBaseUrl,
 		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
 		TREESEED_PROJECT_ID: projectId ?? mergedEnv.TREESEED_PROJECT_ID,
@@ -1289,6 +1292,25 @@ function attachPrefixedLogReader(
 	options: Pick<TreeseedIntegratedDevOptions, 'json'>,
 	write: TreeseedIntegratedDevDependencies['write'],
 ) {
+	const filterState: Record<'stdout' | 'stderr', { suppressWorkerdBrokenPipeBlock: boolean }> = {
+		stdout: { suppressWorkerdBrokenPipeBlock: false },
+		stderr: { suppressWorkerdBrokenPipeBlock: false },
+	};
+	function shouldSuppressLogLine(line: string, name: 'stdout' | 'stderr') {
+		const state = filterState[name];
+		if (state.suppressWorkerdBrokenPipeBlock) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith('stack:') || line.includes('/workerd@')) {
+				return true;
+			}
+			state.suppressWorkerdBrokenPipeBlock = false;
+		}
+		if (line.includes('kj::getCaughtExceptionAsKj() = kj/async-io-unix.c++:186: disconnected: ::write')) {
+			state.suppressWorkerdBrokenPipeBlock = true;
+			return true;
+		}
+		return false;
+	}
 	function attach(stream: NodeJS.ReadableStream | null | undefined, name: 'stdout' | 'stderr') {
 		if (!stream || typeof stream.on !== 'function') {
 			return;
@@ -1303,6 +1325,9 @@ function attachPrefixedLogReader(
 				}
 				const line = buffer.slice(0, newlineIndex);
 				buffer = buffer.slice(newlineIndex + 1);
+				if (shouldSuppressLogLine(line, name)) {
+					continue;
+				}
 				if (options.json) {
 					emitEvent(options, write, { type: 'log', surface, message: line, detail: { stream: name } }, name);
 				} else {
@@ -1312,6 +1337,10 @@ function attachPrefixedLogReader(
 		});
 		stream.on('end', () => {
 			if (buffer.length > 0) {
+				if (shouldSuppressLogLine(buffer, name)) {
+					buffer = '';
+					return;
+				}
 				if (options.json) {
 					emitEvent(options, write, { type: 'log', surface, message: buffer, detail: { stream: name } }, name);
 				} else {

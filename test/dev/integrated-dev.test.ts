@@ -3,6 +3,7 @@ import type { SpawnOptions } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { PassThrough } from 'node:stream';
 import {
 	createTreeseedIntegratedDevPlan,
 	runTreeseedIntegratedDev,
@@ -122,6 +123,8 @@ describe('Treeseed integrated dev orchestration', () => {
 		);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
+		expect(plan.commands[0]?.env.TREESEED_SITE_URL).toBe('http://127.0.0.1:4321');
+		expect(plan.commands[0]?.env.BETTER_AUTH_URL).toBe('http://127.0.0.1:4321');
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
@@ -134,6 +137,35 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[2]?.label).toBe('Manager');
 		expect(plan.commands[2]?.args).toEqual(expect.arrayContaining(['--mode', 'loop']));
 		expect(plan.commands[2]?.env.TREESEED_MANAGER_MODE).toBe('loop');
+		expect(plan.commands[2]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+		expect(plan.commands[3]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+	});
+
+	it('lets local agent services discover the generated Wrangler D1 sqlite by default', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			setupMode: 'off',
+			env: withAgentPackageEnv({
+				TREESEED_API_D1_LOCAL_PERSIST_TO: '/tmp/treeseed-generated-d1',
+			}),
+		});
+
+		expect(plan.commands.find((command) => command.id === 'manager')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+		expect(plan.commands.find((command) => command.id === 'worker')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+		expect(plan.commands.find((command) => command.id === 'web')?.env.TREESEED_API_D1_LOCAL_PERSIST_TO).toBe('/tmp/treeseed-generated-d1');
+	});
+
+	it('preserves an explicit local agent service D1 override', () => {
+		const plan = createTreeseedIntegratedDevPlan({
+			cwd: tenantRoot,
+			setupMode: 'off',
+			env: withAgentPackageEnv({
+				TREESEED_AGENT_D1_PERSIST_TO: '/tmp/treeseed-agent.sqlite',
+			}),
+		});
+
+		expect(plan.commands.find((command) => command.id === 'manager')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBe('/tmp/treeseed-agent.sqlite');
+		expect(plan.commands.find((command) => command.id === 'worker')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBe('/tmp/treeseed-agent.sqlite');
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {
@@ -729,6 +761,52 @@ surfaces:
 
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
+	});
+
+	it('suppresses transient local workerd broken pipe log blocks', async () => {
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const child = new FakeChildProcess() as FakeChildProcess & { stderr: PassThrough };
+		child.stderr = new PassThrough();
+		const output: string[] = [];
+
+		const promise = runTreeseedIntegratedDev(
+			{
+				cwd: tenantRoot,
+				surface: 'web',
+				setupMode: 'off',
+				feedbackMode: 'off',
+				openMode: 'off',
+				shutdownGraceMs: 0,
+			},
+			{
+				spawn() {
+					return child as never;
+				},
+				onSignal(signal, handler) {
+					signalHandlers.set(signal, handler);
+					return () => signalHandlers.delete(signal);
+				},
+				prepareEnvironment() {},
+				fetch: async () => ({ ok: true }) as Response,
+				write(line) {
+					output.push(line);
+				},
+			},
+		);
+
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+		child.stderr.write('✘ [ERROR] kj::getCaughtExceptionAsKj() = kj/async-io-unix.c++:186: disconnected: ::write(fd, buffer.begin(), buffer.size()): Broken pipe\n');
+		child.stderr.write('\n');
+		child.stderr.write('  stack: /tmp/workerd@51faac1 /tmp/workerd@2027e07\n');
+		child.stderr.write('\n');
+		child.stderr.write('real local runtime error\n');
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+		signalHandlers.get('SIGINT')?.();
+		await expect(promise).resolves.toBe(130);
+		const joined = output.join('');
+		expect(joined).not.toContain('Broken pipe');
+		expect(joined).not.toContain('workerd@');
+		expect(joined).toContain('[web] real local runtime error');
 	});
 
 	it('starts the watcher immediately and rebaselines before observing changes', async () => {
