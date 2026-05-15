@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { DatabaseSync } from 'node:sqlite';
 import {
 	applyTreeseedEnvironmentToProcess,
 	assertTreeseedCommandEnvironment,
@@ -289,7 +290,7 @@ function normalizeFeedbackMode(value: TreeseedIntegratedDevFeedbackMode | undefi
 }
 
 function normalizeOpenMode(value: TreeseedIntegratedDevOpenMode | undefined) {
-	return value ?? 'auto';
+	return value ?? 'off';
 }
 
 function normalizeLocalRuntimeMode(value: unknown): TreeseedLocalRuntimeMode {
@@ -449,6 +450,47 @@ function resetActionForPath(
 		status: existsSync(path) ? 'planned' : 'skipped',
 		detail: existsSync(path) ? undefined : 'Path does not exist.',
 	};
+}
+
+function resolveLocalD1SqlitePath(persistTo: string) {
+	if (/\.sqlite$/u.test(persistTo) && existsSync(persistTo)) {
+		return persistTo;
+	}
+	const miniflareRoot = resolve(persistTo, 'miniflare-D1DatabaseObject');
+	if (existsSync(miniflareRoot)) {
+		const candidates = readdirSync(miniflareRoot)
+			.filter((entry) => /\.sqlite$/u.test(entry) && entry !== 'metadata.sqlite')
+			.map((entry) => {
+				const path = resolve(miniflareRoot, entry);
+				return {
+					path,
+					size: statSync(path).size,
+				};
+			})
+			.sort((left, right) => right.size - left.size || left.path.localeCompare(right.path));
+		if (candidates[0]?.path) {
+			return candidates[0].path;
+		}
+	}
+	const siteDataPath = resolve(persistTo, 'site-data.sqlite');
+	return existsSync(siteDataPath) ? siteDataPath : null;
+}
+
+function resolveSeededLocalProjectId(persistTo: string, projectSlug = 'market') {
+	const sqlitePath = resolveLocalD1SqlitePath(persistTo);
+	if (!sqlitePath) return null;
+	let db: DatabaseSync | null = null;
+	try {
+		db = new DatabaseSync(sqlitePath, { readOnly: true });
+		const row = db.prepare(
+			`SELECT id FROM projects WHERE LOWER(slug) = LOWER(?) ORDER BY created_at ASC LIMIT 1`,
+		).get(projectSlug) as { id?: unknown } | undefined;
+		return typeof row?.id === 'string' && row.id.trim() ? row.id.trim() : null;
+	} catch {
+		return null;
+	} finally {
+		db?.close();
+	}
 }
 
 export function createTreeseedIntegratedDevResetPlan(options: {
@@ -746,7 +788,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const apiPort = normalizePort(options.apiPort, TREESEED_DEFAULT_API_PORT);
 	const machineEnv = resolveLocalMachineEnv(tenantRoot);
 	const mergedEnv = { ...process.env, ...machineEnv, ...(options.env ?? {}) };
-	const projectId = options.projectId ?? mergedEnv.TREESEED_PROJECT_ID;
 	const teamId = options.teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID;
 	const apiBaseUrl = options.apiHost != null || options.apiPort != null
 		? `http://${apiHost}:${apiPort}`
@@ -760,6 +801,14 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const deployConfig = loadDevDeployConfig(tenantRoot);
 	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));
 	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
+	const localD1PersistTo = mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? (
+		usesCloudflareWebRuntime
+			? resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3', 'd1')
+			: resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1')
+	);
+	const projectId = options.projectId
+		?? mergedEnv.TREESEED_PROJECT_ID
+		?? resolveSeededLocalProjectId(localD1PersistTo);
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
@@ -794,11 +843,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_HOSTING_TEAM_ID: teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
 		TREESEED_API_D1_DATABASE_NAME: mergedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
 		SITE_DATA_DB: mergedEnv.SITE_DATA_DB ?? 'SITE_DATA_DB',
-		TREESEED_API_D1_LOCAL_PERSIST_TO: mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? (
-			usesCloudflareWebRuntime
-				? resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3', 'd1')
-				: resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1')
-		),
+		TREESEED_API_D1_LOCAL_PERSIST_TO: localD1PersistTo,
 		TREESEED_FORM_TOKEN_SECRET: mergedEnv.TREESEED_FORM_TOKEN_SECRET ?? 'treeseed-local-form-token-secret',
 		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
 		TREESEED_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
