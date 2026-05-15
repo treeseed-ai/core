@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { PassThrough } from 'node:stream';
+import { DatabaseSync } from 'node:sqlite';
 import {
 	createTreeseedIntegratedDevPlan,
 	runTreeseedIntegratedDev,
@@ -83,6 +84,24 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
+	function writeLocalD1Project(root: string, id: string, slug = 'market') {
+		const d1Root = resolve(root, '.treeseed/generated/environments/local/.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+		mkdirSync(d1Root, { recursive: true });
+		const db = new DatabaseSync(resolve(d1Root, 'local-ui.sqlite'));
+		try {
+			db.exec(`CREATE TABLE projects (
+				id TEXT PRIMARY KEY,
+				slug TEXT NOT NULL,
+				name TEXT NOT NULL,
+				created_at TEXT NOT NULL
+			)`);
+			db.prepare(`INSERT INTO projects (id, slug, name, created_at) VALUES (?, ?, ?, ?)`)
+				.run(id, slug, 'TreeSeed Market', '2026-05-15T00:00:00.000Z');
+		} finally {
+			db.close();
+		}
+	}
+
 	it('creates an integrated full platform plan with local defaults', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
@@ -97,7 +116,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.surface).toBe('integrated');
 		expect(plan.setupMode).toBe('auto');
 		expect(plan.feedbackMode).toBe('live');
-		expect(plan.openMode).toBe('auto');
+		expect(plan.openMode).toBe('off');
 		expect(plan.webUrl).toBe('http://127.0.0.1:4321');
 		expect(plan.apiBaseUrl).toBe('http://127.0.0.1:3000');
 		expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'manager', 'worker']);
@@ -139,6 +158,26 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[2]?.env.TREESEED_MANAGER_MODE).toBe('loop');
 		expect(plan.commands[2]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
 		expect(plan.commands[3]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+	});
+
+	it('uses the seeded local market project id for node services', () => {
+		const root = writeTempTenant('title: Test Site\n');
+		writeLocalD1Project(root, 'project-market-local');
+		try {
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: root,
+				env: withAgentPackageEnv({
+					TREESEED_LOCAL_DEV_MODE: 'cloudflare',
+					TREESEED_API_D1_LOCAL_PERSIST_TO: resolve(root, '.treeseed/generated/environments/local/.wrangler/state/v3/d1'),
+				}),
+			});
+
+			for (const id of ['api', 'manager', 'worker'] as const) {
+				expect(plan.commands.find((command) => command.id === id)?.env.TREESEED_PROJECT_ID).toBe('project-market-local');
+			}
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	it('lets local agent services discover the generated Wrangler D1 sqlite by default', () => {
@@ -685,6 +724,40 @@ surfaces:
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
 		expect(signalHandlers.size).toBe(0);
+	});
+
+	it('prints the ready URL without opening a browser by default', async () => {
+		const child = new FakeChildProcess();
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const output: string[] = [];
+		let openCalls = 0;
+
+		const promise = runTreeseedIntegratedDev(
+			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', shutdownGraceMs: 0 },
+			{
+				spawn() {
+					return child as never;
+				},
+				onSignal(signal, handler) {
+					signalHandlers.set(signal, handler);
+					return () => signalHandlers.delete(signal);
+				},
+				prepareEnvironment() {},
+				fetch: async () => ({ ok: true }) as Response,
+				openBrowser() {
+					openCalls += 1;
+				},
+				write(line) {
+					output.push(line);
+				},
+			},
+		);
+
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+		expect(openCalls).toBe(0);
+		expect(output.some((line) => line.includes('Treeseed dev ready at http://127.0.0.1:4321.'))).toBe(true);
+		signalHandlers.get('SIGINT')?.();
+		await expect(promise).resolves.toBe(130);
 	});
 
 	it('shuts down children on parent signals', async () => {
