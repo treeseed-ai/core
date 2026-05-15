@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.16] - 2026-05-15
+
+### Dependencies
+
+- build(build): sync package dependency references (729b1d6f9c14)
+- Release @treeseed/core 0.8.16.
+
 ## [0.8.15] - 2026-05-15
 
 ### Tests
