@@ -30,7 +30,7 @@ const decisionTypeValues = ['approved', 'rejected', 'deferred', 'superseded'] as
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
 const agentTriggerTypeValues = ['schedule', 'message', 'follow', 'startup'] as const;
-const agentPermissionOperationValues = ['get', 'search', 'follow', 'pick', 'create', 'update'] as const;
+const agentPermissionOperationValues = ['get', 'read', 'search', 'follow', 'pick', 'create', 'update'] as const;
 
 type DocsDependencies = {
 	docsLoader: (options: Record<string, unknown>) => unknown;
@@ -322,13 +322,27 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		model: z.string(),
 		operations: z.array(z.enum(agentPermissionOperationValues)).min(1),
 	});
+	const agentWorktreeSchema = z.object({
+		enabled: z.boolean().default(true),
+		root: z.string().optional(),
+		branchPrefix: z.string().optional(),
+	});
 	const agentExecutionSchema = z.object({
+		provider: z.string().optional(),
+		model: z.string().optional(),
+		approvalPolicy: z.string().optional(),
+		sandboxMode: z.string().optional(),
+		reasoningEffort: z.string().optional(),
+		allowedPaths: z.array(z.string()).default([]),
+		forbiddenPaths: z.array(z.string()).default([]),
+		worktree: agentWorktreeSchema.default({}),
 		maxConcurrency: z.number().int().positive().default(1),
 		timeoutSeconds: z.number().int().positive().default(900),
 		cooldownSeconds: z.number().int().nonnegative().default(30),
 		leaseSeconds: z.number().int().positive().default(300),
 		retryLimit: z.number().int().nonnegative().default(3),
 		branchPrefix: z.string().default('agent'),
+		providerProfile: z.record(z.unknown()).optional(),
 	});
 	const agentTriggerPolicySchema = z.object({
 		maxRunsPerCycle: z.number().int().positive().optional(),
@@ -338,6 +352,27 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		messageTypes: z.array(z.string()).default([]),
 		modelMutations: z.array(z.string()).default([]),
 	});
+	const agentContextQuerySchema = z.object({
+		id: z.string(),
+		purpose: z.string(),
+		query: z.string(),
+		scope: z.string().optional(),
+		relations: z.array(z.string()).optional(),
+		depth: z.number().optional(),
+		budget: z.number().optional(),
+		format: z.string().optional(),
+	});
+	const agentContextSchema = z.object({
+		queries: z.array(agentContextQuerySchema).default([]),
+	});
+	const agentGovernanceSchema = z.object({
+		mutationClass: z.string().optional(),
+		approvalRequiredForCanonicalContent: z.boolean().optional(),
+		approvalRequiredForCode: z.boolean().optional(),
+		requireSourceMap: z.boolean().optional(),
+		requireHumanApproval: z.boolean().optional(),
+		notes: z.array(z.string()).default([]),
+	}).passthrough();
 
 	const peopleSchema = z.object({
 		name: z.string(),
@@ -372,8 +407,10 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		triggers: z.array(agentTriggerSchema).min(1),
 		triggerPolicy: agentTriggerPolicySchema.optional(),
 		permissions: z.array(agentPermissionSchema).min(1),
+		context: agentContextSchema.optional(),
 		execution: agentExecutionSchema.default({}),
 		outputs: agentOutputSchema.default({}),
+		governance: agentGovernanceSchema.optional(),
 	}));
 
 	const bookSchema = z.preprocess((value) => preprocessAliasedRecord(bookFieldAliases, value), z.object({
