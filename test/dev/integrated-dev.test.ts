@@ -502,7 +502,8 @@ surfaces:
       runtime: local
 `);
 		const previousPid = 98_765;
-		const runtimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime.json');
+		const runtimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime-web.json');
+		const legacyRuntimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime.json');
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 		const livePids = new Set([previousPid]);
 		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
@@ -510,7 +511,7 @@ surfaces:
 
 		try {
 			mkdirSync(resolve(tempRoot, '.treeseed/generated/dev'), { recursive: true });
-			writeFileSync(runtimePath, `${JSON.stringify({
+			writeFileSync(legacyRuntimePath, `${JSON.stringify({
 				pid: previousPid,
 				tenantRoot: tempRoot,
 				startedAt: '2026-05-06T00:00:00.000Z',
@@ -552,11 +553,100 @@ surfaces:
 			expect(JSON.parse(readFileSync(runtimePath, 'utf8'))).toMatchObject({
 				pid: process.pid,
 				tenantRoot: tempRoot,
+				commandIds: ['web'],
 			});
+			expect(existsSync(legacyRuntimePath)).toBe(false);
 
 			signalHandlers.get('SIGINT')?.();
 			await expect(promise).resolves.toBe(130);
 			expect(existsSync(runtimePath)).toBe(false);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('keeps disjoint dev runtimes alive when starting manager services beside web api', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const webApiPid = 98_765;
+		const managerPid = 98_766;
+		const webApiRuntimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime-web-api.json');
+		const managerRuntimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime-manager-worker.json');
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const livePids = new Set([webApiPid, managerPid]);
+		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
+		let spawnCount = 0;
+
+		try {
+			mkdirSync(resolve(tempRoot, '.treeseed/generated/dev'), { recursive: true });
+			writeFileSync(webApiRuntimePath, `${JSON.stringify({
+				pid: webApiPid,
+				tenantRoot: tempRoot,
+				commandIds: ['web', 'api'],
+				startedAt: '2026-05-06T00:00:00.000Z',
+			}, null, 2)}\n`);
+			writeFileSync(managerRuntimePath, `${JSON.stringify({
+				pid: managerPid,
+				tenantRoot: tempRoot,
+				commandIds: ['manager', 'worker'],
+				startedAt: '2026-05-06T00:01:00.000Z',
+			}, null, 2)}\n`);
+
+			const promise = runTreeseedIntegratedDev(
+				{
+					cwd: tempRoot,
+					surfaces: 'manager,worker',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					shutdownGraceMs: 0,
+					env: withAgentPackageEnv(),
+				},
+				{
+					spawn() {
+						spawnCount += 1;
+						return new FakeChildProcess() as never;
+					},
+					killProcess(pid, signal) {
+						killCalls.push({ pid, signal });
+						livePids.delete(pid);
+					},
+					processIsAlive(pid) {
+						return livePids.has(pid);
+					},
+					onSignal(signal, handler) {
+						signalHandlers.set(signal, handler);
+						return () => signalHandlers.delete(signal);
+					},
+					prepareEnvironment() {},
+					fetch: async () => ({ ok: true }) as Response,
+				},
+			);
+
+			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+			expect(killCalls).toEqual([{ pid: managerPid, signal: 'SIGTERM' }]);
+			expect(spawnCount).toBe(2);
+			expect(JSON.parse(readFileSync(webApiRuntimePath, 'utf8'))).toMatchObject({
+				pid: webApiPid,
+				commandIds: ['web', 'api'],
+			});
+			expect(JSON.parse(readFileSync(managerRuntimePath, 'utf8'))).toMatchObject({
+				pid: process.pid,
+				commandIds: ['manager', 'worker'],
+			});
+
+			signalHandlers.get('SIGINT')?.();
+			await expect(promise).resolves.toBe(130);
+			expect(existsSync(webApiRuntimePath)).toBe(true);
+			expect(existsSync(managerRuntimePath)).toBe(false);
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
 		}
@@ -790,6 +880,7 @@ surfaces:
 			},
 		);
 
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
 		for (const child of children) {
@@ -963,6 +1054,7 @@ surfaces:
 			},
 		);
 
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
 		signalHandlers.get('SIGINT')?.();
 		await expect(promise).resolves.toBe(130);
 		expect(killCalls).toEqual([

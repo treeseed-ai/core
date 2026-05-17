@@ -39,7 +39,8 @@ export const TREESEED_DEFAULT_LOCAL_SMTP_PORT = 1025;
 export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
-const DEV_RUNTIME_FILE = '.treeseed/generated/dev/runtime.json';
+const DEV_RUNTIME_DIR = '.treeseed/generated/dev';
+const DEV_RUNTIME_LEGACY_FILE = '.treeseed/generated/dev/runtime.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
 const DEFAULT_SETUP_STEP_TIMEOUT_MS = 300_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
@@ -1107,48 +1108,100 @@ type DevRuntimeState = {
 	pid: number;
 	tenantRoot: string;
 	startedAt: string;
+	commandIds?: TreeseedIntegratedDevCommandId[];
+	statePath?: string;
 };
 
-function devRuntimeStatePath(tenantRoot: string) {
-	return resolve(tenantRoot, DEV_RUNTIME_FILE);
+function devRuntimeStateDir(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_RUNTIME_DIR);
 }
 
-function readDevRuntimeState(tenantRoot: string): DevRuntimeState | null {
+function devRuntimeStatePath(tenantRoot: string, key: string) {
+	return resolve(devRuntimeStateDir(tenantRoot), `runtime-${key}.json`);
+}
+
+function legacyDevRuntimeStatePath(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_RUNTIME_LEGACY_FILE);
+}
+
+function runtimeScopeKey(commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const selected = CANONICAL_COMMAND_IDS.filter((id) => commandIds.includes(id));
+	return selected.length > 0 ? selected.join('-') : 'integrated';
+}
+
+function readDevRuntimeStateFile(path: string): DevRuntimeState | null {
 	try {
-		const parsed = JSON.parse(readFileSync(devRuntimeStatePath(tenantRoot), 'utf8')) as Partial<DevRuntimeState>;
+		const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<DevRuntimeState>;
 		if (!Number.isInteger(parsed.pid) || typeof parsed.tenantRoot !== 'string' || typeof parsed.startedAt !== 'string') {
 			return null;
 		}
+		const commandIds = Array.isArray(parsed.commandIds)
+			? parsed.commandIds.filter((id): id is TreeseedIntegratedDevCommandId => CANONICAL_COMMAND_IDS.includes(id as TreeseedIntegratedDevCommandId))
+			: undefined;
 		return {
 			pid: parsed.pid!,
 			tenantRoot: parsed.tenantRoot,
 			startedAt: parsed.startedAt,
+			...(commandIds ? { commandIds } : {}),
+			statePath: path,
 		};
 	} catch {
 		return null;
 	}
 }
 
-function writeCurrentDevRuntimeState(tenantRoot: string) {
-	const outputPath = devRuntimeStatePath(tenantRoot);
+function listDevRuntimeStates(tenantRoot: string) {
+	const states: DevRuntimeState[] = [];
+	const legacy = readDevRuntimeStateFile(legacyDevRuntimeStatePath(tenantRoot));
+	if (legacy) {
+		states.push(legacy);
+	}
+	try {
+		for (const entry of readdirSync(devRuntimeStateDir(tenantRoot))) {
+			if (!entry.startsWith('runtime-') || !entry.endsWith('.json')) {
+				continue;
+			}
+			const state = readDevRuntimeStateFile(resolve(devRuntimeStateDir(tenantRoot), entry));
+			if (state) {
+				states.push(state);
+			}
+		}
+	} catch {
+		// No active dev state directory yet.
+	}
+	return states;
+}
+
+function runtimeStateOverlaps(state: DevRuntimeState, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	if (!state.commandIds || state.commandIds.length === 0) {
+		return true;
+	}
+	return state.commandIds.some((id) => commandIds.includes(id));
+}
+
+function writeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const outputPath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
 	mkdirSync(dirname(outputPath), { recursive: true });
 	writeFileSync(
 		outputPath,
 		`${JSON.stringify({
 			pid: process.pid,
 			tenantRoot,
+			commandIds,
 			startedAt: new Date().toISOString(),
 		}, null, 2)}\n`,
 		'utf8',
 	);
+	return outputPath;
 }
 
-function removeCurrentDevRuntimeState(tenantRoot: string) {
-	const state = readDevRuntimeState(tenantRoot);
+function removeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const statePath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
+	const state = readDevRuntimeStateFile(statePath);
 	if (!state || state.pid !== process.pid) {
 		return;
 	}
-	rmSync(devRuntimeStatePath(tenantRoot), { force: true });
+	rmSync(statePath, { force: true });
 }
 
 async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChecker, timeoutMs: number) {
@@ -1162,47 +1215,49 @@ async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChec
 	return !processIsAlive(pid);
 }
 
-async function stopPreviousDevRuntime(
+async function stopPreviousDevRuntimes(
 	tenantRoot: string,
+	commandIds: readonly TreeseedIntegratedDevCommandId[],
 	options: Pick<TreeseedIntegratedDevOptions, 'json' | 'shutdownGraceMs'>,
 	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'killProcess' | 'processIsAlive'>,
 ) {
-	const state = readDevRuntimeState(tenantRoot);
-	if (!state) {
-		return;
-	}
-	const statePath = devRuntimeStatePath(tenantRoot);
-	if (state.pid === process.pid) {
-		return;
-	}
-	if (!deps.processIsAlive(state.pid)) {
+	for (const state of listDevRuntimeStates(tenantRoot)) {
+		const statePath = state.statePath;
+		if (!statePath || !runtimeStateOverlaps(state, commandIds)) {
+			continue;
+		}
+		if (state.pid === process.pid) {
+			continue;
+		}
+		if (!deps.processIsAlive(state.pid)) {
+			rmSync(statePath, { force: true });
+			continue;
+		}
+
+		emitEvent(options, deps.write, {
+			type: 'replace',
+			message: `Stopping previous Treeseed dev runtime (${state.pid}) before starting overlapping surfaces.`,
+			detail: { pid: state.pid, startedAt: state.startedAt, commandIds: state.commandIds ?? null },
+		});
+
+		try {
+			deps.killProcess(state.pid, 'SIGTERM');
+		} catch {
+			// The runtime may have exited after the liveness check.
+		}
+		if (await waitForProcessExit(state.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
+			rmSync(statePath, { force: true });
+			continue;
+		}
+
+		try {
+			deps.killProcess(state.pid, 'SIGKILL');
+		} catch {
+			// Ignore shutdown races from already-exited supervisors.
+		}
+		await waitForProcessExit(state.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
 		rmSync(statePath, { force: true });
-		return;
 	}
-
-	emitEvent(options, deps.write, {
-		type: 'replace',
-		message: `Stopping previous Treeseed dev runtime (${state.pid}) before starting a new one.`,
-		detail: { pid: state.pid, startedAt: state.startedAt },
-	});
-
-	try {
-		deps.killProcess(state.pid, 'SIGTERM');
-	} catch {
-		// The runtime may have exited after the liveness check.
-	}
-	if (await waitForProcessExit(state.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
-		rmSync(statePath, { force: true });
-		return;
-	}
-
-	try {
-		deps.killProcess(state.pid, 'SIGKILL');
-	} catch {
-		// Ignore shutdown races from already-exited supervisors.
-	}
-	await waitForProcessExit(state.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
-	rmSync(statePath, { force: true });
 }
 
 function emitEvent(
@@ -1618,9 +1673,8 @@ export async function runTreeseedIntegratedDev(
 		return 0;
 	}
 
-	if (readDevRuntimeState(tenantRoot)) {
-		await stopPreviousDevRuntime(tenantRoot, options, { write, killProcess, processIsAlive });
-	}
+	const commandIds = plan.commands.map((command) => command.id);
+	await stopPreviousDevRuntimes(tenantRoot, commandIds, options, { write, killProcess, processIsAlive });
 
 	const resetResults = runTreeseedIntegratedDevReset(plan.reset, options, {
 		write,
@@ -1637,7 +1691,7 @@ export async function runTreeseedIntegratedDev(
 		return 1;
 	}
 
-	writeCurrentDevRuntimeState(tenantRoot);
+	writeCurrentDevRuntimeState(tenantRoot, commandIds);
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
@@ -1696,7 +1750,7 @@ export async function runTreeseedIntegratedDev(
 			for (const dispose of disposers) {
 				dispose();
 			}
-			removeCurrentDevRuntimeState(tenantRoot);
+			removeCurrentDevRuntimeState(tenantRoot, commandIds);
 			emitEvent(
 				options,
 				write,
