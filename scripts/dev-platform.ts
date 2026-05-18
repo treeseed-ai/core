@@ -3,6 +3,7 @@
 import {
 	runTreeseedIntegratedDev,
 	type TreeseedIntegratedDevFeedbackMode,
+	type TreeseedLocalRuntimeMode,
 	type TreeseedIntegratedDevOpenMode,
 	type TreeseedIntegratedDevSetupMode,
 	type TreeseedIntegratedDevSurface,
@@ -68,6 +69,13 @@ function parseOpenMode(value: string | undefined): TreeseedIntegratedDevOpenMode
 	return undefined;
 }
 
+function parseLocalRuntimeMode(value: string | undefined): TreeseedLocalRuntimeMode | undefined {
+	if (value === 'auto' || value === 'provider' || value === 'local') {
+		return value;
+	}
+	return undefined;
+}
+
 function readForwardedEnvironment() {
 	const keys = [
 		'TREESEED_DOCS_AUTOMATION_MODE',
@@ -93,11 +101,13 @@ const exitCode = await runTreeseedIntegratedDev({
 	webPort: readNumberOption('--port'),
 	apiHost: readOption('--api-host'),
 	apiPort: readNumberOption('--api-port'),
+	webRuntime: parseLocalRuntimeMode(readOption('--web-runtime')),
 	setupMode: parseSetupMode(readOption('--setup')),
 	feedbackMode: parseFeedbackMode(readOption('--feedback')),
 	openMode: parseOpenMode(readOption('--open')),
 	plan: readFlag('--plan'),
 	reset: readFlag('--reset'),
+	force: readFlag('--force'),
 	json: readFlag('--json'),
 	projectId: readOption('--project-id'),
 	teamId: readOption('--team-id'),

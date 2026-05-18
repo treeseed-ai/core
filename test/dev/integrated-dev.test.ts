@@ -264,6 +264,46 @@ surfaces:
 		}
 	});
 
+	it('lets the CLI override Cloudflare provider web runtime with Astro local', () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+cloudflare:
+  accountId: account-123
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: provider
+`);
+		try {
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: tempRoot,
+				surface: 'web',
+				setupMode: 'off',
+				webRuntime: 'local',
+				env: {
+					TREESEED_LOCAL_DEV_MODE: 'cloudflare',
+				},
+			});
+
+			expect(plan.localRuntimes.web).toMatchObject({
+				requested: 'local',
+				selected: 'astro-local',
+				provider: 'cloudflare',
+			});
+			expect(plan.commands[0]?.label).toBe('Astro UI');
+			expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--host', '127.0.0.1', '--port', '4321']));
+			expect(plan.commands[0]?.env.TREESEED_LOCAL_DEV_MODE).toBeUndefined();
+			expect(plan.commands[0]?.env.TREESEED_API_D1_LOCAL_PERSIST_TO).toBe(
+				resolve(tempRoot, '.treeseed/generated/environments/local/.wrangler/state/v3/d1'),
+			);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
 	it('starts manager and worker but not agents from the default integrated runtime', () => {
 		const tempRoot = writeTempTenant(`name: Test
 slug: test
@@ -525,6 +565,7 @@ surfaces:
 					feedbackMode: 'off',
 					openMode: 'off',
 					shutdownGraceMs: 0,
+					force: true,
 				},
 				{
 					spawn() {
@@ -560,6 +601,180 @@ surfaces:
 			signalHandlers.get('SIGINT')?.();
 			await expect(promise).resolves.toBe(130);
 			expect(existsSync(runtimePath)).toBe(false);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('fails with an existing runtime warning unless force is requested', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const previousPid = 98_765;
+		const legacyRuntimePath = resolve(tempRoot, '.treeseed/generated/dev/runtime.json');
+		const output: string[] = [];
+		let spawnCount = 0;
+
+		try {
+			mkdirSync(resolve(tempRoot, '.treeseed/generated/dev'), { recursive: true });
+			writeFileSync(legacyRuntimePath, `${JSON.stringify({
+				pid: previousPid,
+				tenantRoot: tempRoot,
+				startedAt: '2026-05-06T00:00:00.000Z',
+			}, null, 2)}\n`);
+
+			const exitCode = await runTreeseedIntegratedDev(
+				{
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					json: true,
+				},
+				{
+					spawn() {
+						spawnCount += 1;
+						return new FakeChildProcess() as never;
+					},
+					processIsAlive(pid) {
+						return pid === previousPid;
+					},
+					inspectPortOwners() {
+						return [];
+					},
+					prepareEnvironment() {},
+					write(line) {
+						output.push(line);
+					},
+				},
+			);
+
+			expect(exitCode).toBe(1);
+			expect(spawnCount).toBe(0);
+			expect(output.join('')).toContain('existing runtime or service');
+			expect(existsSync(legacyRuntimePath)).toBe(true);
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('fails with a port-owner warning unless force is requested', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const output: string[] = [];
+
+		try {
+			const exitCode = await runTreeseedIntegratedDev(
+				{
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					json: true,
+				},
+				{
+					spawn() {
+						throw new Error('spawn should not be reached');
+					},
+					processIsAlive() {
+						return false;
+					},
+					inspectPortOwners() {
+						return [{ port: 4321, pid: 22_222, processName: 'astro', detail: 'LISTEN 127.0.0.1:4321 pid=22222' }];
+					},
+					prepareEnvironment() {},
+					write(line) {
+						output.push(line);
+					},
+				},
+			);
+
+			expect(exitCode).toBe(1);
+			expect(output.join('')).toContain('required port');
+			expect(output.join('')).toContain('22222');
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('force-stops listeners on required ports before spawning services', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const livePids = new Set([22_222]);
+		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
+		let spawnCount = 0;
+		let inspectCount = 0;
+
+		try {
+			const promise = runTreeseedIntegratedDev(
+				{
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					shutdownGraceMs: 0,
+					force: true,
+				},
+				{
+					spawn() {
+						spawnCount += 1;
+						return new FakeChildProcess() as never;
+					},
+					killProcess(pid, signal) {
+						killCalls.push({ pid, signal });
+						livePids.delete(pid);
+					},
+					processIsAlive(pid) {
+						return livePids.has(pid);
+					},
+					inspectPortOwners() {
+						inspectCount += 1;
+						return inspectCount === 1
+							? [{ port: 4321, pid: 22_222, processName: 'astro', detail: 'LISTEN 127.0.0.1:4321 pid=22222' }]
+							: [];
+					},
+					onSignal(signal, handler) {
+						signalHandlers.set(signal, handler);
+						return () => signalHandlers.delete(signal);
+					},
+					prepareEnvironment() {},
+					fetch: async () => ({ ok: true }) as Response,
+				},
+			);
+
+			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+			expect(killCalls).toEqual([{ pid: 22_222, signal: 'SIGTERM' }]);
+			expect(spawnCount).toBe(1);
+
+			signalHandlers.get('SIGINT')?.();
+			await expect(promise).resolves.toBe(130);
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
 		}
@@ -608,6 +823,7 @@ surfaces:
 					feedbackMode: 'off',
 					openMode: 'off',
 					shutdownGraceMs: 0,
+					force: true,
 					env: withAgentPackageEnv(),
 				},
 				{

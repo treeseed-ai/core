@@ -109,6 +109,12 @@
 	min-width: 0;
 }
 
+.ts-shell-utility-actions {
+	align-items: center;
+	display: inline-flex;
+	gap: var(--ts-space-1);
+}
+
 .ts-app-shell__rail-context,
 .ts-app-shell__quick-actions {
 	border-top: 1px solid var(--ts-color-border);
@@ -566,6 +572,10 @@
 	.ts-app-shell__header-actions {
 		justify-content: stretch;
 		width: 100%;
+	}
+
+	.ts-app-shell__header-actions .ts-shell-utility-actions {
+		display: none;
 	}
 
 	.ts-bottom-nav {

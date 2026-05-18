@@ -503,7 +503,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		completedAt: z.coerce.date().optional(),
 		lastErrorCode: z.string().nullable().optional(),
 		lastErrorMessage: z.string().nullable().optional(),
-		lastEventKind: z.string().optional(),
+		lastEventKind: z.string().nullable().optional(),
 		outputCount: z.number().int().optional(),
 		changedFiles: z.array(z.string()).default([]),
 	});

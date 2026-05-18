@@ -45,8 +45,12 @@ const relatedBooks = publishedRuntime
 			entry={question.data}
 			currentPath="/questions/"
 			contributor={contributor}
+			contentTypeLabel="Question"
+			contentId={question.id}
+			collectionLabel="questions"
 			metaLabel="Question type"
 			metaValue={String(question.data.questionType ?? '')}
+			metadataItems={[]}
 			relatedObjectives={relatedObjectives}
 			relatedBooks={relatedBooks}
 		>

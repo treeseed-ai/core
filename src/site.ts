@@ -403,6 +403,9 @@ export function createTreeseedSite(
 				__TREESEED_DEPLOY_CONFIG__: injectedDeployConfig,
 				__TREESEED_BOOK_RUNTIME__: injectedBookRuntime,
 			},
+			optimizeDeps: {
+				exclude: ['libsodium-wrappers-sumo'],
+			},
 			plugins: [
 				createTenantThemeVitePlugin(tenantThemeCss),
 				tailwindcss() as any,

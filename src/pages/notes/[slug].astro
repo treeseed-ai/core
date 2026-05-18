@@ -1,9 +1,9 @@
 ---
 import { getCollection, render } from 'astro:content';
-import NoteLayout from '../../layouts/NoteLayout.astro';
+import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
-import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../../utils/site-content-runtime';
+import { isPublishedRuntimeContentMode, loadPublishedEntry, metadataFromPublishedContent } from '../../utils/site-content-runtime';
 
 export const prerender = false;
 
@@ -13,6 +13,7 @@ const notes = publishedRuntime ? [] : await getCollection('notes', ({ data }) =>
 const localNote = publishedRuntime ? null : notes.find((candidate) => candidate.id === slug) ?? null;
 const publishedNote = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'notes', slug) : null;
 const note = publishedRuntime ? publishedNote?.entry ?? null : localNote;
+const metadata = publishedRuntime ? metadataFromPublishedContent(publishedNote?.content) : null;
 if (!note) {
 	Astro.response.status = 404;
 }
@@ -24,8 +25,20 @@ const Content = rendered?.Content ?? null;
 	!note || (!Content && !publishedNote?.html) ? (
 		<RouteNotFound title="Note not found" description="The requested note could not be found in this Treeseed." currentPath="/notes/" />
 	) : (
-		<NoteLayout note={note.data}>
+		<AuthoredEntryLayout
+			entry={note.data}
+			currentPath="/notes/"
+			contributor={null}
+			contentTypeLabel="Note"
+			contentId={note.id}
+			collectionLabel="notes"
+			metaLabel="Author"
+			metaValue={String(note.data.author ?? metadata?.author ?? '')}
+			metadataItems={[
+				{ label: 'Route', value: note.data.canonicalRoute ?? metadata?.canonicalRoute, href: note.data.canonicalRoute ?? metadata?.canonicalRoute },
+			]}
+		>
 			{publishedRuntime ? <PublishedContentBody html={publishedNote?.html ?? ''} /> : <Content />}
-		</NoteLayout>
+		</AuthoredEntryLayout>
 	)
 }
