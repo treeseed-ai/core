@@ -2,6 +2,7 @@ import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob, type Loader } from 'astro/loaders';
 import { existsSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
 import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
@@ -413,6 +414,16 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		governance: agentGovernanceSchema.optional(),
 	}));
 
+	const agentTestSchema = z.object({
+		id: z.string(),
+		agent: z.string(),
+		kind: z.enum(['spec', 'handler', 'message_chain', 'manager_worker', 'workday', 'api', 'ui']),
+		fixture: z.string().optional(),
+		trigger: z.record(z.any()).default({}),
+		expect: z.record(z.any()).default({}),
+		tags: z.array(z.string()).default([]),
+	});
+
 	const bookSchema = z.preprocess((value) => preprocessAliasedRecord(bookFieldAliases, value), z.object({
 		order: z.number().int().nonnegative(),
 		slug: z.string(),
@@ -584,6 +595,14 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 			schema: docsCollectionProvider.schema as any,
 		}),
 	};
+
+	const agentTestsRoot = resolve(dirname(tenantConfig.content.agents), 'agent-tests');
+	if (existsSync(agentTestsRoot)) {
+		collections.agent_tests = defineCollection({
+			loader: optionalMarkdownGlob(agentTestsRoot),
+			schema: agentTestSchema,
+		});
+	}
 
 	if (tenantConfig.content.workdays) {
 		collections.workdays = defineCollection({

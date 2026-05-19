@@ -496,7 +496,7 @@ async function main() {
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.d.ts'),
-		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tbooks: any;\n\tdocs: any;\n\tworkdays?: any;\n};"
+		"export declare function createTreeseedTenantCollections(manifestPath?: string): {\n\tpages: any;\n\tnotes: any;\n\tquestions: any;\n\tobjectives: any;\n\tpeople: any;\n\tagents: any;\n\tagent_tests?: any;\n\tbooks: any;\n\tdocs: any;\n\tworkdays?: any;\n};"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'utils/forms/service.d.ts'),
