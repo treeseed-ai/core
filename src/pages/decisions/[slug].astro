@@ -57,9 +57,17 @@ const supersededDecisions = publishedRuntime
 			entry={decision.data}
 			currentPath="/decisions/"
 			contributor={contributor}
+			contentTypeLabel="Decision"
+			contentId={decision.id}
+			collectionLabel="decisions"
 			metaLabel="Decision type"
 			metaValue={String(decision.data.decisionType ?? '')}
-			introText={`${decision.data.rationale ?? ''} Authority: ${decision.data.authority ?? ''}.`}
+			introText={decision.data.rationale}
+			metadataItems={[
+				{ label: 'Authority', value: decision.data.authority },
+				{ label: 'Route', value: decision.data.canonicalRoute, href: decision.data.canonicalRoute },
+				{ label: 'Implements', value: decision.data.implements },
+			]}
 			relatedObjectives={relatedObjectives}
 			relatedQuestions={relatedQuestions}
 			relatedNotes={relatedNotes}

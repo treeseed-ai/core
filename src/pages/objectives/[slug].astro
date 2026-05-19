@@ -45,8 +45,12 @@ const relatedBooks = publishedRuntime
 			entry={objective.data}
 			currentPath="/objectives/"
 			contributor={contributor}
+			contentTypeLabel="Objective"
+			contentId={objective.id}
+			collectionLabel="objectives"
 			metaLabel="Time horizon"
 			metaValue={String(objective.data.timeHorizon ?? '')}
+			metadataItems={[]}
 			relatedQuestions={relatedQuestions}
 			relatedBooks={relatedBooks}
 		>

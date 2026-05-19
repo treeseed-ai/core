@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import PublicShell from '../components/ui/shell/PublicShell.astro';
+import ShellIconLink from '../components/ui/shell/ShellIconLink.astro';
 import { SITE_NAV_GROUPS } from '../utils/routes';
 import { SITE } from '../utils/seo';
 import { SITE_THEME_CSS } from '../utils/site-config';
@@ -36,6 +37,7 @@ const navItems = SITE_NAV_GROUPS.flatMap((group) => group.items);
 		{SITE_THEME_CSS && <style is:global>{SITE_THEME_CSS}</style>}
 	</Fragment>
 	<Fragment slot="actions">
+		<ShellIconLink href="/app/" label="Manager" icon="manager" />
 		<a
 			href={SITE.githubRepository}
 			target="_blank"

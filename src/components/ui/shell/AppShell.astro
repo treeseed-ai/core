@@ -5,9 +5,11 @@ import '../../../styles/ui.css';
 import '../../../styles/forms.css';
 import '../../../styles/app-shell.css';
 import ThemeScript from '../theme/ThemeScript.astro';
+import ThemeMenu from '../theme/ThemeMenu.astro';
 import RailNav from './RailNav.astro';
 import BottomNav from './BottomNav.astro';
 import TopBar from './TopBar.astro';
+import ShellIconLink from './ShellIconLink.astro';
 import Button from '../forms/Button.astro';
 import DevWatchReload from '../../DevWatchReload.astro';
 import type { ButtonAction } from '../types.ts';
@@ -64,11 +66,13 @@ const {
 		<a class="ts-skip-link" href="#main-content">Skip to content</a>
 		<div class="ts-app-shell">
 			<aside class="ts-app-shell__rail">
-				<TopBar brand={brand} />
-				<div class="ts-app-shell__rail-context">
-					<slot name="railContext" />
+				<div class="ts-app-shell__rail-scroll">
+					<TopBar brand={brand} />
+					<div class="ts-app-shell__rail-context">
+						<slot name="railContext" />
+					</div>
+					<RailNav items={navItems} currentPath={currentPath} />
 				</div>
-				<RailNav items={navItems} currentPath={currentPath} />
 				{quickActions.length > 0 ? (
 					<div class="ts-app-shell__quick-actions">
 						<p class="ts-app-shell__eyebrow">Quick actions</p>
@@ -91,6 +95,10 @@ const {
 			</aside>
 			<main class="ts-app-shell__main" id="main-content">
 				<TopBar brand={brand} class="ts-app-shell__mobile-top">
+					<Fragment slot="actions">
+						<ThemeMenu selectedScheme={appearance.scheme} selectedMode={appearance.mode} />
+						<ShellIconLink href="/" label="Book home" icon="book" />
+					</Fragment>
 				</TopBar>
 				<header class="ts-app-shell__header">
 					<div class="ts-app-shell__title">
@@ -98,6 +106,10 @@ const {
 						<p>{description}</p>
 					</div>
 					<div class="ts-app-shell__header-actions">
+						<div class="ts-shell-utility-actions">
+							<ThemeMenu selectedScheme={appearance.scheme} selectedMode={appearance.mode} />
+							<ShellIconLink href="/" label="Book home" icon="book" />
+						</div>
 						<slot name="headerAction" />
 					</div>
 				</header>

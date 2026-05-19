@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -39,7 +39,8 @@ export const TREESEED_DEFAULT_LOCAL_SMTP_PORT = 1025;
 export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
-const DEV_RUNTIME_FILE = '.treeseed/generated/dev/runtime.json';
+const DEV_RUNTIME_DIR = '.treeseed/generated/dev';
+const DEV_RUNTIME_LEGACY_FILE = '.treeseed/generated/dev/runtime.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
 const DEFAULT_SETUP_STEP_TIMEOUT_MS = 300_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
@@ -75,11 +76,13 @@ export type TreeseedIntegratedDevOptions = {
 	webPort?: number;
 	apiHost?: string;
 	apiPort?: number;
+	webRuntime?: TreeseedLocalRuntimeMode;
 	setupMode?: TreeseedIntegratedDevSetupMode;
 	feedbackMode?: TreeseedIntegratedDevFeedbackMode;
 	openMode?: TreeseedIntegratedDevOpenMode;
 	plan?: boolean;
 	reset?: boolean;
+	force?: boolean;
 	json?: boolean;
 	includeServices?: boolean;
 	projectId?: string;
@@ -147,6 +150,7 @@ export type TreeseedIntegratedDevPlan = {
 	readyChecks: TreeseedIntegratedDevReadinessCheck[];
 	watchEntries: TreeseedIntegratedDevWatchEntry[];
 	commands: TreeseedIntegratedDevCommand[];
+	logPath: string;
 	localRuntimes: Record<string, TreeseedLocalRuntimeSelection>;
 	restartPolicy: {
 		initialBackoffMs: number;
@@ -181,6 +185,14 @@ type TreeseedIntegratedDevDependencies = {
 	startWatch: WatchStarter;
 	removePath: (path: string) => void;
 	stopMailpitContainers: () => boolean;
+	inspectPortOwners: (ports: readonly number[]) => TreeseedDevPortOwner[];
+};
+
+export type TreeseedDevPortOwner = {
+	port: number;
+	pid: number | null;
+	processName?: string;
+	detail: string;
 };
 
 type DevEvent = {
@@ -316,13 +328,17 @@ function fallbackWebProviderFromDeployConfig(deployConfig: unknown) {
 	return normalizeProvider(record.providers?.deploy, 'local');
 }
 
-function selectWebLocalRuntime(surfaceConfig: unknown, providerFallback = 'local'): TreeseedLocalRuntimeSelection {
+function selectWebLocalRuntime(
+	surfaceConfig: unknown,
+	providerFallback = 'local',
+	overrideRuntime?: TreeseedLocalRuntimeMode,
+): TreeseedLocalRuntimeSelection {
 	const record = surfaceConfig && typeof surfaceConfig === 'object' ? surfaceConfig as {
 		provider?: unknown;
 		local?: { runtime?: unknown };
 	} : {};
 	const provider = normalizeProvider(record.provider, providerFallback);
-	const requested = normalizeLocalRuntimeMode(record.local?.runtime);
+	const requested = overrideRuntime ?? normalizeLocalRuntimeMode(record.local?.runtime);
 	if (provider === 'cloudflare' && requested !== 'local') {
 		return {
 			requested,
@@ -338,8 +354,10 @@ function selectWebLocalRuntime(surfaceConfig: unknown, providerFallback = 'local
 		requested,
 		provider,
 		selected: 'astro-local',
-		reason: requested === 'local'
-			? 'Configured to use the full local Astro runtime.'
+		reason: overrideRuntime === 'local'
+			? 'CLI override selected the full local Astro runtime for faster UI development.'
+			: requested === 'local'
+				? 'Configured to use the full local Astro runtime.'
 			: `Provider "${provider}" has no provider-local web runtime; using Astro local.`,
 	};
 }
@@ -486,6 +504,31 @@ function resolveSeededLocalProjectId(persistTo: string, projectSlug = 'market') 
 			`SELECT id FROM projects WHERE LOWER(slug) = LOWER(?) ORDER BY created_at ASC LIMIT 1`,
 		).get(projectSlug) as { id?: unknown } | undefined;
 		return typeof row?.id === 'string' && row.id.trim() ? row.id.trim() : null;
+	} catch {
+		return null;
+	} finally {
+		db?.close();
+	}
+}
+
+function resolveSeededLocalTeamId(persistTo: string, projectId: string | null, teamSlug = 'treeseed') {
+	const sqlitePath = resolveLocalD1SqlitePath(persistTo);
+	if (!sqlitePath) return null;
+	let db: DatabaseSync | null = null;
+	try {
+		db = new DatabaseSync(sqlitePath, { readOnly: true });
+		if (projectId) {
+			const projectRow = db.prepare(
+				`SELECT team_id FROM projects WHERE id = ? LIMIT 1`,
+			).get(projectId) as { team_id?: unknown } | undefined;
+			if (typeof projectRow?.team_id === 'string' && projectRow.team_id.trim()) {
+				return projectRow.team_id.trim();
+			}
+		}
+		const teamRow = db.prepare(
+			`SELECT id FROM teams WHERE LOWER(slug) = LOWER(?) ORDER BY created_at ASC LIMIT 1`,
+		).get(teamSlug) as { id?: unknown } | undefined;
+		return typeof teamRow?.id === 'string' && teamRow.id.trim() ? teamRow.id.trim() : null;
 	} catch {
 		return null;
 	} finally {
@@ -799,16 +842,23 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		?? resolveOptionalPackageRoot('@treeseed/agent', tenantRoot);
 	const cliPackageRoot = resolveOptionalPackageRoot('@treeseed/cli', tenantRoot);
 	const deployConfig = loadDevDeployConfig(tenantRoot);
-	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig));
+	const webLocalRuntime = selectWebLocalRuntime(deployConfig?.surfaces?.web, fallbackWebProviderFromDeployConfig(deployConfig), options.webRuntime);
 	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
+	const usesGeneratedLocalD1State = usesCloudflareWebRuntime
+		|| webLocalRuntime.provider === 'cloudflare'
+		|| selectedCommandIds.some((id) => id !== 'web');
 	const localD1PersistTo = mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? (
-		usesCloudflareWebRuntime
+		usesGeneratedLocalD1State
 			? resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3', 'd1')
 			: resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1')
 	);
 	const projectId = options.projectId
 		?? mergedEnv.TREESEED_PROJECT_ID
 		?? resolveSeededLocalProjectId(localD1PersistTo);
+	const resolvedHostingTeamId = teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID;
+	const resolvedTeamId = mergedEnv.TREESEED_TEAM_ID
+		?? resolvedHostingTeamId
+		?? resolveSeededLocalTeamId(localD1PersistTo, projectId ?? null);
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
@@ -834,13 +884,14 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 
 	const sharedEnv: NodeJS.ProcessEnv = {
 		...mergedEnv,
-		TREESEED_LOCAL_DEV_MODE: mergedEnv.TREESEED_LOCAL_DEV_MODE ?? 'cloudflare',
+		TREESEED_LOCAL_DEV_MODE: usesCloudflareWebRuntime ? (mergedEnv.TREESEED_LOCAL_DEV_MODE ?? 'cloudflare') : undefined,
 		TREESEED_SITE_URL: mergedEnv.TREESEED_SITE_URL ?? webUrl,
 		BETTER_AUTH_URL: mergedEnv.BETTER_AUTH_URL ?? webUrl,
 		TREESEED_API_BASE_URL: apiBaseUrl,
 		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
 		TREESEED_PROJECT_ID: projectId ?? mergedEnv.TREESEED_PROJECT_ID,
-		TREESEED_HOSTING_TEAM_ID: teamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
+		TREESEED_TEAM_ID: resolvedTeamId ?? mergedEnv.TREESEED_TEAM_ID,
+		TREESEED_HOSTING_TEAM_ID: resolvedHostingTeamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
 		TREESEED_API_D1_DATABASE_NAME: mergedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
 		SITE_DATA_DB: mergedEnv.SITE_DATA_DB ?? 'SITE_DATA_DB',
 		TREESEED_API_D1_LOCAL_PERSIST_TO: localD1PersistTo,
@@ -929,6 +980,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		readyChecks,
 		watchEntries,
 		commands,
+		logPath: resolve(tenantRoot, '.treeseed', 'logs', `dev-${runtimeScopeKey(commands.map((command) => command.id))}.jsonl`),
 		localRuntimes: {
 			...(commands.some((command) => command.id === 'web') ? { web: webLocalRuntime } : {}),
 			...(commands.some((command) => command.id === 'api') ? { api: nodeLocalRuntime('Treeseed API') } : {}),
@@ -973,6 +1025,30 @@ function defaultProcessIsAlive(pid: number) {
 	} catch {
 		return false;
 	}
+}
+
+function defaultInspectPortOwners(ports: readonly number[]): TreeseedDevPortOwner[] {
+	const uniquePorts = [...new Set(ports.filter((port) => Number.isInteger(port) && port > 0))];
+	if (uniquePorts.length === 0) return [];
+	const result = spawnSync('ss', ['-ltnp'], { encoding: 'utf8' });
+	if ((result.status ?? 1) !== 0) return [];
+	const lines = String(result.stdout ?? '').split(/\r?\n/u);
+	const owners: TreeseedDevPortOwner[] = [];
+	for (const port of uniquePorts) {
+		const portPattern = new RegExp(`:${port}\\b`, 'u');
+		for (const line of lines) {
+			if (!portPattern.test(line)) continue;
+			const pidMatch = line.match(/pid=(\d+)/u);
+			const nameMatch = line.match(/users:\(\("([^"]+)"/u);
+			owners.push({
+				port,
+				pid: pidMatch ? Number(pidMatch[1]) : null,
+				processName: nameMatch?.[1],
+				detail: line.trim(),
+			});
+		}
+	}
+	return owners;
 }
 
 function defaultRemovePath(path: string) {
@@ -1107,48 +1183,153 @@ type DevRuntimeState = {
 	pid: number;
 	tenantRoot: string;
 	startedAt: string;
+	commandIds?: TreeseedIntegratedDevCommandId[];
+	statePath?: string;
 };
 
-function devRuntimeStatePath(tenantRoot: string) {
-	return resolve(tenantRoot, DEV_RUNTIME_FILE);
+function devRuntimeStateDir(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_RUNTIME_DIR);
 }
 
-function readDevRuntimeState(tenantRoot: string): DevRuntimeState | null {
+function devRuntimeStatePath(tenantRoot: string, key: string) {
+	return resolve(devRuntimeStateDir(tenantRoot), `runtime-${key}.json`);
+}
+
+function legacyDevRuntimeStatePath(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_RUNTIME_LEGACY_FILE);
+}
+
+function runtimeScopeKey(commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const selected = CANONICAL_COMMAND_IDS.filter((id) => commandIds.includes(id));
+	return selected.length > 0 ? selected.join('-') : 'integrated';
+}
+
+function readDevRuntimeStateFile(path: string): DevRuntimeState | null {
 	try {
-		const parsed = JSON.parse(readFileSync(devRuntimeStatePath(tenantRoot), 'utf8')) as Partial<DevRuntimeState>;
+		const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<DevRuntimeState>;
 		if (!Number.isInteger(parsed.pid) || typeof parsed.tenantRoot !== 'string' || typeof parsed.startedAt !== 'string') {
 			return null;
 		}
+		const commandIds = Array.isArray(parsed.commandIds)
+			? parsed.commandIds.filter((id): id is TreeseedIntegratedDevCommandId => CANONICAL_COMMAND_IDS.includes(id as TreeseedIntegratedDevCommandId))
+			: undefined;
 		return {
 			pid: parsed.pid!,
 			tenantRoot: parsed.tenantRoot,
 			startedAt: parsed.startedAt,
+			...(commandIds ? { commandIds } : {}),
+			statePath: path,
 		};
 	} catch {
 		return null;
 	}
 }
 
-function writeCurrentDevRuntimeState(tenantRoot: string) {
-	const outputPath = devRuntimeStatePath(tenantRoot);
+function listDevRuntimeStates(tenantRoot: string) {
+	const states: DevRuntimeState[] = [];
+	const legacy = readDevRuntimeStateFile(legacyDevRuntimeStatePath(tenantRoot));
+	if (legacy) {
+		states.push(legacy);
+	}
+	try {
+		for (const entry of readdirSync(devRuntimeStateDir(tenantRoot))) {
+			if (!entry.startsWith('runtime-') || !entry.endsWith('.json')) {
+				continue;
+			}
+			const state = readDevRuntimeStateFile(resolve(devRuntimeStateDir(tenantRoot), entry));
+			if (state) {
+				states.push(state);
+			}
+		}
+	} catch {
+		// No active dev state directory yet.
+	}
+	return states;
+}
+
+function runtimeStateOverlaps(state: DevRuntimeState, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	if (!state.commandIds || state.commandIds.length === 0) {
+		return true;
+	}
+	return state.commandIds.some((id) => commandIds.includes(id));
+}
+
+function listLiveOverlappingDevRuntimeStates(
+	tenantRoot: string,
+	commandIds: readonly TreeseedIntegratedDevCommandId[],
+	processIsAlive: ProcessStatusChecker,
+) {
+	const live: DevRuntimeState[] = [];
+	for (const state of listDevRuntimeStates(tenantRoot)) {
+		const statePath = state.statePath;
+		if (!statePath || !runtimeStateOverlaps(state, commandIds)) {
+			continue;
+		}
+		if (state.pid === process.pid) {
+			continue;
+		}
+		if (!processIsAlive(state.pid)) {
+			rmSync(statePath, { force: true });
+			continue;
+		}
+		live.push(state);
+	}
+	return live;
+}
+
+function parsePortFromUrl(value: string | undefined) {
+	if (!value) return null;
+	try {
+		const url = new URL(value);
+		const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+		return Number.isInteger(port) && port > 0 ? port : null;
+	} catch {
+		return null;
+	}
+}
+
+function requiredDevPorts(plan: TreeseedIntegratedDevPlan) {
+	const ports: number[] = [];
+	for (const command of plan.commands) {
+		if (command.id === 'web') {
+			const port = parsePortFromUrl(plan.webUrl ?? undefined);
+			if (port) ports.push(port);
+		}
+		if (command.id === 'api') {
+			const port = parsePortFromUrl(plan.apiBaseUrl);
+			if (port) ports.push(port);
+		}
+	}
+	return [...new Set(ports)];
+}
+
+function formatPortOwner(owner: TreeseedDevPortOwner) {
+	return `port ${owner.port}${owner.pid ? ` pid ${owner.pid}` : ''}${owner.processName ? ` (${owner.processName})` : ''}`;
+}
+
+function writeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const outputPath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
 	mkdirSync(dirname(outputPath), { recursive: true });
 	writeFileSync(
 		outputPath,
 		`${JSON.stringify({
 			pid: process.pid,
 			tenantRoot,
+			commandIds,
 			startedAt: new Date().toISOString(),
 		}, null, 2)}\n`,
 		'utf8',
 	);
+	return outputPath;
 }
 
-function removeCurrentDevRuntimeState(tenantRoot: string) {
-	const state = readDevRuntimeState(tenantRoot);
+function removeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+	const statePath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
+	const state = readDevRuntimeStateFile(statePath);
 	if (!state || state.pid !== process.pid) {
 		return;
 	}
-	rmSync(devRuntimeStatePath(tenantRoot), { force: true });
+	rmSync(statePath, { force: true });
 }
 
 async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChecker, timeoutMs: number) {
@@ -1162,47 +1343,131 @@ async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChec
 	return !processIsAlive(pid);
 }
 
-async function stopPreviousDevRuntime(
+async function stopPreviousDevRuntimes(
 	tenantRoot: string,
+	commandIds: readonly TreeseedIntegratedDevCommandId[],
 	options: Pick<TreeseedIntegratedDevOptions, 'json' | 'shutdownGraceMs'>,
 	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'killProcess' | 'processIsAlive'>,
 ) {
-	const state = readDevRuntimeState(tenantRoot);
-	if (!state) {
-		return;
-	}
-	const statePath = devRuntimeStatePath(tenantRoot);
-	if (state.pid === process.pid) {
-		return;
-	}
-	if (!deps.processIsAlive(state.pid)) {
+	for (const state of listLiveOverlappingDevRuntimeStates(tenantRoot, commandIds, deps.processIsAlive)) {
+		const statePath = state.statePath;
+		if (!statePath) continue;
+
+		emitEvent(options, deps.write, {
+			type: 'replace',
+			message: `Stopping previous Treeseed dev runtime (${state.pid}) before starting overlapping surfaces.`,
+			detail: { pid: state.pid, startedAt: state.startedAt, commandIds: state.commandIds ?? null },
+		});
+
+		try {
+			deps.killProcess(state.pid, 'SIGTERM');
+		} catch {
+			// The runtime may have exited after the liveness check.
+		}
+		if (await waitForProcessExit(state.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
+			rmSync(statePath, { force: true });
+			continue;
+		}
+
+		try {
+			deps.killProcess(state.pid, 'SIGKILL');
+		} catch {
+			// Ignore shutdown races from already-exited supervisors.
+		}
+		await waitForProcessExit(state.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
 		rmSync(statePath, { force: true });
-		return;
+	}
+}
+
+async function stopPortOwners(
+	owners: readonly TreeseedDevPortOwner[],
+	options: Pick<TreeseedIntegratedDevOptions, 'json' | 'shutdownGraceMs'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'killProcess' | 'processIsAlive'>,
+) {
+	const pids = [...new Set(owners.map((owner) => owner.pid).filter((pid): pid is number => Number.isInteger(pid) && pid > 0 && pid !== process.pid))];
+	for (const pid of pids) {
+		emitEvent(options, deps.write, {
+			type: 'replace',
+			message: `Stopping service on required dev port (pid ${pid}).`,
+			detail: owners.filter((owner) => owner.pid === pid),
+		});
+		try {
+			deps.killProcess(pid, 'SIGTERM');
+		} catch {
+			// Ignore races with processes that exited after inspection.
+		}
+		if (await waitForProcessExit(pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
+			continue;
+		}
+		try {
+			deps.killProcess(pid, 'SIGKILL');
+		} catch {
+			// Ignore shutdown races.
+		}
+		await waitForProcessExit(pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
+	}
+}
+
+async function prepareDevRuntimeSlots(
+	plan: TreeseedIntegratedDevPlan,
+	options: Pick<TreeseedIntegratedDevOptions, 'json' | 'shutdownGraceMs' | 'force'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'killProcess' | 'processIsAlive' | 'inspectPortOwners'>,
+) {
+	const commandIds = plan.commands.map((command) => command.id);
+	const liveRuntimeStates = listLiveOverlappingDevRuntimeStates(plan.tenantRoot, commandIds, deps.processIsAlive);
+	const ports = requiredDevPorts(plan);
+	const portOwners = deps.inspectPortOwners(ports)
+		.filter((owner) => owner.pid !== process.pid);
+	if (options.force !== true) {
+		if (liveRuntimeStates.length > 0 || portOwners.length > 0) {
+			emitEvent(options, deps.write, {
+				type: 'error',
+				status: 'existing-service',
+				message: [
+					'Treeseed dev found an existing runtime or service on a required port.',
+					'Stop it first, or rerun with --force to terminate overlapping Treeseed dev services and port owners.',
+				].join(' '),
+				detail: {
+					runtimes: liveRuntimeStates.map((state) => ({
+						pid: state.pid,
+						startedAt: state.startedAt,
+						commandIds: state.commandIds ?? null,
+						statePath: state.statePath ?? null,
+					})),
+					ports: portOwners.map((owner) => ({ ...owner, label: formatPortOwner(owner) })),
+				},
+			});
+			return false;
+		}
+		return true;
 	}
 
-	emitEvent(options, deps.write, {
-		type: 'replace',
-		message: `Stopping previous Treeseed dev runtime (${state.pid}) before starting a new one.`,
-		detail: { pid: state.pid, startedAt: state.startedAt },
-	});
-
-	try {
-		deps.killProcess(state.pid, 'SIGTERM');
-	} catch {
-		// The runtime may have exited after the liveness check.
+	await stopPreviousDevRuntimes(plan.tenantRoot, commandIds, options, deps);
+	if (portOwners.length > 0) {
+		const ownersWithoutPid = portOwners.filter((owner) => owner.pid == null);
+		if (ownersWithoutPid.length > 0) {
+			emitEvent(options, deps.write, {
+				type: 'error',
+				status: 'existing-service',
+				message: `Cannot force-stop required dev ports because some listeners did not expose process ids: ${ownersWithoutPid.map(formatPortOwner).join(', ')}.`,
+				detail: ownersWithoutPid,
+			});
+			return false;
+		}
+		await stopPortOwners(portOwners, options, deps);
 	}
-	if (await waitForProcessExit(state.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
-		rmSync(statePath, { force: true });
-		return;
+	const remainingPortOwners = deps.inspectPortOwners(ports)
+		.filter((owner) => owner.pid !== process.pid);
+	if (remainingPortOwners.length > 0) {
+		emitEvent(options, deps.write, {
+			type: 'error',
+			status: 'existing-service',
+			message: `Required dev ports are still occupied after --force: ${remainingPortOwners.map(formatPortOwner).join(', ')}.`,
+			detail: remainingPortOwners,
+		});
+		return false;
 	}
-
-	try {
-		deps.killProcess(state.pid, 'SIGKILL');
-	} catch {
-		// Ignore shutdown races from already-exited supervisors.
-	}
-	await waitForProcessExit(state.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
-	rmSync(statePath, { force: true });
+	return true;
 }
 
 function emitEvent(
@@ -1218,6 +1483,23 @@ function emitEvent(
 	const surface = event.surface ? `[${event.surface}]` : event.type === 'setup' ? '[setup]' : '[dev]';
 	const message = event.message ?? event.detail ?? event.status ?? '';
 	write(`${surface} ${String(message)}\n`, stream);
+}
+
+function createDevLogWrite(
+	baseWrite: TreeseedIntegratedDevDependencies['write'],
+	logPath: string,
+): TreeseedIntegratedDevDependencies['write'] {
+	mkdirSync(dirname(logPath), { recursive: true });
+	appendFileSync(logPath, `${JSON.stringify({
+		schemaVersion: 1,
+		kind: 'treeseed.dev.log',
+		type: 'start',
+		startedAt: new Date().toISOString(),
+	})}\n`, 'utf8');
+	return (line, stream) => {
+		baseWrite(line, stream);
+		appendFileSync(logPath, line, 'utf8');
+	};
 }
 
 export function runTreeseedIntegratedDevReset(
@@ -1323,6 +1605,7 @@ function writePlan(plan: TreeseedIntegratedDevPlan, options: Pick<TreeseedIntegr
 		write(`web: ${plan.webUrl}\n`, 'stdout');
 	}
 	write(`api: ${plan.apiBaseUrl}\n`, 'stdout');
+	write(`log: ${plan.logPath}\n`, 'stdout');
 	for (const [name, runtime] of Object.entries(plan.localRuntimes)) {
 		write(`runtime ${name}: ${runtime.selected} (${runtime.provider}, requested ${runtime.requested})${runtime.reason ? ` - ${runtime.reason}` : ''}\n`, 'stdout');
 	}
@@ -1590,7 +1873,7 @@ export async function runTreeseedIntegratedDev(
 	deps: Partial<TreeseedIntegratedDevDependencies> = {},
 ) {
 	const tenantRoot = resolve(options.cwd ?? process.cwd());
-	const write = deps.write ?? defaultWrite;
+	let write = deps.write ?? defaultWrite;
 	const spawnProcess = deps.spawn ?? spawn;
 	const spawnSyncProcess = deps.spawnSync ?? spawnSync;
 	const onSignal = deps.onSignal ?? defaultSignalRegistrar;
@@ -1602,6 +1885,7 @@ export async function runTreeseedIntegratedDev(
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
 	const removePath = deps.removePath ?? defaultRemovePath;
 	const stopMailpit = deps.stopMailpitContainers ?? stopKnownMailpitContainers;
+	const inspectPortOwners = deps.inspectPortOwners ?? defaultInspectPortOwners;
 
 	prepareEnvironment(tenantRoot);
 	const plan = createTreeseedIntegratedDevPlan({
@@ -1618,8 +1902,15 @@ export async function runTreeseedIntegratedDev(
 		return 0;
 	}
 
-	if (readDevRuntimeState(tenantRoot)) {
-		await stopPreviousDevRuntime(tenantRoot, options, { write, killProcess, processIsAlive });
+	const commandIds = plan.commands.map((command) => command.id);
+	write = createDevLogWrite(write, plan.logPath);
+	emitEvent(options, write, {
+		type: 'log',
+		message: `Writing Treeseed dev logs to ${plan.logPath}.`,
+		detail: { logPath: plan.logPath },
+	});
+	if (!await prepareDevRuntimeSlots(plan, options, { write, killProcess, processIsAlive, inspectPortOwners })) {
+		return 1;
 	}
 
 	const resetResults = runTreeseedIntegratedDevReset(plan.reset, options, {
@@ -1637,7 +1928,7 @@ export async function runTreeseedIntegratedDev(
 		return 1;
 	}
 
-	writeCurrentDevRuntimeState(tenantRoot);
+	writeCurrentDevRuntimeState(tenantRoot, commandIds);
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
@@ -1696,7 +1987,7 @@ export async function runTreeseedIntegratedDev(
 			for (const dispose of disposers) {
 				dispose();
 			}
-			removeCurrentDevRuntimeState(tenantRoot);
+			removeCurrentDevRuntimeState(tenantRoot, commandIds);
 			emitEvent(
 				options,
 				write,

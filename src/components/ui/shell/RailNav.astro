@@ -19,10 +19,17 @@ const {
 	class: className,
 } = Astro.props as Props;
 
+function normalizePath(path: string) {
+	if (path.length <= 1) return path;
+	return path.replace(/\/+$/u, '');
+}
+
 function isCurrentPath(href: string) {
-	if (href === '/') return currentPath === '/';
-	if (href.endsWith('/')) return currentPath === href || currentPath.startsWith(href);
-	return currentPath === href || currentPath.startsWith(`${href}/`);
+	const current = normalizePath(currentPath);
+	const target = normalizePath(href);
+	if (target === '/') return current === '/';
+	if (target === '/app') return current === '/app';
+	return current === target || current.startsWith(`${target}/`);
 }
 ---
 

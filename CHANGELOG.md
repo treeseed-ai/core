@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.0] - 2026-05-19
+
+### Added
+
+- feat(core): add request_changes decision type and refactor app shell (c620eeb8742d)
+
+### Changed
+
+- refactor(ui): improve path matching in navigation components (d9d7cb45b633)
+
+### Tests
+
+- build(ui): sync package dependency references (7a31cc1041e9)
+- refactor(dev): support multiple dev runtimes and environment forwarding (632ea6b27037)
+
+### Dependencies
+
+- build(build): sync package dependency references (a3e4cf1e3694)
+- chore(core): bump version and update @treeseed/sdk (da7fee1fcfc4)
+- Release @treeseed/core 0.9.0.
+
 ## [0.8.19] - 2026-05-16
 
 ### Dependencies

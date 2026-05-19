@@ -7,6 +7,7 @@ export declare function createTreeseedTenantCollections(manifestPath?: string): 
 	decisions: any;
 	people: any;
 	agents: any;
+	agent_tests?: any;
 	books: any;
 	docs: any;
 	workdays?: any;

@@ -57,8 +57,14 @@ const supersededProposals = publishedRuntime
 			entry={proposal.data}
 			currentPath="/proposals/"
 			contributor={contributor}
+			contentTypeLabel="Proposal"
+			contentId={proposal.id}
+			collectionLabel="proposals"
 			metaLabel="Proposal type"
 			metaValue={String(proposal.data.proposalType ?? '')}
+			metadataItems={[
+				{ label: 'Route', value: proposal.data.canonicalRoute, href: proposal.data.canonicalRoute },
+			]}
 			relatedObjectives={relatedObjectives}
 			relatedQuestions={relatedQuestions}
 			relatedNotes={relatedNotes}

@@ -3,6 +3,7 @@
 import {
 	runTreeseedIntegratedDev,
 	type TreeseedIntegratedDevFeedbackMode,
+	type TreeseedLocalRuntimeMode,
 	type TreeseedIntegratedDevOpenMode,
 	type TreeseedIntegratedDevSetupMode,
 	type TreeseedIntegratedDevSurface,
@@ -68,6 +69,30 @@ function parseOpenMode(value: string | undefined): TreeseedIntegratedDevOpenMode
 	return undefined;
 }
 
+function parseLocalRuntimeMode(value: string | undefined): TreeseedLocalRuntimeMode | undefined {
+	if (value === 'auto' || value === 'provider' || value === 'local') {
+		return value;
+	}
+	return undefined;
+}
+
+function readForwardedEnvironment() {
+	const keys = [
+		'TREESEED_DOCS_AUTOMATION_MODE',
+		'TREESEED_WORKDAY_ID',
+		'TREESEED_CAPACITY_BUDGET',
+		'TREESEED_WORKDAY_TASK_CREDIT_BUDGET',
+		'TREESEED_APPROVAL_POLICY',
+		'TREESEED_MANAGER_CONSOLE_SUMMARY',
+		'TREESEED_WORKER_CONSOLE_SUMMARY',
+	];
+	return Object.fromEntries(
+		keys
+			.map((key) => [key, process.env[key]] as const)
+			.filter((entry): entry is readonly [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
+	);
+}
+
 const exitCode = await runTreeseedIntegratedDev({
 	surface: parseSurface(readOption('--surface')),
 	surfaces: readOption('--surfaces'),
@@ -76,14 +101,17 @@ const exitCode = await runTreeseedIntegratedDev({
 	webPort: readNumberOption('--port'),
 	apiHost: readOption('--api-host'),
 	apiPort: readNumberOption('--api-port'),
+	webRuntime: parseLocalRuntimeMode(readOption('--web-runtime')),
 	setupMode: parseSetupMode(readOption('--setup')),
 	feedbackMode: parseFeedbackMode(readOption('--feedback')),
 	openMode: parseOpenMode(readOption('--open')),
 	plan: readFlag('--plan'),
 	reset: readFlag('--reset'),
+	force: readFlag('--force'),
 	json: readFlag('--json'),
 	projectId: readOption('--project-id'),
 	teamId: readOption('--team-id'),
+	env: readForwardedEnvironment(),
 });
 
 process.exit(exitCode);

@@ -20,13 +20,13 @@ body {
 
 .ts-theme-menu__trigger {
 	align-items: center;
-	background: var(--ts-color-surface);
-	border: 1px solid var(--ts-color-border);
+	background: transparent;
+	border: 1px solid transparent;
 	border-radius: var(--ts-radius-md);
 	color: var(--ts-color-text-muted);
 	cursor: pointer;
 	display: inline-flex;
-	height: 2rem;
+	height: 2.25rem;
 	justify-content: center;
 	list-style: none;
 	padding: 0;
@@ -34,7 +34,7 @@ body {
 		background-color 140ms ease,
 		border-color 140ms ease,
 		color 140ms ease;
-	width: 2rem;
+	width: 2.25rem;
 }
 
 .ts-theme-menu__trigger::-webkit-details-marker {
@@ -43,8 +43,8 @@ body {
 
 .ts-theme-menu__trigger:hover,
 .ts-theme-menu[open] .ts-theme-menu__trigger {
-	background: var(--ts-color-surface-muted);
-	border-color: var(--ts-color-border-strong);
+	background: var(--ts-color-surface-raised);
+	border-color: var(--ts-color-border);
 	color: var(--ts-color-text);
 }
 
@@ -56,8 +56,8 @@ body {
 .ts-theme-menu__trigger svg {
 	display: block;
 	fill: currentColor;
-	height: 1rem;
-	width: 1rem;
+	height: 1.15rem;
+	width: 1.15rem;
 }
 
 .ts-theme-menu__panel {
