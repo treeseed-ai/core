@@ -66,11 +66,13 @@ const {
 		<a class="ts-skip-link" href="#main-content">Skip to content</a>
 		<div class="ts-app-shell">
 			<aside class="ts-app-shell__rail">
-				<TopBar brand={brand} />
-				<div class="ts-app-shell__rail-context">
-					<slot name="railContext" />
+				<div class="ts-app-shell__rail-scroll">
+					<TopBar brand={brand} />
+					<div class="ts-app-shell__rail-context">
+						<slot name="railContext" />
+					</div>
+					<RailNav items={navItems} currentPath={currentPath} />
 				</div>
-				<RailNav items={navItems} currentPath={currentPath} />
 				{quickActions.length > 0 ? (
 					<div class="ts-app-shell__quick-actions">
 						<p class="ts-app-shell__eyebrow">Quick actions</p>

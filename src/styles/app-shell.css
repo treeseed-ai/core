@@ -27,13 +27,23 @@
 	align-self: start;
 	background: var(--ts-color-canvas-subtle);
 	border-right: 1px solid var(--ts-color-border);
+	box-sizing: border-box;
 	display: grid;
 	gap: var(--ts-space-3);
+	grid-template-rows: minmax(0, 1fr) auto;
 	height: 100vh;
-	overflow: auto;
+	overflow: hidden;
 	padding: var(--ts-space-3);
 	position: sticky;
 	top: 0;
+}
+
+.ts-app-shell__rail-scroll {
+	display: grid;
+	gap: var(--ts-space-3);
+	min-height: 0;
+	overflow: auto;
+	padding-right: 0.15rem;
 }
 
 .ts-shell-brand {
@@ -121,6 +131,11 @@
 	display: grid;
 	gap: var(--ts-space-2);
 	padding-top: var(--ts-space-2);
+}
+
+.ts-app-shell__quick-actions {
+	background: var(--ts-color-canvas-subtle);
+	padding-bottom: 0.1rem;
 }
 
 .ts-app-shell__eyebrow {
