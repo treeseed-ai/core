@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2] - 2026-05-20
+
+### Dependencies
+
+- build(build): tolerate npm scoped package permission 404 (fba971861edb)
+- Release @treeseed/core 0.9.2.
+
 ## [0.9.1] - 2026-05-20
 
 ### Dependencies
