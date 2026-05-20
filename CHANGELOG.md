@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3] - 2026-05-20
+
+### Dependencies
+
+- ci(build): create github releases for package publishes (f8e122a997fd)
+- Release @treeseed/core 0.9.3.
+
 ## [0.9.2] - 2026-05-20
 
 ### Dependencies
