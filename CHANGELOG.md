@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.1] - 2026-05-20
+
+### Dependencies
+
+- build(build): release internal packages from stable git tags (46e829aa6c2e)
+- build(publish): make package publish tolerate unprovisioned npm scope (ffbb951a5e95)
+- build(build): complete capacity provider migration (433e5a5702e0)
+- Release @treeseed/core 0.9.1.
+
 ## [0.9.0] - 2026-05-19
 
 ### Added
