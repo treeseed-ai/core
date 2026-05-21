@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0] - 2026-05-21
+
+### Fixed
+
+- fix(build): rehearse repair releases against stable dependencies (3ce3365a589e)
+- fix(build): keep release package lines aligned (b7bf7bde2734)
+
+### Dependencies
+
+- Release @treeseed/core 0.10.0.
+
 ## [0.9.4] - 2026-05-21
 
 ### Dependencies
