@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.4] - 2026-05-21
+
+### Dependencies
+
+- build(build): fail package release when npm publish fails (bfdc4f4dd0a4)
+- Release @treeseed/core 0.9.4.
+
 ## [0.9.3] - 2026-05-20
 
 ### Dependencies
