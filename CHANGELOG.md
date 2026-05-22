@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.2] - 2026-05-22
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk (b30695ded4c0)
+- build(core): bump version and update @treeseed/sdk (14db7a6eec13)
+- build(build): sync package dependency references (77a5ee653114)
+- Release @treeseed/core 0.10.2.
+
 ## [0.10.1] - 2026-05-22
 
 ### Dependencies
