@@ -730,7 +730,7 @@ function createSetupSteps(
 		},
 	];
 
-	if (needsCloudflareLocalRuntime && existsSync(resolve(tenantRoot, 'migrations'))) {
+	if (needsCloudflareLocalRuntime) {
 		const migrate = resolveOptionalScriptEntrypoint(
 			sdkPackageRoot,
 			'scripts/tenant-d1-migrate-local.ts',
