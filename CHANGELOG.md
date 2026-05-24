@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.6] - 2026-05-24
+
+### Fixed
+
+- build(build): fix sdk template source cache reuse (5de5e5721051)
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk (640fcf8b4503)
+- build(build): make market postgres baseline adopt existing schema (819ebf23bb06)
+- build(build): make static hub d1 baseline idempotent (4a7b8bae6690)
+- refactor(dev): update development paths and migration logic (71df90af9950)
+- Release @treeseed/core 0.10.6.
+
 ## [0.10.5] - 2026-05-23
 
 ### Dependencies
