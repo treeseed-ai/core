@@ -1,88 +1,88 @@
-.prose-karyon {
+.prose {
 	color: var(--ts-color-text);
 	font-size: 1.08rem;
 }
 
-.prose-karyon h1,
-.prose-karyon h2,
-.prose-karyon h3 {
+.prose h1,
+.prose h2,
+.prose h3 {
 	color: var(--ts-color-text);
 	line-height: 1.12;
 	font-weight: 700;
 }
 
-.prose-karyon h1 {
+.prose h1 {
 	font-size: clamp(2.4rem, 5vw, 4.1rem);
 	margin-bottom: 1.2rem;
 	font-family: var(--font-serif);
 }
 
-.prose-karyon h2 {
+.prose h2 {
 	font-size: clamp(1.85rem, 2.8vw, 2.5rem);
 	margin-top: 3.1rem;
 	margin-bottom: 1rem;
 }
 
-.prose-karyon h3 {
+.prose h3 {
 	font-size: 1.32rem;
 	margin-top: 2rem;
 	margin-bottom: 0.7rem;
 }
 
-.prose-karyon p,
-.prose-karyon li {
+.prose p,
+.prose li {
 	color: var(--ts-color-text-muted);
 	line-height: 1.85;
 }
 
-.prose-karyon p {
+.prose p {
 	margin: 1rem 0 1.2rem;
 }
 
-.prose-karyon p + p {
+.prose p + p {
 	margin-top: 1.35rem;
 }
 
-.prose-karyon a {
+.prose a {
 	color: var(--ts-color-accent-strong);
 	text-decoration: underline;
 	text-underline-offset: 0.16em;
 	font-weight: 600;
 }
 
-.prose-karyon strong {
+.prose strong {
 	color: var(--ts-color-text);
 }
 
-.prose-karyon ul,
-.prose-karyon ol {
+.prose ul,
+.prose ol {
 	padding-left: 1.3rem;
 }
 
-.prose-karyon blockquote {
+.prose blockquote {
 	border-left: 4px solid var(--ts-color-accent);
 	padding-left: 1rem;
 	color: var(--ts-color-text-muted);
 }
 
-.prose-karyon code {
+.prose code {
 	background: var(--ts-color-info-soft);
 	border: 1px solid var(--ts-color-info-border);
 	border-radius: 0.5rem;
 	padding: 0.1rem 0.35rem;
 }
 
-.prose-karyon hr {
+.prose hr {
 	border-color: var(--ts-color-border);
 	margin: 2.4rem 0;
 }
 
-.prose-karyon :where(table) {
+.prose :where(table) {
 	width: 100%;
 	border-collapse: collapse;
 }
 
-.prose-karyon :where(th, td) {
+.prose :where(th, td) {
 	border-bottom: 1px solid var(--ts-color-border);
 	padding: 0.85rem 0.75rem;
 	text-align: left;
