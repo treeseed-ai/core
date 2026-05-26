@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSyn
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
@@ -37,6 +37,10 @@ export const TREESEED_DEFAULT_API_PORT = 3000;
 export const TREESEED_DEFAULT_LOCAL_SMTP_HOST = '127.0.0.1';
 export const TREESEED_DEFAULT_LOCAL_SMTP_PORT = 1025;
 export const TREESEED_DEFAULT_MAILPIT_UI_PORT = 8025;
+export const TREESEED_DEFAULT_MARKET_POSTGRES_PORT = 55432;
+export const TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER = 'treeseed-market-local-postgres';
+export const TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME = 'treeseed-market-local-postgres-data';
+export const TREESEED_DEFAULT_MARKET_POSTGRES_URL = `postgres://treeseed:treeseed@127.0.0.1:${TREESEED_DEFAULT_MARKET_POSTGRES_PORT}/market_local`;
 
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
 const DEV_RUNTIME_DIR = '.treeseed/generated/dev';
@@ -56,7 +60,7 @@ export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
 export type TreeseedLocalRuntimeMode = 'auto' | 'provider' | 'local';
 export type TreeseedSelectedLocalRuntime = 'astro-local' | 'cloudflare-wrangler-local' | 'node-local';
-export type TreeseedIntegratedDevCommandId = 'web' | 'api' | 'manager' | 'worker' | 'agents';
+export type TreeseedIntegratedDevCommandId = 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'market-runner';
 
 export type TreeseedLocalRuntimeSelection = {
 	requested: TreeseedLocalRuntimeMode;
@@ -123,11 +127,21 @@ export type TreeseedIntegratedDevReadinessCheck = {
 };
 
 export type TreeseedIntegratedDevResetAction = {
-	id: 'd1-state' | 'mailpit' | 'wrangler-tmp' | 'worker-bundle' | 'dev-reload';
+	id:
+		| 'd1-state'
+		| 'generated-d1-state'
+		| 'generated-wrangler-state'
+		| 'legacy-local-sqlite'
+		| 'mailpit'
+		| 'market-postgres'
+		| 'root-wrangler-state'
+		| 'wrangler-tmp'
+		| 'worker-bundle'
+		| 'dev-reload';
 	label: string;
 	kind: 'path' | 'service';
 	path?: string;
-	status: 'planned' | 'removed' | 'skipped' | 'failed';
+	status: 'planned' | 'removed' | 'refreshed' | 'skipped' | 'failed';
 	detail?: string;
 };
 
@@ -185,6 +199,8 @@ type TreeseedIntegratedDevDependencies = {
 	startWatch: WatchStarter;
 	removePath: (path: string) => void;
 	stopMailpitContainers: () => boolean;
+	resetMarketPostgres: () => boolean;
+	stopMarketPostgres: () => boolean;
 	inspectPortOwners: (ports: readonly number[]) => TreeseedDevPortOwner[];
 };
 
@@ -383,6 +399,18 @@ function webUrlFor(host: string, port: number) {
 }
 
 const CANONICAL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents'];
+const MARKET_DEV_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'market-runner'];
+
+function isMarketWorkspace(tenantRoot: string) {
+	try {
+		const pkg = JSON.parse(readFileSync(resolve(tenantRoot, 'package.json'), 'utf8')) as { name?: unknown };
+		return pkg.name === '@treeseed/market'
+			&& existsSync(resolve(tenantRoot, 'src/api/server.js'))
+			&& existsSync(resolve(tenantRoot, 'src/market-operations-runner/entrypoint.js'));
+	} catch {
+		return false;
+	}
+}
 
 function surfaceCommandIds(surface: TreeseedIntegratedDevSurface): TreeseedIntegratedDevCommandId[] {
 	switch (surface) {
@@ -455,6 +483,16 @@ function dockerComposeIsAvailable(env: NodeJS.ProcessEnv) {
 	return (result.status ?? 1) === 0;
 }
 
+function dockerIsAvailable(env: NodeJS.ProcessEnv) {
+	const docker = resolveTreeseedToolBinary('docker', { env });
+	if (!docker) return false;
+	const result = spawnSync(docker, ['info'], {
+		encoding: 'utf8',
+		env,
+	});
+	return (result.status ?? 1) === 0;
+}
+
 function resetActionForPath(
 	id: TreeseedIntegratedDevResetAction['id'],
 	label: string,
@@ -468,6 +506,71 @@ function resetActionForPath(
 		status: existsSync(path) ? 'planned' : 'skipped',
 		detail: existsSync(path) ? undefined : 'Path does not exist.',
 	};
+}
+
+function uniqueResetActions(actions: TreeseedIntegratedDevResetAction[]) {
+	const seen = new Set<string>();
+	return actions.filter((action) => {
+		const key = action.kind === 'path' ? `${action.kind}:${action.path}` : `${action.kind}:${action.id}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+function optionalResetActionForPath(
+	id: TreeseedIntegratedDevResetAction['id'],
+	label: string,
+	path: string,
+) {
+	return existsSync(path) ? resetActionForPath(id, label, path) : null;
+}
+
+function pathContains(parent: string, child: string) {
+	const diff = relative(parent, child);
+	return diff === '' || (diff.length > 0 && !diff.startsWith('..') && !isAbsolute(diff));
+}
+
+function knownLocalRuntimeStateResetActions(tenantRoot: string, activePersistTo: string) {
+	const localGeneratedWranglerState = resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3');
+	const rootWranglerState = resolve(tenantRoot, '.wrangler', 'state', 'v3');
+	const stateRoots = [
+		optionalResetActionForPath(
+			'generated-wrangler-state',
+			'Remove generated local Wrangler runtime state',
+			localGeneratedWranglerState,
+		),
+		optionalResetActionForPath(
+			'root-wrangler-state',
+			'Remove root Wrangler runtime state',
+			rootWranglerState,
+		),
+	].filter((action): action is TreeseedIntegratedDevResetAction => Boolean(action));
+	const coveredByStateRoot = stateRoots.some((action) => action.path && pathContains(action.path, activePersistTo));
+	return uniqueResetActions([
+		...(coveredByStateRoot ? [] : [resetActionForPath('d1-state', 'Remove active local D1 state', activePersistTo)]),
+		...stateRoots,
+		optionalResetActionForPath(
+			'legacy-local-sqlite',
+			'Remove legacy local SQLite state',
+			resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', 'site-data.sqlite'),
+		),
+	].filter((action): action is TreeseedIntegratedDevResetAction => Boolean(action)));
+}
+
+function isTreeseedManagedMarketPostgresUrl(value: string | undefined) {
+	if (!value?.trim()) return true;
+	try {
+		const url = new URL(value);
+		const port = url.port || (url.protocol === 'postgres:' || url.protocol === 'postgresql:' ? '5432' : '');
+		return ['postgres:', 'postgresql:'].includes(url.protocol)
+			&& ['127.0.0.1', 'localhost'].includes(url.hostname)
+			&& port === String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT)
+			&& url.pathname === '/market_local'
+			&& decodeURIComponent(url.username) === 'treeseed';
+	} catch {
+		return false;
+	}
 }
 
 function resolveLocalD1SqlitePath(persistTo: string) {
@@ -547,10 +650,12 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 	}
 	const tenantRoot = options.tenantRoot;
 	const d1PersistTo = options.env.TREESEED_API_D1_LOCAL_PERSIST_TO?.trim() || resolve(tenantRoot, '.wrangler', 'state', 'v3', 'd1');
+	const marketWorkspace = isMarketWorkspace(tenantRoot);
+	const managedMarketPostgres = options.env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED === 'true';
 	return {
 		enabled: true,
 		actions: [
-			resetActionForPath('d1-state', 'Remove local D1 state', d1PersistTo),
+			...knownLocalRuntimeStateResetActions(tenantRoot, d1PersistTo),
 			{
 				id: 'mailpit',
 				label: options.mailpitEnabled ? 'Reset Mailpit email runtime' : 'Skip Mailpit email runtime',
@@ -560,9 +665,25 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 					? 'The Treeseed-managed Mailpit container and inbox will be stopped and removed.'
 					: 'Docker Compose is unavailable, so Mailpit is disabled for this local dev run.',
 			},
+			...(marketWorkspace ? [{
+				id: 'market-postgres',
+				label: managedMarketPostgres ? 'Reset local Market PostgreSQL' : 'Skip external Market PostgreSQL',
+				kind: 'service',
+				status: managedMarketPostgres ? 'planned' : 'skipped',
+				detail: managedMarketPostgres
+					? 'The Treeseed-managed Market PostgreSQL container, database, and volume will be removed and recreated on the next dev run.'
+					: 'TREESEED_MARKET_DATABASE_URL points at an external database, so dev reset will not drop it.',
+			} satisfies TreeseedIntegratedDevResetAction] : []),
 			resetActionForPath('wrangler-tmp', 'Remove Wrangler temporary output', resolve(tenantRoot, '.wrangler', 'tmp')),
 			resetActionForPath('worker-bundle', 'Remove generated local worker bundle', resolve(tenantRoot, '.treeseed', 'generated', 'worker')),
-			resetActionForPath('dev-reload', 'Remove browser reload marker', resolve(tenantRoot, DEV_RELOAD_FILE)),
+			{
+				id: 'dev-reload',
+				label: 'Refresh browser reload marker',
+				kind: 'path',
+				path: resolve(tenantRoot, DEV_RELOAD_FILE),
+				status: 'planned',
+				detail: 'The browser reload marker will be recreated so open tabs do not poll a missing file after reset.',
+			},
 		],
 		preserved: [
 			'.env*',
@@ -575,6 +696,7 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 			'.treeseed/workspace-links.json',
 			'migrations',
 			'node_modules',
+			'Treeseed-managed local service containers',
 		],
 	};
 }
@@ -654,7 +776,13 @@ function createSetupSteps(
 	}
 
 	const hasWebCommand = planLike.commands.some((command) => command.id === 'web');
-	const hasLocalRuntimeCommand = planLike.commands.some((command) => command.id !== 'web');
+	const hasLocalRuntimeCommand = planLike.commands.some((command) =>
+		command.id !== 'web'
+		&& command.id !== 'market-runner'
+		&& command.label !== 'Treeseed Market API'
+	);
+	const hasMarketApiCommand = planLike.commands.some((command) => command.label === 'Treeseed Market API');
+	const managedMarketPostgres = env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED === 'true';
 	const needsCloudflareLocalRuntime = usesCloudflareWebRuntime || hasLocalRuntimeCommand;
 	const coreScripts = [
 		['starlight-patch', 'Patch Starlight content path', 'scripts/patch-starlight-content-path.ts', 'dist/scripts/patch-starlight-content-path.js'],
@@ -672,6 +800,13 @@ function createSetupSteps(
 		'scripts/ensure-mailpit.ts',
 		'dist/scripts/ensure-mailpit.js',
 	);
+	const dockerReady = dockerIsAvailable(env);
+	const marketMigrateScript = existsSync(resolve(tenantRoot, 'scripts/migrate-market-db.mjs'))
+		? {
+			command: process.execPath,
+			args: [resolve(tenantRoot, 'scripts/migrate-market-db.mjs')],
+		}
+		: null;
 	const steps: TreeseedIntegratedDevSetupStep[] = [
 		{
 			id: 'workspace-links',
@@ -679,6 +814,28 @@ function createSetupSteps(
 			required: setupMode === 'auto',
 			status: 'planned',
 		},
+		...(hasMarketApiCommand && managedMarketPostgres ? [
+			{
+				id: 'market-postgres',
+				label: 'Start local Market PostgreSQL',
+				required: true,
+				status: dockerReady ? 'planned' : 'failed',
+				detail: dockerReady
+					? 'Treeseed will manage the local Market PostgreSQL container automatically.'
+					: 'Docker daemon is unavailable; local Market API requires managed PostgreSQL.',
+			} satisfies TreeseedIntegratedDevSetupStep,
+		] : []),
+		...(hasMarketApiCommand ? [
+			{
+				id: 'market-migrations',
+				label: 'Apply local Market database migrations',
+				required: true,
+				command: marketMigrateScript?.command,
+				args: marketMigrateScript?.args,
+				status: marketMigrateScript ? 'planned' : 'failed',
+				detail: marketMigrateScript ? undefined : 'Unable to resolve scripts/migrate-market-db.mjs.',
+			} satisfies TreeseedIntegratedDevSetupStep,
+		] : []),
 		{
 			id: 'wrangler',
 			label: 'Verify Wrangler executable',
@@ -818,6 +975,58 @@ function createAgentCommand(
 	};
 }
 
+function createMarketApiCommand(
+	tenantRoot: string,
+	sharedEnv: NodeJS.ProcessEnv,
+	apiHost: string,
+	apiPort: number,
+): TreeseedIntegratedDevCommand {
+	return {
+		id: 'api',
+		label: 'Treeseed Market API',
+		command: process.execPath,
+		args: [resolve(tenantRoot, 'src/api/server.js')],
+		cwd: tenantRoot,
+		env: {
+			...sharedEnv,
+			HOST: apiHost,
+			PORT: String(apiPort),
+			TREESEED_ENVIRONMENT: sharedEnv.TREESEED_ENVIRONMENT ?? 'local',
+			TREESEED_API_ENVIRONMENT: sharedEnv.TREESEED_API_ENVIRONMENT ?? 'local',
+			TREESEED_API_REQUEST_LOGS: sharedEnv.TREESEED_API_REQUEST_LOGS ?? 'true',
+		},
+		localRuntime: nodeLocalRuntime('Treeseed Market API'),
+	};
+}
+
+function createMarketOperationsRunnerCommand(
+	tenantRoot: string,
+	sharedEnv: NodeJS.ProcessEnv,
+): TreeseedIntegratedDevCommand {
+	return {
+		id: 'market-runner',
+		label: 'Market Operations Runner',
+		command: process.execPath,
+		args: [
+			'--experimental-transform-types',
+			resolve(tenantRoot, 'src/market-operations-runner/entrypoint.js'),
+			'--market',
+			'local',
+			'--watch',
+			'--operation',
+			'project:web_deployment',
+			'--poll-interval-ms',
+			'5000',
+		],
+		cwd: tenantRoot,
+		env: {
+			...sharedEnv,
+			TREESEED_PLATFORM_RUNNER_ENVIRONMENT: sharedEnv.TREESEED_PLATFORM_RUNNER_ENVIRONMENT ?? 'local',
+		},
+		localRuntime: nodeLocalRuntime('Market Operations Runner'),
+	};
+}
+
 export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOptions = {}): TreeseedIntegratedDevPlan {
 	const tenantRoot = resolve(options.cwd ?? process.cwd());
 	const surface = options.surface ?? 'integrated';
@@ -836,7 +1045,12 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		? `http://${apiHost}:${apiPort}`
 		: mergedEnv.TREESEED_API_BASE_URL?.trim() || `http://${apiHost}:${apiPort}`;
 	const selectedCommandIds = selectedSurfaceCommandIds(options);
-	const webUrl = selectedCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
+	const marketWorkspace = isMarketWorkspace(tenantRoot);
+	const effectiveCommandIds = marketWorkspace
+		? MARKET_DEV_COMMAND_IDS.filter((id) => selectedCommandIds.includes(id) || (id === 'market-runner' && selectedCommandIds.includes('api')))
+		: selectedCommandIds;
+	const devResetId = options.reset ? String(Date.now()) : undefined;
+	const webUrl = effectiveCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
 	const sdkPackageRoot = resolvePackageRoot('@treeseed/sdk', tenantRoot);
 	const agentPackageRoot = resolvePackageRootEnvOverride(mergedEnv, 'TREESEED_AGENT_PACKAGE_ROOT', tenantRoot)
 		?? resolveOptionalPackageRoot('@treeseed/agent', tenantRoot);
@@ -846,7 +1060,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const usesCloudflareWebRuntime = webLocalRuntime.selected === 'cloudflare-wrangler-local';
 	const usesGeneratedLocalD1State = usesCloudflareWebRuntime
 		|| webLocalRuntime.provider === 'cloudflare'
-		|| selectedCommandIds.some((id) => id !== 'web');
+		|| (!marketWorkspace && effectiveCommandIds.some((id) => id !== 'web'));
 	const localD1PersistTo = mergedEnv.TREESEED_API_D1_LOCAL_PERSIST_TO ?? (
 		usesGeneratedLocalD1State
 			? resolve(tenantRoot, '.treeseed', 'generated', 'environments', 'local', '.wrangler', 'state', 'v3', 'd1')
@@ -859,6 +1073,8 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const resolvedTeamId = mergedEnv.TREESEED_TEAM_ID
 		?? resolvedHostingTeamId
 		?? resolveSeededLocalTeamId(localD1PersistTo, projectId ?? null);
+	const marketDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL ?? TREESEED_DEFAULT_MARKET_POSTGRES_URL;
+	const managedMarketPostgres = marketWorkspace && isTreeseedManagedMarketPostgresUrl(marketDatabaseUrl);
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
@@ -889,14 +1105,34 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		BETTER_AUTH_URL: mergedEnv.BETTER_AUTH_URL ?? webUrl,
 		TREESEED_API_BASE_URL: apiBaseUrl,
 		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
+		TREESEED_API_REQUEST_LOGS: mergedEnv.TREESEED_API_REQUEST_LOGS ?? 'true',
+		...(marketWorkspace ? {
+			TREESEED_MARKET_DATABASE_URL: marketDatabaseUrl,
+			TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER ?? TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER,
+			TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_VOLUME ?? TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME,
+			TREESEED_MARKET_LOCAL_POSTGRES_PORT: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT),
+			TREESEED_MARKET_LOCAL_POSTGRES_MANAGED: managedMarketPostgres ? 'true' : 'false',
+		} : {}),
 		TREESEED_PROJECT_ID: projectId ?? mergedEnv.TREESEED_PROJECT_ID,
 		TREESEED_TEAM_ID: resolvedTeamId ?? mergedEnv.TREESEED_TEAM_ID,
 		TREESEED_HOSTING_TEAM_ID: resolvedHostingTeamId ?? mergedEnv.TREESEED_HOSTING_TEAM_ID,
 		TREESEED_API_D1_DATABASE_NAME: mergedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
 		SITE_DATA_DB: mergedEnv.SITE_DATA_DB ?? 'SITE_DATA_DB',
 		TREESEED_API_D1_LOCAL_PERSIST_TO: localD1PersistTo,
+		TREESEED_WEB_SERVICE_ID: mergedEnv.TREESEED_WEB_SERVICE_ID ?? mergedEnv.TREESEED_API_WEB_SERVICE_ID ?? 'web',
+		TREESEED_WEB_SERVICE_SECRET:
+			mergedEnv.TREESEED_WEB_SERVICE_SECRET
+			?? mergedEnv.TREESEED_API_WEB_SERVICE_SECRET
+			?? 'treeseed-web-service-dev-secret',
+		TREESEED_API_WEB_SERVICE_ID: mergedEnv.TREESEED_API_WEB_SERVICE_ID ?? mergedEnv.TREESEED_WEB_SERVICE_ID ?? 'web',
+		TREESEED_API_WEB_SERVICE_SECRET:
+			mergedEnv.TREESEED_API_WEB_SERVICE_SECRET
+			?? mergedEnv.TREESEED_WEB_SERVICE_SECRET
+			?? 'treeseed-web-service-dev-secret',
+		TREESEED_PLATFORM_RUNNER_SECRET: mergedEnv.TREESEED_PLATFORM_RUNNER_SECRET ?? 'treeseed-platform-runner-dev-secret',
 		TREESEED_FORM_TOKEN_SECRET: mergedEnv.TREESEED_FORM_TOKEN_SECRET ?? 'treeseed-local-form-token-secret',
 		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
+		...(devResetId ? { TREESEED_DEV_RESET_ID: devResetId } : {}),
 		TREESEED_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
 		TREESEED_SMTP_PORT: String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
 		TREESEED_SMTP_USERNAME: '',
@@ -919,7 +1155,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 
 	const commands: TreeseedIntegratedDevCommand[] = [];
 
-	if (selectedCommandIds.includes('web')) {
+	if (effectiveCommandIds.includes('web')) {
 		commands.push({
 			id: 'web',
 			label: usesCloudflareWebRuntime ? 'Cloudflare Wrangler UI' : 'Astro UI',
@@ -932,12 +1168,20 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			localRuntime: webLocalRuntime,
 		});
 	}
-	if (selectedCommandIds.some((id) => id !== 'web') && !agentPackageRoot) {
+	if (!marketWorkspace && effectiveCommandIds.some((id) => id !== 'web') && !agentPackageRoot) {
 		throw new Error('Unable to resolve @treeseed/agent for local API or agent service surfaces.');
 	}
-	for (const id of selectedCommandIds) {
+	for (const id of effectiveCommandIds) {
 		if (id === 'web') continue;
-		commands.push(createAgentCommand(id, tenantRoot, agentPackageRoot!, sharedEnv, apiHost, apiPort));
+		if (marketWorkspace && id === 'api') {
+			commands.push(createMarketApiCommand(tenantRoot, sharedEnv, apiHost, apiPort));
+			continue;
+		}
+		if (marketWorkspace && id === 'market-runner') {
+			commands.push(createMarketOperationsRunnerCommand(tenantRoot, sharedEnv));
+			continue;
+		}
+		commands.push(createAgentCommand(id as Extract<TreeseedIntegratedDevCommandId, 'api' | 'manager' | 'worker' | 'agents'>, tenantRoot, agentPackageRoot!, sharedEnv, apiHost, apiPort));
 	}
 
 	const readyChecks: TreeseedIntegratedDevReadinessCheck[] = commands.map((command) => {
@@ -953,7 +1197,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		return {
 			id: command.id,
 			label: command.label,
-			required: false,
+			required: command.id === 'market-runner',
 			strategy: 'process',
 		};
 	});
@@ -987,6 +1231,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			...(commands.some((command) => command.id === 'manager') ? { manager: nodeLocalRuntime('Manager') } : {}),
 			...(commands.some((command) => command.id === 'worker') ? { worker: nodeLocalRuntime('Worker Runner') } : {}),
 			...(commands.some((command) => command.id === 'agents') ? { agents: nodeLocalRuntime('Agents Loop') } : {}),
+			...(commands.some((command) => command.id === 'market-runner') ? { marketRunner: nodeLocalRuntime('Market Operations Runner') } : {}),
 		},
 		restartPolicy: {
 			initialBackoffMs: INITIAL_RESTART_BACKOFF_MS,
@@ -1053,6 +1298,14 @@ function defaultInspectPortOwners(ports: readonly number[]): TreeseedDevPortOwne
 
 function defaultRemovePath(path: string) {
 	rmSync(path, { recursive: true, force: true });
+}
+
+function defaultResetMarketPostgres() {
+	return resetMarketPostgres(process.env, { spawnSync });
+}
+
+function defaultStopMarketPostgres() {
+	return stopMarketPostgres(process.env, { spawnSync });
 }
 
 type ManagedDevProcess = {
@@ -1129,8 +1382,7 @@ async function stopManagedProcess(
 	}
 }
 
-function writeDevReloadStamp(projectRoot: string) {
-	const outputPath = resolve(projectRoot, DEV_RELOAD_FILE);
+function writeDevReloadStampPath(outputPath: string) {
 	mkdirSync(dirname(outputPath), { recursive: true });
 	writeFileSync(
 		outputPath,
@@ -1144,6 +1396,10 @@ function writeDevReloadStamp(projectRoot: string) {
 		)}\n`,
 		'utf8',
 	);
+}
+
+function writeDevReloadStamp(projectRoot: string) {
+	writeDevReloadStampPath(resolve(projectRoot, DEV_RELOAD_FILE));
 }
 
 function defaultWrite(line: string, stream: 'stdout' | 'stderr') {
@@ -1505,7 +1761,7 @@ function createDevLogWrite(
 export function runTreeseedIntegratedDevReset(
 	reset: TreeseedIntegratedDevResetPlan | null,
 	options: Pick<TreeseedIntegratedDevOptions, 'json'>,
-	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'removePath' | 'stopMailpitContainers'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'write' | 'removePath' | 'stopMailpitContainers' | 'resetMarketPostgres'>,
 ) {
 	if (!reset?.enabled) {
 		return null;
@@ -1521,13 +1777,17 @@ export function runTreeseedIntegratedDevReset(
 			return action;
 		}
 		if (action.kind === 'service') {
-			const stopped = deps.stopMailpitContainers();
+			const stopped = action.id === 'market-postgres'
+				? deps.resetMarketPostgres()
+				: deps.stopMailpitContainers();
 			const result: TreeseedIntegratedDevResetAction = {
 				...action,
 				status: stopped ? 'removed' : 'failed',
 				detail: stopped
-					? 'Mailpit container state was reset.'
-					: 'Unable to stop or remove the Treeseed-managed Mailpit container.',
+					? (action.id === 'market-postgres' ? 'Market PostgreSQL database state was reset.' : 'Mailpit container and inbox state were reset.')
+					: (action.id === 'market-postgres'
+						? 'Unable to stop or remove the Treeseed-managed Market PostgreSQL container and volume.'
+						: 'Unable to remove the Treeseed-managed Mailpit container and inbox state.'),
 			};
 			emitEvent(options, deps.write, {
 				type: 'reset',
@@ -1538,6 +1798,36 @@ export function runTreeseedIntegratedDevReset(
 			return result;
 		}
 		if (!action.path || !existsSync(action.path)) {
+			if (action.id === 'dev-reload' && action.path) {
+				try {
+					writeDevReloadStampPath(action.path);
+					const result: TreeseedIntegratedDevResetAction = {
+						...action,
+						status: 'refreshed',
+						detail: action.path,
+					};
+					emitEvent(options, deps.write, {
+						type: 'reset',
+						status: result.status,
+						message: `${result.label}: refreshed`,
+						detail: result,
+					});
+					return result;
+				} catch (error) {
+					const result: TreeseedIntegratedDevResetAction = {
+						...action,
+						status: 'failed',
+						detail: error instanceof Error ? error.message : String(error),
+					};
+					emitEvent(options, deps.write, {
+						type: 'reset',
+						status: result.status,
+						message: `${result.label}: failed`,
+						detail: result,
+					}, 'stderr');
+					return result;
+				}
+			}
 			const result: TreeseedIntegratedDevResetAction = {
 				...action,
 				status: 'skipped',
@@ -1550,6 +1840,36 @@ export function runTreeseedIntegratedDevReset(
 				detail: result,
 			});
 			return result;
+		}
+		if (action.id === 'dev-reload') {
+			try {
+				writeDevReloadStampPath(action.path);
+				const result: TreeseedIntegratedDevResetAction = {
+					...action,
+					status: 'refreshed',
+					detail: action.path,
+				};
+				emitEvent(options, deps.write, {
+					type: 'reset',
+					status: result.status,
+					message: `${result.label}: refreshed`,
+					detail: result,
+				});
+				return result;
+			} catch (error) {
+				const result: TreeseedIntegratedDevResetAction = {
+					...action,
+					status: 'failed',
+					detail: error instanceof Error ? error.message : String(error),
+				};
+				emitEvent(options, deps.write, {
+					type: 'reset',
+					status: result.status,
+					message: `${result.label}: failed`,
+					detail: result,
+				}, 'stderr');
+				return result;
+			}
 		}
 		try {
 			deps.removePath(action.path);
@@ -1625,6 +1945,16 @@ function attachPrefixedLogReader(
 		stderr: { suppressWorkerdBrokenPipeBlock: false },
 	};
 	function shouldSuppressLogLine(line: string, name: 'stdout' | 'stderr') {
+		if (!options.json && surface === 'market-runner' && name === 'stdout') {
+			try {
+				const parsed = JSON.parse(line) as Record<string, unknown>;
+				if (parsed.ok === true && parsed.claimed === false && parsed.operation == null) {
+					return true;
+				}
+			} catch {
+				// Non-JSON runner output should flow through normally.
+			}
+		}
 		const state = filterState[name];
 		if (state.suppressWorkerdBrokenPipeBlock) {
 			const trimmed = line.trim();
@@ -1725,6 +2055,119 @@ function runSetupStep(
 	} satisfies TreeseedIntegratedDevSetupStep;
 }
 
+function marketPostgresConfig(env: NodeJS.ProcessEnv) {
+	return {
+		container: env.TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER?.trim() || TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER,
+		volume: env.TREESEED_MARKET_LOCAL_POSTGRES_VOLUME?.trim() || TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME,
+		port: env.TREESEED_MARKET_LOCAL_POSTGRES_PORT?.trim() || String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT),
+		user: 'treeseed',
+		password: 'treeseed',
+		database: 'market_local',
+	};
+}
+
+function dockerBinary(env: NodeJS.ProcessEnv) {
+	return resolveTreeseedToolBinary('docker', { env }) ?? 'docker';
+}
+
+function spawnDocker(
+	args: string[],
+	env: NodeJS.ProcessEnv,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'spawnSync'>,
+	timeout = 30_000,
+) {
+	return deps.spawnSync(dockerBinary(env), args, {
+		cwd: process.cwd(),
+		env,
+		encoding: 'utf8',
+		timeout,
+	});
+}
+
+function dockerResultText(result: ReturnType<SpawnSyncLike>) {
+	return [result.stdout, result.stderr]
+		.filter(Boolean)
+		.join('\n')
+		.trim();
+}
+
+function dockerVolumeIsMissing(result: ReturnType<SpawnSyncLike>) {
+	if (result.error) return false;
+	const text = dockerResultText(result).toLowerCase();
+	return text.includes('no such volume') || text.includes('not found');
+}
+
+function ensureMarketPostgres(
+	env: NodeJS.ProcessEnv,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'spawnSync'>,
+) {
+	const config = marketPostgresConfig(env);
+	const inspect = spawnDocker(['inspect', config.container], env, deps);
+	if ((inspect.status ?? 1) !== 0) {
+		const run = spawnDocker([
+			'run',
+			'-d',
+			'--name',
+			config.container,
+			'-e',
+			`POSTGRES_USER=${config.user}`,
+			'-e',
+			`POSTGRES_PASSWORD=${config.password}`,
+			'-e',
+			`POSTGRES_DB=${config.database}`,
+			'-p',
+			`127.0.0.1:${config.port}:5432`,
+			'-v',
+			`${config.volume}:/var/lib/postgresql/data`,
+			'postgres:16',
+		], env, deps, 60_000);
+		if ((run.status ?? 1) !== 0) {
+			throw new Error(dockerResultText(run) || `Unable to start ${config.container}.`);
+		}
+	} else {
+		const start = spawnDocker(['start', config.container], env, deps);
+		if ((start.status ?? 1) !== 0) {
+			throw new Error(dockerResultText(start) || `Unable to start existing ${config.container}.`);
+		}
+	}
+
+	const startedAt = Date.now();
+	let last = '';
+	while (Date.now() - startedAt < 45_000) {
+		const ready = spawnDocker(['exec', config.container, 'pg_isready', '-U', config.user, '-d', config.database], env, deps, 5_000);
+		last = dockerResultText(ready);
+		if ((ready.status ?? 1) === 0) {
+			const query = spawnDocker(['exec', config.container, 'psql', '-U', config.user, '-d', config.database, '-c', 'SELECT 1'], env, deps, 5_000);
+			last = dockerResultText(query) || last;
+			if ((query.status ?? 1) === 0) {
+				return `Market PostgreSQL is ready at 127.0.0.1:${config.port} (${config.container}).`;
+			}
+		}
+		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+	}
+	throw new Error(last || `Timed out waiting for ${config.container} to accept connections.`);
+}
+
+function resetMarketPostgres(env: NodeJS.ProcessEnv, deps: Pick<TreeseedIntegratedDevDependencies, 'spawnSync'>) {
+	const config = marketPostgresConfig(env);
+	spawnDocker(['rm', '-f', config.container], env, deps, 30_000);
+	const existingVolume = spawnDocker(['volume', 'inspect', config.volume], env, deps, 30_000);
+	if ((existingVolume.status ?? 1) !== 0) {
+		return dockerVolumeIsMissing(existingVolume);
+	}
+	const volume = spawnDocker(['volume', 'rm', config.volume], env, deps, 30_000);
+	return (volume.status ?? 1) === 0 || dockerVolumeIsMissing(volume);
+}
+
+function stopMarketPostgres(env: NodeJS.ProcessEnv, deps: Pick<TreeseedIntegratedDevDependencies, 'spawnSync'>) {
+	if (env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED !== 'true') {
+		return true;
+	}
+	const config = marketPostgresConfig(env);
+	const result = spawnDocker(['rm', '-f', config.container], env, deps, 30_000);
+	return (result.status ?? 1) === 0;
+}
+
 function runLocalSetup(
 	plan: TreeseedIntegratedDevPlan,
 	options: Pick<TreeseedIntegratedDevOptions, 'json'>,
@@ -1779,7 +2222,24 @@ function runLocalSetup(
 					status: step.required ? 'failed' : 'degraded',
 					detail: 'Wrangler was not found. Run `npx trsd install --json` and retry `npx trsd dev`.',
 				};
-			} else if (step.id === 'wrangler-config') {
+		} else if (step.id === 'market-postgres') {
+			if (plan.setupMode === 'check') {
+				result = { ...step, status: 'skipped', detail: 'Local Market PostgreSQL startup was checked in non-mutating mode.' };
+			} else if (step.status === 'failed') {
+				result = step;
+			} else {
+				try {
+					const detail = ensureMarketPostgres({ ...process.env, ...plan.commands[0]?.env }, deps);
+					result = { ...step, status: 'completed', detail };
+				} catch (error) {
+					result = {
+						...step,
+						status: 'failed',
+						detail: error instanceof Error ? error.message : String(error),
+					};
+				}
+			}
+		} else if (step.id === 'wrangler-config') {
 				if (plan.setupMode === 'check') {
 					result = { ...step, status: 'skipped', detail: 'Local Wrangler config generation was checked in non-mutating mode.' };
 				} else {
@@ -1885,6 +2345,8 @@ export async function runTreeseedIntegratedDev(
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
 	const removePath = deps.removePath ?? defaultRemovePath;
 	const stopMailpit = deps.stopMailpitContainers ?? stopKnownMailpitContainers;
+	const resetMarketPostgresContainer = deps.resetMarketPostgres ?? defaultResetMarketPostgres;
+	const stopMarketPostgresContainer = deps.stopMarketPostgres ?? defaultStopMarketPostgres;
 	const inspectPortOwners = deps.inspectPortOwners ?? defaultInspectPortOwners;
 
 	prepareEnvironment(tenantRoot);
@@ -1917,6 +2379,9 @@ export async function runTreeseedIntegratedDev(
 		write,
 		removePath,
 		stopMailpitContainers: stopMailpit,
+		resetMarketPostgres: deps.resetMarketPostgres
+			? resetMarketPostgresContainer
+			: () => resetMarketPostgres(plan.commands[0]?.env ?? process.env, { spawnSync: spawnSyncProcess }),
 	});
 	const failedReset = resetResults?.actions.find((action) => action.status === 'failed');
 	if (failedReset) {
@@ -1983,6 +2448,20 @@ export async function runTreeseedIntegratedDev(
 			await Promise.all(
 				[...children.values()].map((managed) => stopManagedProcess(managed, 'SIGTERM', killProcess, shutdownGraceMs)),
 			);
+			const marketEnv = plan.commands[0]?.env ?? process.env;
+			const shouldStopMarketPostgres = marketEnv.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED === 'true';
+			if (shouldStopMarketPostgres) {
+				const stopped = deps.stopMarketPostgres
+					? stopMarketPostgresContainer()
+					: stopMarketPostgres(marketEnv, { spawnSync: spawnSyncProcess });
+				if (!stopped) {
+					emitEvent(options, write, {
+						type: 'shutdown',
+						status: 'degraded',
+						message: 'Unable to stop the managed local Market PostgreSQL container.',
+					}, 'stderr');
+				}
+			}
 			children.clear();
 			for (const dispose of disposers) {
 				dispose();
@@ -2207,6 +2686,9 @@ export async function runTreeseedIntegratedDev(
 								restartIds.add(id);
 							}
 						}
+						if ((change.tenantApiChanged || change.sdkChanged) && commandsById.has('market-runner')) {
+							restartIds.add('market-runner');
+						}
 						for (const id of restartIds) {
 							await restartCommand(id);
 						}
@@ -2271,7 +2753,7 @@ export async function runTreeseedIntegratedDev(
 					surface: check.id,
 					status: ready ? 'ready' : 'degraded',
 					url: check.url,
-					message: `${check.label} is ${ready ? 'ready' : 'degraded'}.`,
+					message: `${check.label} is ${ready ? 'ready' : 'degraded'}${check.url ? ` at ${check.url}` : ''}.`,
 				});
 			}
 			readinessInProgress = false;

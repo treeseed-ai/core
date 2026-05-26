@@ -3,6 +3,7 @@ import '../../styles/global.css';
 import '../../styles/theme.css';
 import '../../styles/ui.css';
 import '../../styles/forms.css';
+import { ClientRouter } from 'astro:transitions';
 import ThemeScript from '../../components/ui/theme/ThemeScript.astro';
 import ThemeSelector from '../../components/ui/theme/ThemeSelector.astro';
 import Button from '../../components/ui/forms/Button.astro';
@@ -85,6 +86,7 @@ const tableRows = [
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>TreeSeed UI Catalog</title>
 		<ThemeScript defaultScheme={selected.scheme} defaultMode={selected.mode} />
+		<ClientRouter />
 	</head>
 	<body>
 		<main class="ts-ui-catalog">

@@ -16,6 +16,8 @@ type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => 
 
 class FakeChildProcess {
 	readonly pid?: number;
+	readonly stdout = new PassThrough();
+	readonly stderr = new PassThrough();
 	kills: Array<string | number | undefined> = [];
 	private readonly listeners: FakeExitListener[] = [];
 
@@ -145,6 +147,11 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.env.TREESEED_SITE_URL).toBe('http://127.0.0.1:4321');
 		expect(plan.commands[0]?.env.BETTER_AUTH_URL).toBe('http://127.0.0.1:4321');
 		expect(plan.commands[0]?.env.TREESEED_API_BASE_URL).toBe('http://127.0.0.1:3000');
+		expect(plan.commands[0]?.env.TREESEED_WEB_SERVICE_ID).toBe('web');
+		expect(plan.commands[0]?.env.TREESEED_WEB_SERVICE_SECRET).toBe('treeseed-web-service-dev-secret');
+		expect(plan.commands[0]?.env.TREESEED_API_WEB_SERVICE_ID).toBe('web');
+		expect(plan.commands[0]?.env.TREESEED_API_WEB_SERVICE_SECRET).toBe('treeseed-web-service-dev-secret');
+		expect(plan.commands[0]?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
 		expect(plan.commands[0]?.env.TREESEED_SMTP_USERNAME).toBe('');
@@ -153,11 +160,146 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT).toBe('1025');
 		expect(plan.commands[1]?.label).toBe('Treeseed API');
 		expect(plan.commands[1]?.env.PORT).toBe('3000');
+		expect(plan.commands[1]?.env.TREESEED_API_REQUEST_LOGS).toBe('true');
 		expect(plan.commands[2]?.label).toBe('Manager');
 		expect(plan.commands[2]?.args).toEqual(expect.arrayContaining(['--mode', 'loop']));
 		expect(plan.commands[2]?.env.TREESEED_MANAGER_MODE).toBe('loop');
 		expect(plan.commands[2]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
 		expect(plan.commands[3]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+	});
+
+	it('turns the Market repo root dev plan into web API runner orchestration with managed local state', () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-'));
+		try {
+			mkdirSync(resolve(root, 'src/api'), { recursive: true });
+			mkdirSync(resolve(root, 'src/market-operations-runner'), { recursive: true });
+			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
+			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
+			writeFileSync(resolve(root, 'src/api/server.js'), 'export {};\n');
+			writeFileSync(resolve(root, 'src/market-operations-runner/entrypoint.js'), 'export {};\n');
+			mkdirSync(resolve(root, 'scripts'), { recursive: true });
+			writeFileSync(resolve(root, 'scripts/migrate-market-db.mjs'), 'export {};\n');
+
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: root,
+				surfaces: 'web,api',
+				webRuntime: 'local',
+				env: {
+					TREESEED_MARKET_DATABASE_URL: undefined,
+					TREESEED_PLATFORM_RUNNER_SECRET: undefined,
+				},
+			});
+
+			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'market-runner']);
+			expect(plan.commands.find((command) => command.id === 'api')?.label).toBe('Treeseed Market API');
+			expect(plan.commands.find((command) => command.id === 'api')?.args).toEqual([resolve(root, 'src/api/server.js')]);
+			const runner = plan.commands.find((command) => command.id === 'market-runner');
+			expect(runner?.args).toEqual(expect.arrayContaining(['--watch', '--operation', 'project:web_deployment']));
+			expect(runner?.args).not.toContain('--mock-external');
+			expect(runner?.env.TREESEED_MARKET_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');
+			expect(runner?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
+			expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
+				expect.arrayContaining(['web', 'api', 'market-runner']),
+			);
+			expect(plan.setupSteps.map((step) => step.id)).toEqual(expect.arrayContaining(['market-postgres', 'market-migrations']));
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('treats the default Market PostgreSQL URL as managed local reset state', () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-default-db-'));
+		try {
+			mkdirSync(resolve(root, 'src/api'), { recursive: true });
+			mkdirSync(resolve(root, 'src/market-operations-runner'), { recursive: true });
+			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
+			writeFileSync(resolve(root, 'src/api/server.js'), 'export {};\n');
+			writeFileSync(resolve(root, 'src/market-operations-runner/entrypoint.js'), 'export {};\n');
+			mkdirSync(resolve(root, 'scripts'), { recursive: true });
+			writeFileSync(resolve(root, 'scripts/migrate-market-db.mjs'), 'export {};\n');
+
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: root,
+				surfaces: 'web,api',
+				webRuntime: 'local',
+				reset: true,
+				env: {
+					TREESEED_MARKET_DATABASE_URL: 'postgres://treeseed:treeseed@127.0.0.1:55432/market_local',
+				},
+			});
+
+			expect(plan.commands.find((command) => command.id === 'api')?.env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED).toBe('true');
+			expect(plan.setupSteps.map((step) => step.id)).toContain('market-postgres');
+			expect(plan.reset?.actions.find((action) => action.id === 'market-postgres')).toMatchObject({
+				status: 'planned',
+				label: 'Reset local Market PostgreSQL',
+				detail: expect.stringContaining('database'),
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('hides idle Market runner poll JSON from human dev logs', async () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-logs-'));
+		const signalHandlers = new Map<NodeJS.Signals, () => void>();
+		const children: FakeChildProcess[] = [];
+		const output: string[] = [];
+		try {
+			mkdirSync(resolve(root, 'src/api'), { recursive: true });
+			mkdirSync(resolve(root, 'src/market-operations-runner'), { recursive: true });
+			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
+			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
+			writeFileSync(resolve(root, 'src/api/server.js'), 'export {};\n');
+			writeFileSync(resolve(root, 'src/market-operations-runner/entrypoint.js'), 'export {};\n');
+
+			const promise = runTreeseedIntegratedDev(
+				{
+					cwd: root,
+					surfaces: 'api',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					shutdownGraceMs: 0,
+					env: {
+						TREESEED_MARKET_DATABASE_URL: 'postgres://configured-market-db',
+					},
+				},
+				{
+					spawn() {
+						const child = new FakeChildProcess();
+						children.push(child);
+						return child as never;
+					},
+					onSignal(signal, handler) {
+						signalHandlers.set(signal, handler);
+						return () => signalHandlers.delete(signal);
+					},
+					inspectPortOwners() {
+						return [];
+					},
+					prepareEnvironment() {},
+					fetch: async () => ({ ok: true }) as Response,
+					write(line) {
+						output.push(line);
+					},
+				},
+			);
+
+			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+			const runner = children[1];
+			runner?.stdout.write('{"ok":true,"claimed":false,"operation":null}\n');
+			runner?.stdout.write('{"ok":true,"claimed":true,"operation":{"id":"op_1"}}\n');
+			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+			signalHandlers.get('SIGINT')?.();
+
+			await expect(promise).resolves.toBe(130);
+			const joined = output.join('');
+			expect(joined).not.toContain('"claimed":false');
+			expect(joined).toContain('"claimed":true');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	it('uses the seeded local market project id for node services', () => {
@@ -579,6 +721,9 @@ surfaces:
 					processIsAlive(pid) {
 						return livePids.has(pid);
 					},
+					inspectPortOwners() {
+						return [];
+					},
 					onSignal(signal, handler) {
 						signalHandlers.set(signal, handler);
 						return () => signalHandlers.delete(signal);
@@ -889,13 +1034,14 @@ surfaces:
 
 			expect(plan.reset?.enabled).toBe(true);
 			expect(plan.reset?.actions.map((action) => action.id)).toEqual([
-				'd1-state',
+				'root-wrangler-state',
 				'mailpit',
 				'wrangler-tmp',
 				'worker-bundle',
 				'dev-reload',
 			]);
-			expect(plan.reset?.actions.find((action) => action.id === 'd1-state')?.path).toBe(d1Path);
+			expect(plan.reset?.actions.find((action) => action.id === 'root-wrangler-state')?.path).toBe(resolve(tempRoot, '.wrangler/state/v3'));
+			expect(plan.commands[0]?.env.TREESEED_DEV_RESET_ID).toEqual(expect.any(String));
 			expect(plan.reset?.preserved).toEqual(expect.arrayContaining([
 				'treeseed.site.yaml',
 				'.treeseed/generated/environments',
@@ -941,7 +1087,7 @@ surfaces:
 			expect(exitCode).toBe(0);
 			const parsed = JSON.parse(output.join(''));
 			expect(parsed.kind).toBe('treeseed.dev.plan');
-			expect(parsed.payload.reset.actions.find((action: { id: string }) => action.id === 'd1-state')?.status).toBe('planned');
+			expect(parsed.payload.reset.actions.find((action: { id: string }) => action.id === 'root-wrangler-state')?.status).toBe('planned');
 			expect(existsSync(d1Path)).toBe(true);
 			expect(existsSync(workerPath)).toBe(true);
 		} finally {
@@ -952,15 +1098,28 @@ surfaces:
 	it('clears disposable reset targets and leaves configuration paths intact', () => {
 		const tempRoot = mkdtempSync(resolve(tmpdir(), 'treeseed-dev-reset-'));
 		const d1Path = resolve(tempRoot, '.wrangler/state/v3/d1');
+		const rootKvPath = resolve(tempRoot, '.wrangler/state/v3/kv/miniflare-KVNamespaceObject');
+		const generatedStatePath = resolve(tempRoot, '.treeseed/generated/environments/local/.wrangler/state/v3');
+		const generatedD1Path = resolve(generatedStatePath, 'd1');
+		const generatedKvPath = resolve(generatedStatePath, 'kv/miniflare-KVNamespaceObject');
+		const generatedR2Path = resolve(generatedStatePath, 'r2/miniflare-R2BucketObject');
+		const generatedCachePath = resolve(generatedStatePath, 'cache/miniflare-CacheObject');
+		const legacySqlitePath = resolve(tempRoot, '.treeseed/generated/environments/local/site-data.sqlite');
 		const tmpPath = resolve(tempRoot, '.wrangler/tmp');
 		const workerPath = resolve(tempRoot, '.treeseed/generated/worker');
 		const envPath = resolve(tempRoot, '.treeseed/generated/environments/local');
 		const reloadPath = resolve(tempRoot, 'public/__treeseed/dev-reload.json');
 		try {
-			for (const path of [d1Path, tmpPath, workerPath, envPath]) {
+			for (const path of [d1Path, rootKvPath, generatedD1Path, generatedKvPath, generatedR2Path, generatedCachePath, tmpPath, workerPath, envPath]) {
 				mkdirSync(path, { recursive: true });
 			}
+			writeFileSync(resolve(rootKvPath, 'metadata.sqlite'), 'kv\n');
+			writeFileSync(resolve(generatedD1Path, 'site-data.sqlite'), 'd1\n');
+			writeFileSync(resolve(generatedKvPath, 'metadata.sqlite'), 'kv\n');
+			writeFileSync(resolve(generatedR2Path, 'bucket.sqlite'), 'r2\n');
+			writeFileSync(resolve(generatedCachePath, 'metadata.sqlite'), 'cache\n');
 			mkdirSync(resolve(tempRoot, 'public/__treeseed'), { recursive: true });
+			writeFileSync(legacySqlitePath, 'sqlite\n');
 			writeFileSync(reloadPath, '{}\n');
 			writeFileSync(resolve(tempRoot, 'treeseed.site.yaml'), 'site: test\n');
 			const plan = createTreeseedIntegratedDevPlan({
@@ -981,13 +1140,21 @@ surfaces:
 				stopMailpitContainers() {
 					return true;
 				},
+				resetMarketPostgres() {
+					return true;
+				},
 			});
 
-			expect(result?.actions.filter((action) => action.kind === 'path').every((action) => action.status === 'removed')).toBe(true);
+			expect(result?.actions.filter((action) => action.kind === 'path' && action.id !== 'dev-reload').every((action) => action.status === 'removed')).toBe(true);
+			expect(result?.actions.find((action) => action.id === 'mailpit')?.detail).toContain('inbox');
+			expect(result?.actions.find((action) => action.id === 'dev-reload')?.status).toBe('refreshed');
 			expect(existsSync(d1Path)).toBe(false);
+			expect(existsSync(rootKvPath)).toBe(false);
+			expect(existsSync(generatedStatePath)).toBe(false);
+			expect(existsSync(legacySqlitePath)).toBe(false);
 			expect(existsSync(tmpPath)).toBe(false);
 			expect(existsSync(workerPath)).toBe(false);
-			expect(existsSync(reloadPath)).toBe(false);
+			expect(JSON.parse(readFileSync(reloadPath, 'utf8'))).toMatchObject({ buildId: expect.any(String) });
 			expect(existsSync(envPath)).toBe(true);
 			expect(existsSync(resolve(tempRoot, 'treeseed.site.yaml'))).toBe(true);
 			expect(events.some((line) => line.includes('"type":"reset"'))).toBe(true);
@@ -1012,6 +1179,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,
@@ -1047,6 +1217,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,
@@ -1091,6 +1264,9 @@ surfaces:
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
 				},
+				inspectPortOwners() {
+					return [];
+				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,
 			},
@@ -1126,6 +1302,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,
@@ -1165,6 +1344,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,
@@ -1211,6 +1393,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => new Promise<Response>((resolveResponse) => {
@@ -1264,6 +1449,9 @@ surfaces:
 				onSignal(signal, handler) {
 					signalHandlers.set(signal, handler);
 					return () => signalHandlers.delete(signal);
+				},
+				inspectPortOwners() {
+					return [];
 				},
 				prepareEnvironment() {},
 				fetch: async () => ({ ok: true }) as Response,

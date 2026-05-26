@@ -4,6 +4,7 @@ import '../../../styles/theme.css';
 import '../../../styles/ui.css';
 import '../../../styles/forms.css';
 import '../../../styles/app-shell.css';
+import { ClientRouter } from 'astro:transitions';
 import ThemeScript from '../theme/ThemeScript.astro';
 import ThemeMenu from '../theme/ThemeMenu.astro';
 import RailNav from './RailNav.astro';
@@ -61,6 +62,7 @@ const {
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<ThemeScript defaultScheme={appearance.scheme} defaultMode={appearance.mode} preferDefaultPreference />
+		<ClientRouter />
 	</head>
 	<body>
 		<a class="ts-skip-link" href="#main-content">Skip to content</a>
@@ -84,6 +86,7 @@ const {
 									variant={action.variant ?? 'secondary'}
 									ariaLabel={action.ariaLabel}
 									disabled={action.disabled}
+									reload={action.reload}
 									size="sm"
 								>
 									{action.label}

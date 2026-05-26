@@ -144,7 +144,9 @@ export function classifyChanges(changedPaths: string[], watchEntries: TreeseedDe
 			normalized.endsWith('/treeseed.site.yaml') ||
 			normalized.endsWith('/treeseed.config.ts') ||
 			normalized.endsWith('/package.json') ||
-			normalized.endsWith('/tsconfig.json')
+			normalized.endsWith('/tsconfig.json') ||
+			normalized.includes('/src/api/') ||
+			normalized.includes('/src/market-operations-runner/')
 		);
 	}
 	const tenantChanged = changedPaths.some((filePath) =>

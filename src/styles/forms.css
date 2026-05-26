@@ -43,7 +43,7 @@
 
 .ts-control {
 	appearance: none;
-	background: var(--ts-color-surface);
+	background-color: var(--ts-color-surface);
 	border: 1px solid var(--ts-color-border);
 	border-radius: var(--ts-radius-md);
 	color: var(--ts-color-text);
@@ -71,22 +71,28 @@
 
 .ts-control:disabled,
 .ts-control:read-only {
-	background: var(--ts-color-surface-muted);
+	background-color: var(--ts-color-surface-muted);
 	color: var(--ts-color-text-muted);
 }
 
-.ts-control--select {
+.ts-control--select,
+select.ts-control {
+	appearance: none;
+	background-color: var(--ts-color-surface);
 	background-image:
+		linear-gradient(var(--ts-color-border), var(--ts-color-border)),
 		linear-gradient(45deg, transparent 50%, currentColor 50%),
 		linear-gradient(135deg, currentColor 50%, transparent 50%);
 	background-position:
-		calc(100% - 1rem) 50%,
-		calc(100% - 0.7rem) 50%;
-	background-size:
-		0.32rem 0.32rem,
-		0.32rem 0.32rem;
+		calc(100% - 2rem) 50%,
+		calc(100% - 1.17rem) calc(50% - 0.08rem),
+		calc(100% - 0.86rem) calc(50% - 0.08rem);
 	background-repeat: no-repeat;
-	padding-right: 2rem;
+	background-size:
+		1px 1.2rem,
+		0.42rem 0.42rem,
+		0.42rem 0.42rem;
+	padding-right: 2.5rem;
 }
 
 .ts-control--textarea {
