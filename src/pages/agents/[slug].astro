@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import ProfileLayout from '../../layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
@@ -10,15 +9,16 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const agents = publishedRuntime ? [] : await getCollection('agents');
-const localAgent = publishedRuntime ? null : agents.find((candidate) => candidate.id === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const agents = contentApi ? await contentApi.getCollection('agents') : [];
+const localAgent = contentApi ? agents.find((candidate) => candidate.id === slug) ?? null : null;
 const publishedAgent = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'agents', slug) : null;
 const agent = publishedRuntime ? publishedAgent?.entry ?? null : localAgent;
 const metadata = publishedRuntime ? metadataFromPublishedContent(publishedAgent?.content) : null;
 if (!agent) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localAgent ? await render(localAgent) : null;
+const rendered = contentApi && localAgent ? await contentApi.render(localAgent) : null;
 const Content = rendered?.Content ?? null;
 const relatedQuestions = publishedRuntime
 	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)

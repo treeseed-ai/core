@@ -1,11 +1,13 @@
 ---
-import { getCollection } from 'astro:content';
 import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import ProfileList from '../../components/site/ProfileList.astro';
 import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/site-content-runtime';
 
-const people = isPublishedRuntimeContentMode() ? await loadPublishedCollection(Astro.locals, 'people') : await getCollection('people');
+const publishedRuntime = isPublishedRuntimeContentMode();
+const people = publishedRuntime
+	? await loadPublishedCollection(Astro.locals, 'people')
+	: await (await import('astro:content')).getCollection('people');
 ---
 
 <MainLayout title="People" description="Human contributors participating in the TreeSeed working site." currentPath="/people/">

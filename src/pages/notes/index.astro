@@ -1,13 +1,13 @@
 ---
-import { getCollection } from 'astro:content';
 import MainLayout from '../../layouts/MainLayout.astro';
 import SectionIntro from '../../components/site/SectionIntro.astro';
 import NotesList from '../../components/site/NotesList.astro';
 import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/site-content-runtime';
 
-const notes = isPublishedRuntimeContentMode()
+const publishedRuntime = isPublishedRuntimeContentMode();
+const notes = publishedRuntime
 	? (await loadPublishedCollection(Astro.locals, 'notes')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-	: (await getCollection('notes', ({ data }) => !data.draft)).sort(
+	: (await (await import('astro:content')).getCollection('notes', ({ data }) => !data.draft)).sort(
 		(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 	);
 ---

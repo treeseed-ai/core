@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
@@ -16,15 +15,16 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const decisions = publishedRuntime ? [] : await getCollection('decisions', ({ data }) => !data.draft);
-const localDecision = publishedRuntime ? null : decisions.find((candidate) => candidate.id === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const decisions = contentApi ? await contentApi.getCollection('decisions', ({ data }) => !data.draft) : [];
+const localDecision = contentApi ? decisions.find((candidate) => candidate.id === slug) ?? null : null;
 const publishedDecision = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'decisions', slug) : null;
 const decision = publishedRuntime ? publishedDecision?.entry ?? null : localDecision;
 const metadata = publishedRuntime ? metadataFromPublishedContent(publishedDecision?.content) : null;
 if (!decision) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localDecision ? await render(localDecision) : null;
+const rendered = contentApi && localDecision ? await contentApi.render(localDecision) : null;
 const Content = rendered?.Content ?? null;
 const contributor = publishedRuntime
 	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)
