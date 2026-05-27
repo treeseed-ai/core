@@ -73,6 +73,9 @@ describe('Treeseed integrated dev orchestration', () => {
 
 	function withAgentPackageEnv(env: NodeJS.ProcessEnv = {}) {
 		return {
+			TREESEED_WEB_SERVICE_SECRET: undefined,
+			TREESEED_API_WEB_SERVICE_SECRET: undefined,
+			TREESEED_PLATFORM_RUNNER_SECRET: undefined,
 			...env,
 			TREESEED_AGENT_PACKAGE_ROOT: getFakeAgentPackageRoot(),
 		};
