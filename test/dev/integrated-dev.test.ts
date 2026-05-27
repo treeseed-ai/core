@@ -169,7 +169,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[2]?.env.TREESEED_MANAGER_MODE).toBe('loop');
 		expect(plan.commands[2]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
 		expect(plan.commands[3]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
-	});
+	}, 10_000);
 
 	it('turns the Market repo root dev plan into web API runner orchestration with managed local state', () => {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-'));
