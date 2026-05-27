@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.10.7] - 2026-05-27
+
+### Tests
+
+- chore(core): bump version and update integrated dev tests (2aa3f2655487)
+- build(ui): sync package dependency references (9b2565737bbe)
+
+### Dependencies
+
+- chore(core): bump version and update @treeseed/sdk (7651de821530)
+- chore(deps): bump version and update @treeseed/sdk (717fb25961b0)
+- build(build): sync package dependency references (a3657bb1e7fc)
+- build(ui): sync package dependency references (0d736ca1e4f1)
+- Release @treeseed/core 0.10.7.
+
 ## [0.10.6] - 2026-05-24
 
 ### Fixed
