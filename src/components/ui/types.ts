@@ -11,4 +11,5 @@ export type ButtonAction = {
 	variant?: ButtonVariant;
 	ariaLabel?: string;
 	disabled?: boolean;
+	reload?: boolean;
 };

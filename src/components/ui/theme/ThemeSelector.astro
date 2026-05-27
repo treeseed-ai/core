@@ -84,7 +84,7 @@ const modes = [
 	) : null}
 </div>
 
-<script is:inline define:vars={{ schemes }}>
+<script is:inline data-astro-rerun define:vars={{ schemes }}>
 	(() => {
 		const schemeKey = 'treeseed_color_scheme';
 		const modeKey = 'treeseed_theme_mode';
@@ -135,7 +135,7 @@ const modes = [
 				store(modeKey, safeMode);
 			}
 			window.dispatchEvent(new CustomEvent('treeseed:theme-change', {
-				detail: { scheme: safeScheme, mode: safeMode, renderedMode: renderedMode(safeMode) },
+				detail: { scheme: safeScheme, mode: safeMode, renderedMode: renderedMode(safeMode), persist },
 			}));
 		}
 

@@ -71,4 +71,44 @@ describe('core UI primitives', () => {
 			expect(css, `${entrypoint} should not add raw colors`).not.toMatch(rawColorPattern);
 		}
 	});
+
+	it('styles selects with the shared control surface and selector affordance', () => {
+		const forms = readFileSync(resolve(packageRoot, 'src/styles/forms.css'), 'utf8');
+		const theme = readFileSync(resolve(packageRoot, 'src/styles/theme.css'), 'utf8');
+		const select = readFileSync(resolve(packageRoot, 'src/components/ui/forms/Select.astro'), 'utf8');
+
+		expect(select).toContain('ts-control--select');
+		expect(forms).toContain('select.ts-control');
+		expect(forms).toContain('background-color: var(--ts-color-surface)');
+		expect(forms).toContain('background-image:');
+		expect(forms).toContain('padding-right: 2.5rem');
+		expect(theme).toContain('.ts-theme-selector__field select');
+		expect(theme).toContain('appearance: none');
+		expect(theme).toContain('background-image:');
+	});
+
+	it('installs Astro client routing from the shared shell level', () => {
+		for (const entrypoint of ['./components/ui/shell/AppShell.astro', './components/ui/shell/PublicShell.astro']) {
+			const sourcePath = resolve(packageRoot, entrypoint.replace('./components/', 'src/components/'));
+			const contents = readFileSync(sourcePath, 'utf8');
+			expect(contents, entrypoint).toContain("import { ClientRouter } from 'astro:transitions'");
+			expect(contents, entrypoint).toContain('<ClientRouter />');
+		}
+
+		const button = readFileSync(resolve(packageRoot, 'src/components/ui/forms/Button.astro'), 'utf8');
+		const types = readFileSync(resolve(packageRoot, 'src/components/ui/types.ts'), 'utf8');
+		const catalog = readFileSync(resolve(packageRoot, 'src/pages/ui/index.astro'), 'utf8');
+		const themeScript = readFileSync(resolve(packageRoot, 'src/components/ui/theme/ThemeScript.astro'), 'utf8');
+		const themeMenu = readFileSync(resolve(packageRoot, 'src/components/ui/theme/ThemeMenu.astro'), 'utf8');
+		const themeSelector = readFileSync(resolve(packageRoot, 'src/components/ui/theme/ThemeSelector.astro'), 'utf8');
+		expect(button).toContain('data-astro-reload');
+		expect(catalog).toContain('<ClientRouter />');
+		expect(themeScript).toContain('data-astro-rerun');
+		expect(themeMenu).toContain('document.addEventListener(\'pointerdown\'');
+		expect(themeMenu).toContain('removeAttribute(\'open\')');
+		expect(themeMenu).not.toContain(' as Window');
+		expect(themeMenu).not.toContain('EventTarget | null');
+		expect(themeSelector).toContain('data-astro-rerun');
+		expect(types).toContain('reload?: boolean');
+	});
 });

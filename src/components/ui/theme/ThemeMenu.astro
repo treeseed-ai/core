@@ -30,3 +30,29 @@ const {
 		/>
 	</div>
 </details>
+
+<script is:inline>
+	(() => {
+		const bindingKey = '__treeseedThemeMenuDismissBound';
+		if (window[bindingKey]) return;
+		window[bindingKey] = true;
+
+		function themeMenuForTarget(target) {
+			return target instanceof Element ? target.closest('[data-ts-theme-menu]') : null;
+		}
+
+		function closeOpenMenus(except = null) {
+			document.querySelectorAll('[data-ts-theme-menu][open]').forEach((menu) => {
+				if (menu !== except) menu.removeAttribute('open');
+			});
+		}
+
+		document.addEventListener('pointerdown', (event) => {
+			closeOpenMenus(themeMenuForTarget(event.target));
+		}, true);
+
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') closeOpenMenus();
+		});
+	})();
+</script>

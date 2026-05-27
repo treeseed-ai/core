@@ -119,16 +119,30 @@ body {
 }
 
 .ts-theme-selector__field select {
-	width: 100%;
-	min-height: 2.25rem;
+	appearance: none;
+	background-color: var(--ts-color-surface);
+	background-image:
+		linear-gradient(var(--ts-color-border), var(--ts-color-border)),
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%);
+	background-position:
+		calc(100% - 1.7rem) 50%,
+		calc(100% - 1rem) calc(50% - 0.08rem),
+		calc(100% - 0.72rem) calc(50% - 0.08rem);
+	background-repeat: no-repeat;
+	background-size:
+		1px 1.05rem,
+		0.36rem 0.36rem,
+		0.36rem 0.36rem;
 	border: 1px solid var(--ts-color-border-strong);
 	border-radius: var(--ts-radius-sm);
-	background: var(--ts-color-surface);
 	color: var(--ts-color-text);
 	font: inherit;
 	font-size: 0.86rem;
 	font-weight: 700;
-	padding: 0.42rem 1.75rem 0.42rem 0.62rem;
+	min-height: 2.25rem;
+	padding: 0.42rem 2.15rem 0.42rem 0.62rem;
+	width: 100%;
 }
 
 .ts-theme-selector__field select:focus-visible {
