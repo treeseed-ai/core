@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.8] - 2026-05-27
+
+### Dependencies
+
+- build(core): update version, dependencies, and CI workflow (0d7a550933f4)
+- Release @treeseed/core 0.10.8.
+
 ## [0.10.7] - 2026-05-27
 
 ### Tests
