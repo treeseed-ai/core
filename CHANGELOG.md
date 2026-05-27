@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.9] - 2026-05-27
+
+### Changed
+
+- Sync SMTP env to Railway (51df3ec7ff9a)
+
+### Dependencies
+
+- build(build): update package metadata (ddd2b73ff3c1)
+- build(core): bump version and update @treeseed/sdk (2773650c7adc)
+- Release @treeseed/core 0.10.9.
+
 ## [0.10.8] - 2026-05-27
 
 ### Dependencies
