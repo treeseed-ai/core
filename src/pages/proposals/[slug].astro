@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
@@ -16,15 +15,16 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const proposals = publishedRuntime ? [] : await getCollection('proposals', ({ data }) => !data.draft);
-const localProposal = publishedRuntime ? null : proposals.find((candidate) => candidate.id === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const proposals = contentApi ? await contentApi.getCollection('proposals', ({ data }) => !data.draft) : [];
+const localProposal = contentApi ? proposals.find((candidate) => candidate.id === slug) ?? null : null;
 const publishedProposal = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'proposals', slug) : null;
 const proposal = publishedRuntime ? publishedProposal?.entry ?? null : localProposal;
 const metadata = publishedRuntime ? metadataFromPublishedContent(publishedProposal?.content) : null;
 if (!proposal) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localProposal ? await render(localProposal) : null;
+const rendered = contentApi && localProposal ? await contentApi.render(localProposal) : null;
 const Content = rendered?.Content ?? null;
 const contributor = publishedRuntime
 	? await resolvePublishedContributor(Astro.locals, metadata?.primaryContributor)

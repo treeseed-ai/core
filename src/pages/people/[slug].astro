@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import ProfileLayout from '../../layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
@@ -10,15 +9,16 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const people = publishedRuntime ? [] : await getCollection('people');
-const localPerson = publishedRuntime ? null : people.find((candidate) => candidate.id === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const people = contentApi ? await contentApi.getCollection('people') : [];
+const localPerson = contentApi ? people.find((candidate) => candidate.id === slug) ?? null : null;
 const publishedPerson = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'people', slug) : null;
 const person = publishedRuntime ? publishedPerson?.entry ?? null : localPerson;
 const metadata = publishedRuntime ? metadataFromPublishedContent(publishedPerson?.content) : null;
 if (!person) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localPerson ? await render(localPerson) : null;
+const rendered = contentApi && localPerson ? await contentApi.render(localPerson) : null;
 const Content = rendered?.Content ?? null;
 const relatedQuestions = publishedRuntime
 	? await resolvePublishedReferences(Astro.locals, 'questions', metadata?.relatedQuestions)

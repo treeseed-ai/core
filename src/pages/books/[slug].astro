@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import BookLayout from '../../layouts/BookLayout.astro';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
@@ -9,14 +8,15 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const books = (await getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const books = contentApi ? (await contentApi.getCollection('books')).sort((a, b) => a.data.order - b.data.order) : [];
 const localBook = books.find((candidate) => candidate.id === slug || candidate.data.slug === slug) ?? null;
 const publishedBook = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'books', slug) : null;
-const book = publishedRuntime ? publishedBook?.entry ?? localBook : localBook;
+const book = publishedRuntime ? publishedBook?.entry ?? null : localBook;
 if (!book) {
 	Astro.response.status = 404;
 }
-const rendered = localBook ? await render(localBook) : null;
+const rendered = contentApi && localBook ? await contentApi.render(localBook) : null;
 const Content = rendered?.Content ?? null;
 ---
 

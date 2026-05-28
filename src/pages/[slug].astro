@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import ContentLayout from '../layouts/ContentLayout.astro';
 import BridgeLayout from '../layouts/BridgeLayout.astro';
 import PublishedContentBody from '../components/site/PublishedContentBody.astro';
@@ -10,13 +9,14 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? Astro.url.pathname.replace(/^\/+|\/+$/g, ''));
 const publishedRuntime = isPublishedRuntimeContentMode();
-const localEntry = publishedRuntime ? null : (await getCollection('pages')).find((candidate) => candidate.data.slug === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const localEntry = contentApi ? (await contentApi.getCollection('pages')).find((candidate) => candidate.data.slug === slug) ?? null : null;
 const publishedEntry = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'pages', slug) : null;
 const entry = publishedRuntime ? publishedEntry?.entry ?? null : localEntry;
 if (!entry) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localEntry ? await render(localEntry) : null;
+const rendered = contentApi && localEntry ? await contentApi.render(localEntry) : null;
 const Content = rendered?.Content ?? null;
 const currentPath = Astro.url.pathname;
 ---

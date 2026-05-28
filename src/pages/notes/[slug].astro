@@ -1,5 +1,4 @@
 ---
-import { getCollection, render } from 'astro:content';
 import AuthoredEntryLayout from '../../layouts/AuthoredEntryLayout.astro';
 import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
 import RouteNotFound from '../../components/site/RouteNotFound.astro';
@@ -9,15 +8,16 @@ export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '');
 const publishedRuntime = isPublishedRuntimeContentMode();
-const notes = publishedRuntime ? [] : await getCollection('notes', ({ data }) => !data.draft);
-const localNote = publishedRuntime ? null : notes.find((candidate) => candidate.id === slug) ?? null;
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const notes = contentApi ? await contentApi.getCollection('notes', ({ data }) => !data.draft) : [];
+const localNote = contentApi ? notes.find((candidate) => candidate.id === slug) ?? null : null;
 const publishedNote = publishedRuntime ? await loadPublishedEntry(Astro.locals, 'notes', slug) : null;
 const note = publishedRuntime ? publishedNote?.entry ?? null : localNote;
 const metadata = publishedRuntime ? metadataFromPublishedContent(publishedNote?.content) : null;
 if (!note) {
 	Astro.response.status = 404;
 }
-const rendered = !publishedRuntime && localNote ? await render(localNote) : null;
+const rendered = contentApi && localNote ? await contentApi.render(localNote) : null;
 const Content = rendered?.Content ?? null;
 ---
 
