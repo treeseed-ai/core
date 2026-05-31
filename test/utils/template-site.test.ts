@@ -54,7 +54,7 @@ afterEach(async () => {
 });
 
 describe('template site resolution', () => {
-	it('prefers catalog-backed template listings when a provider returns items', async () => {
+	it('includes local templates alongside catalog-backed template listings', async () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		vi.resetModules();
@@ -118,13 +118,17 @@ describe('template site resolution', () => {
 		});
 
 		expect(listing.rendered).toBe(true);
-		expect(listing.items).toHaveLength(1);
-		expect(listing.items[0]).toMatchObject({
+		expect(listing.items).toHaveLength(2);
+		expect(listing.items).toContainEqual(expect.objectContaining({
+			slug: 'local-template',
+			source: 'content',
+		}));
+		expect(listing.items).toContainEqual(expect.objectContaining({
 			slug: 'starter',
 			source: 'catalog',
 			featured: true,
 			priceModel: 'subscription_updates',
-		});
+		}));
 
 		await rm(tenantRoot, { recursive: true, force: true });
 	});

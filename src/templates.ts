@@ -252,21 +252,23 @@ export async function listSiteTemplates(context: TemplateSourceOptions = {}): Pr
 	const catalogItems = context.catalogProvider && typeof context.catalogProvider.listItems === 'function'
 		? await context.catalogProvider.listItems({ locals: context.locals })
 		: [];
-	if (catalogItems.length > 0) {
-		return {
-			rendered: true,
-			items: sortTemplateCards(catalogItems.map(cardFromCatalogItem)),
-		};
+	const localEntries = await listLocalTemplateEntries(context.listLocalEntries);
+	const cardsBySlug = new Map<string, TemplateSiteCard>();
+	for (const entry of localEntries) {
+		const card = contentCardFromEntry(entry);
+		if (card) {
+			cardsBySlug.set(card.slug, card);
+		}
 	}
-
-	const entries = await listLocalTemplateEntries(context.listLocalEntries);
+	for (const item of catalogItems) {
+		const card = cardFromCatalogItem(item);
+		if (!cardsBySlug.has(card.slug)) {
+			cardsBySlug.set(card.slug, card);
+		}
+	}
 	return {
 		rendered: true,
-		items: sortTemplateCards(
-			entries
-				.map(contentCardFromEntry)
-				.filter((entry): entry is TemplateSiteCard => Boolean(entry)),
-		),
+		items: sortTemplateCards([...cardsBySlug.values()]),
 	};
 }
 
@@ -281,18 +283,18 @@ export async function resolveSiteTemplate(
 		};
 	}
 
-	const catalogItem = await selectCatalogItemBySlug(slug, context);
-	if (catalogItem) {
+	const entries = await listLocalTemplateEntries(context.listLocalEntries);
+	const entry = entries.find((candidate) => candidate.data.slug === slug && candidate.data.status === 'live') ?? null;
+	if (entry) {
 		return {
 			rendered: true,
-			item: detailFromCatalogItem(catalogItem),
+			item: detailFromContentEntry(entry),
 		};
 	}
 
-	const entries = await listLocalTemplateEntries(context.listLocalEntries);
-	const entry = entries.find((candidate) => candidate.data.slug === slug && candidate.data.status === 'live') ?? null;
+	const catalogItem = await selectCatalogItemBySlug(slug, context);
 	return {
 		rendered: true,
-		item: entry ? detailFromContentEntry(entry) : null,
+		item: catalogItem ? detailFromCatalogItem(catalogItem) : null,
 	};
 }

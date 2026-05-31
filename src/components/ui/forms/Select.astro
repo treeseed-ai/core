@@ -14,6 +14,7 @@ interface Props {
 	disabled?: boolean;
 	ariaDescribedby?: string;
 	class?: string;
+	[key: string]: unknown;
 }
 
 const {
@@ -25,10 +26,12 @@ const {
 	disabled = false,
 	ariaDescribedby,
 	class: className,
+	...selectAttributes
 } = Astro.props as Props;
 ---
 
 <select
+	{...selectAttributes}
 	class:list={['ts-control', 'ts-control--select', className]}
 	id={id}
 	name={name}

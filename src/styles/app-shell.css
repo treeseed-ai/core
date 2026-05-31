@@ -40,7 +40,8 @@
 
 .ts-app-shell__rail-scroll {
 	display: grid;
-	gap: var(--ts-space-3);
+	align-content: start;
+	gap: var(--ts-space-2);
 	min-height: 0;
 	overflow: auto;
 	padding-right: 0.15rem;
@@ -129,7 +130,7 @@
 .ts-app-shell__quick-actions {
 	border-top: 1px solid var(--ts-color-border);
 	display: grid;
-	gap: var(--ts-space-2);
+	gap: var(--ts-space-1);
 	padding-top: var(--ts-space-2);
 }
 
@@ -154,8 +155,9 @@
 .ts-rail-nav {
 	border-top: 1px solid var(--ts-color-border);
 	display: grid;
-	gap: 0.2rem;
-	padding-top: var(--ts-space-2);
+	gap: 0.08rem;
+	margin-top: 1.25rem;
+	padding-top: var(--ts-space-1);
 }
 
 .ts-rail-nav__link,
@@ -168,10 +170,12 @@
 
 .ts-rail-nav__link {
 	border-radius: var(--ts-radius-md);
+	box-sizing: border-box;
 	display: flex;
 	font-weight: 650;
 	justify-content: space-between;
-	padding: 0.55rem 0.55rem;
+	min-height: 1.7rem;
+	padding: 0.24rem 0.55rem;
 }
 
 .ts-rail-nav__link[aria-current='page'],
