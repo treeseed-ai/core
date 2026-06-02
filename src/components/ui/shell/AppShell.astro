@@ -61,6 +61,8 @@ const {
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml" />
 		<ThemeScript defaultScheme={appearance.scheme} defaultMode={appearance.mode} preferDefaultPreference />
 		<ClientRouter />
 	</head>
@@ -122,6 +124,7 @@ const {
 			{bottomNavItems.length > 0 ? <BottomNav items={bottomNavItems} currentPath={currentPath} /> : null}
 		</div>
 		<slot name="sensitiveModal" />
+		<slot name="modal" />
 		<DevWatchReload />
 	</body>
 </html>

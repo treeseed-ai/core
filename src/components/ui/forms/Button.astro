@@ -10,6 +10,7 @@ interface Props {
 	ariaLabel?: string;
 	reload?: boolean;
 	class?: string;
+	[key: string]: unknown;
 }
 
 const {
@@ -21,6 +22,7 @@ const {
 	ariaLabel,
 	reload = false,
 	class: className,
+	...buttonAttributes
 } = Astro.props as Props;
 
 const classes = ['ts-button', className].filter(Boolean).join(' ');
@@ -37,11 +39,13 @@ const classes = ['ts-button', className].filter(Boolean).join(' ');
 			aria-disabled={disabled ? 'true' : undefined}
 			tabindex={disabled ? -1 : undefined}
 			data-astro-reload={reload ? true : undefined}
+			{...buttonAttributes}
 		>
 			<slot />
 		</a>
 	) : (
 		<button
+			{...buttonAttributes}
 			type={type}
 			class={classes}
 			data-variant={variant}
