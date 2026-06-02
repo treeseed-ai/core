@@ -9,6 +9,7 @@
 	--ts-color-surface-muted: #e8efe1;
 	--ts-color-surface-raised: #fafcf7;
 	--ts-color-surface-overlay: rgba(255, 255, 255, 0.88);
+	--ts-control-background: var(--ts-color-surface);
 
 	--ts-color-text: #1f2a20;
 	--ts-color-text-muted: #51604d;

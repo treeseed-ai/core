@@ -120,11 +120,13 @@ body {
 
 .ts-theme-selector__field select {
 	appearance: none;
-	background-color: var(--ts-color-surface);
-	background-image:
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background:
 		linear-gradient(var(--ts-color-border), var(--ts-color-border)),
 		linear-gradient(45deg, transparent 50%, currentColor 50%),
-		linear-gradient(135deg, currentColor 50%, transparent 50%);
+		linear-gradient(135deg, currentColor 50%, transparent 50%),
+		var(--ts-control-background, var(--ts-color-surface));
 	background-position:
 		calc(100% - 1.7rem) 50%,
 		calc(100% - 1rem) calc(50% - 0.08rem),
@@ -149,6 +151,11 @@ body {
 	border-color: var(--ts-color-focus);
 	outline: 2px solid var(--ts-color-focus);
 	outline-offset: 2px;
+}
+
+.ts-theme-selector__field select option {
+	background-color: var(--ts-control-background, var(--ts-color-surface));
+	color: var(--ts-color-text);
 }
 
 .ts-theme-swatch {
