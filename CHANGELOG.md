@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.17] - 2026-06-02
+
+### Tests
+
+- build(ui): sync package dependency references (3d045519b0a5)
+
+### Dependencies
+
+- chore(core): bump version and update @treeseed/sdk (04d1e76722a6)
+- build(core): bump version and update @treeseed/sdk (9ec3428b8431)
+- chore(deps): bump version and update @treeseed/sdk (b9480cd9db8c)
+- build(core): update version and @treeseed/sdk dependency (1bed6eef9e05)
+- build(core): bump version and update @treeseed/sdk (a013d0809107)
+- chore(core): bump version and update turnstile env definitions (47bdf810e264)
+- build(build): avoid Railway volume update after attach (ed0310000c26)
+- chore(core): bump version and update @treeseed/sdk (7d6cbceabff8)
+- Release @treeseed/core 0.10.17.
+
 ## [0.10.16] - 2026-05-28
 
 ### Dependencies
