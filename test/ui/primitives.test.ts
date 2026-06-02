@@ -76,15 +76,19 @@ describe('core UI primitives', () => {
 		const forms = readFileSync(resolve(packageRoot, 'src/styles/forms.css'), 'utf8');
 		const theme = readFileSync(resolve(packageRoot, 'src/styles/theme.css'), 'utf8');
 		const select = readFileSync(resolve(packageRoot, 'src/components/ui/forms/Select.astro'), 'utf8');
+		const contactForm = readFileSync(resolve(packageRoot, 'src/components/forms/ContactForm.astro'), 'utf8');
 
 		expect(select).toContain('ts-control--select');
+		expect(contactForm).toContain('ts-control--select');
 		expect(forms).toContain('select.ts-control');
-		expect(forms).toContain('background-color: var(--ts-color-surface)');
-		expect(forms).toContain('background-image:');
+		expect(forms).toContain('-webkit-appearance: none');
+		expect(forms).toContain('var(--ts-control-background, var(--ts-color-surface));');
+		expect(forms).toContain('select.ts-control option');
+		expect(forms).toContain('background:');
 		expect(forms).toContain('padding-right: 2.5rem');
 		expect(theme).toContain('.ts-theme-selector__field select');
 		expect(theme).toContain('appearance: none');
-		expect(theme).toContain('background-image:');
+		expect(theme).toContain('background:');
 	});
 
 	it('installs Astro client routing from the shared shell level', () => {

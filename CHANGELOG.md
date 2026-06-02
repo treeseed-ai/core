@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.18] - 2026-06-02
+
+### Tests
+
+- refactor(forms): improve form control styles and consistency (3eb833e095e7)
+
+### Dependencies
+
+- ci(github): add timing summary support to deploy-web workflow (7aced547d04d)
+- Release @treeseed/core 0.10.18.
+
 ## [0.10.17] - 2026-06-02
 
 ### Tests

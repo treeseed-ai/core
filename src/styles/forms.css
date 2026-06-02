@@ -43,7 +43,9 @@
 
 .ts-control {
 	appearance: none;
-	background-color: var(--ts-color-surface);
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background: var(--ts-control-background, var(--ts-color-surface));
 	border: 1px solid var(--ts-color-border);
 	border-radius: var(--ts-radius-md);
 	color: var(--ts-color-text);
@@ -78,11 +80,13 @@
 .ts-control--select,
 select.ts-control {
 	appearance: none;
-	background-color: var(--ts-color-surface);
-	background-image:
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background:
 		linear-gradient(var(--ts-color-border), var(--ts-color-border)),
 		linear-gradient(45deg, transparent 50%, currentColor 50%),
-		linear-gradient(135deg, currentColor 50%, transparent 50%);
+		linear-gradient(135deg, currentColor 50%, transparent 50%),
+		var(--ts-control-background, var(--ts-color-surface));
 	background-position:
 		calc(100% - 2rem) 50%,
 		calc(100% - 1.17rem) calc(50% - 0.08rem),
@@ -93,6 +97,12 @@ select.ts-control {
 		0.42rem 0.42rem,
 		0.42rem 0.42rem;
 	padding-right: 2.5rem;
+}
+
+.ts-control--select option,
+select.ts-control option {
+	background-color: var(--ts-control-background, var(--ts-color-surface));
+	color: var(--ts-color-text);
 }
 
 .ts-control--textarea {
