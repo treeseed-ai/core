@@ -1,6 +1,7 @@
 import { getCollection } from 'astro:content';
 import { normalizeTemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
-import type { CatalogItem, CatalogItemOfferMode, TemplateLaunchRequirements } from '@treeseed/sdk/types';
+import type { TemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
+import type { CatalogItem, CatalogItemOfferMode } from '@treeseed/sdk/types';
 import { RUNTIME_TENANT } from './tenant/runtime-config.ts';
 import { siteModelRendered } from './utils/site-models.ts';
 
