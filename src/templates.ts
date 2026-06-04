@@ -1,4 +1,6 @@
 import { getCollection } from 'astro:content';
+import { normalizeTemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
+import type { TemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
 import type { CatalogItem, CatalogItemOfferMode } from '@treeseed/sdk/types';
 import { RUNTIME_TENANT } from './tenant/runtime-config.ts';
 import { siteModelRendered } from './utils/site-models.ts';
@@ -64,6 +66,7 @@ export interface TemplateSiteCard {
 	templateVersion?: string;
 	priceModel?: CatalogItemOfferMode | string;
 	source: 'catalog' | 'content';
+	launchRequirements?: TemplateLaunchRequirements;
 }
 
 export interface TemplateSiteDetail extends TemplateSiteCard {
@@ -137,6 +140,10 @@ function catalogNumber(metadata: Record<string, unknown> | undefined, key: strin
 	return typeof value === 'number' ? value : undefined;
 }
 
+function catalogLaunchRequirements(metadata: Record<string, unknown> | undefined, label: string) {
+	return normalizeTemplateLaunchRequirements(metadata?.launchRequirements, `${label} launchRequirements`);
+}
+
 function contentCardFromEntry(entry: TemplateContentEntry): TemplateSiteCard | null {
 	if (entry.data.status !== 'live') {
 		return null;
@@ -151,6 +158,7 @@ function contentCardFromEntry(entry: TemplateContentEntry): TemplateSiteCard | n
 		templateVersion: entry.data.templateVersion,
 		priceModel: entry.data.offer?.priceModel,
 		source: 'content',
+		launchRequirements: undefined,
 	};
 }
 
@@ -200,6 +208,7 @@ function cardFromCatalogItem(item: CatalogItem): TemplateSiteCard {
 		templateVersion: catalogString(item.metadata, 'templateVersion'),
 		priceModel: item.offerMode,
 		source: 'catalog',
+		launchRequirements: catalogLaunchRequirements(item.metadata, `catalog item ${item.slug}`),
 	};
 }
 
@@ -262,7 +271,13 @@ export async function listSiteTemplates(context: TemplateSourceOptions = {}): Pr
 	}
 	for (const item of catalogItems) {
 		const card = cardFromCatalogItem(item);
-		if (!cardsBySlug.has(card.slug)) {
+		const existing = cardsBySlug.get(card.slug);
+		if (existing) {
+			cardsBySlug.set(card.slug, {
+				...existing,
+				launchRequirements: existing.launchRequirements ?? card.launchRequirements,
+			});
+		} else {
 			cardsBySlug.set(card.slug, card);
 		}
 	}
