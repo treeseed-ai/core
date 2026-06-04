@@ -17,11 +17,14 @@ export {
 } from './launch';
 export {
 	createTreeseedIntegratedDevPlan,
+	runTreeseedManagedDev,
 	runTreeseedIntegratedDev,
 	type TreeseedIntegratedDevCommand,
 	type TreeseedIntegratedDevOptions,
 	type TreeseedIntegratedDevPlan,
 	type TreeseedIntegratedDevSurface,
+	type TreeseedManagedDevOptions,
+	type TreeseedDevInstanceRecord,
 } from './dev';
 export {
 	filterSiteRenderedModels,

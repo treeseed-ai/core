@@ -1,7 +1,9 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -45,6 +47,9 @@ export const TREESEED_DEFAULT_MARKET_POSTGRES_URL = `postgres://treeseed:treesee
 const DEV_RELOAD_FILE = 'public/__treeseed/dev-reload.json';
 const DEV_RUNTIME_DIR = '.treeseed/generated/dev';
 const DEV_RUNTIME_LEGACY_FILE = '.treeseed/generated/dev/runtime.json';
+const DEV_INSTANCE_DIR = '.treeseed/dev/instances';
+const DEV_PID_DIR = '.treeseed/dev/pids';
+const DEV_REPO_INDEX_RELATIVE_PATH = 'treeseed/dev-index.json';
 const DEFAULT_READINESS_TIMEOUT_MS = 90_000;
 const DEFAULT_SETUP_STEP_TIMEOUT_MS = 300_000;
 const DEFAULT_PROCESS_READY_GRACE_MS = 1_200;
@@ -87,6 +92,7 @@ export type TreeseedIntegratedDevOptions = {
 	plan?: boolean;
 	reset?: boolean;
 	force?: boolean;
+	forceConflicts?: boolean;
 	json?: boolean;
 	includeServices?: boolean;
 	projectId?: string;
@@ -94,6 +100,14 @@ export type TreeseedIntegratedDevOptions = {
 	readinessTimeoutMs?: number;
 	processReadyGraceMs?: number;
 	shutdownGraceMs?: number;
+};
+
+export type TreeseedManagedDevAction = 'start' | 'status' | 'logs' | 'stop' | 'restart';
+
+export type TreeseedManagedDevOptions = TreeseedIntegratedDevOptions & {
+	action: TreeseedManagedDevAction;
+	all?: boolean;
+	follow?: boolean;
 };
 
 export type TreeseedIntegratedDevCommand = {
@@ -176,6 +190,48 @@ export type TreeseedIntegratedDevPlan = {
 	reset: TreeseedIntegratedDevResetPlan | null;
 };
 
+export type TreeseedDevInstanceStatus = 'starting' | 'ready' | 'degraded' | 'stopped' | 'stale';
+
+export type TreeseedDevInstanceRecord = {
+	schemaVersion: 1;
+	kind: 'treeseed.dev.instance';
+	projectRoot: string;
+	worktreeRoot: string;
+	branch: string | null;
+	gitCommonDir: string | null;
+	status: TreeseedDevInstanceStatus;
+	pid: number | null;
+	processGroupId: number | null;
+	startedAt: string;
+	updatedAt: string;
+	ports: Record<string, number>;
+	urls: Record<string, string>;
+	logPath: string;
+	runtimeScope: string;
+	surfaces: TreeseedIntegratedDevCommandId[];
+	readyChecks: TreeseedIntegratedDevReadinessCheck[];
+	instancePath: string;
+	pidPath: string;
+	staleReason?: string;
+};
+
+type TreeseedDevIndexEntry = {
+	worktreeRoot: string;
+	instancePath: string;
+	branch: string | null;
+	pid: number | null;
+	runtimeScope: string;
+	updatedAt: string;
+};
+
+type TreeseedDevIndex = {
+	schemaVersion: 1;
+	kind: 'treeseed.dev.index';
+	repositoryId: string;
+	gitCommonDir: string | null;
+	instances: TreeseedDevIndexEntry[];
+};
+
 type SpawnLike = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
 type SpawnSyncLike = typeof spawnSync;
 type SignalRegistrar = (signal: NodeJS.Signals, handler: () => void) => () => void;
@@ -203,6 +259,8 @@ type TreeseedIntegratedDevDependencies = {
 	stopMarketPostgres: () => boolean;
 	inspectPortOwners: (ports: readonly number[]) => TreeseedDevPortOwner[];
 };
+
+type ManagedStartDependencies = Pick<TreeseedIntegratedDevDependencies, 'spawn' | 'write' | 'fetch' | 'processIsAlive' | 'killProcess' | 'inspectPortOwners'>;
 
 export type TreeseedDevPortOwner = {
 	port: number;
@@ -399,6 +457,7 @@ function webUrlFor(host: string, port: number) {
 }
 
 const CANONICAL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents'];
+const ALL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents', 'market-runner'];
 const MARKET_DEV_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'market-runner'];
 
 function isMarketWorkspace(tenantRoot: string) {
@@ -1073,8 +1132,12 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const resolvedTeamId = mergedEnv.TREESEED_TEAM_ID
 		?? resolvedHostingTeamId
 		?? resolveSeededLocalTeamId(localD1PersistTo, projectId ?? null);
-	const marketDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL ?? TREESEED_DEFAULT_MARKET_POSTGRES_URL;
+	const marketPostgresPort = mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT);
+	const marketDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL
+		?? `postgres://treeseed:treeseed@127.0.0.1:${marketPostgresPort}/market_local`;
 	const managedMarketPostgres = marketWorkspace && isTreeseedManagedMarketPostgresUrl(marketDatabaseUrl);
+	const mailpitSmtpPort = mergedEnv.TREESEED_MAILPIT_SMTP_PORT ?? String(TREESEED_DEFAULT_LOCAL_SMTP_PORT);
+	const mailpitUiPort = mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(TREESEED_DEFAULT_MAILPIT_UI_PORT);
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
 		'scripts/tenant-astro-command.ts',
@@ -1110,7 +1173,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			TREESEED_MARKET_DATABASE_URL: marketDatabaseUrl,
 			TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER ?? TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER,
 			TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_VOLUME ?? TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME,
-			TREESEED_MARKET_LOCAL_POSTGRES_PORT: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT),
+			TREESEED_MARKET_LOCAL_POSTGRES_PORT: marketPostgresPort,
 			TREESEED_MARKET_LOCAL_POSTGRES_MANAGED: managedMarketPostgres ? 'true' : 'false',
 		} : {}),
 		TREESEED_PROJECT_ID: projectId ?? mergedEnv.TREESEED_PROJECT_ID,
@@ -1134,12 +1197,13 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
 		...(devResetId ? { TREESEED_DEV_RESET_ID: devResetId } : {}),
 		TREESEED_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
-		TREESEED_SMTP_PORT: String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
+		TREESEED_SMTP_PORT: mailpitSmtpPort,
 		TREESEED_SMTP_USERNAME: '',
 		TREESEED_SMTP_PASSWORD: '',
 		TREESEED_MAILPIT_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
-		TREESEED_MAILPIT_SMTP_PORT: String(TREESEED_DEFAULT_LOCAL_SMTP_PORT),
-		TREESEED_MAILPIT_UI_PORT: mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(TREESEED_DEFAULT_MAILPIT_UI_PORT),
+		TREESEED_MAILPIT_SMTP_PORT: mailpitSmtpPort,
+		TREESEED_MAILPIT_UI_PORT: mailpitUiPort,
+		TREESEED_MAILPIT_CONTAINER_NAME: mergedEnv.TREESEED_MAILPIT_CONTAINER_NAME,
 		TREESEED_AUTH_EMAIL_FROM: mergedEnv.TREESEED_AUTH_EMAIL_FROM ?? 'Treeseed Market <auth@treeseed.local>',
 	};
 	const reset = createTreeseedIntegratedDevResetPlan({
@@ -1435,6 +1499,597 @@ function resolveLocalMachineEnv(tenantRoot: string) {
 	}
 }
 
+function atomicWriteJson(path: string, value: unknown) {
+	mkdirSync(dirname(path), { recursive: true });
+	const tmpPath = `${path}.tmp-${process.pid}-${Date.now()}`;
+	writeFileSync(tmpPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+	renameSync(tmpPath, path);
+}
+
+function runGitText(cwd: string, args: string[]) {
+	const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+	return (result.status ?? 1) === 0 ? String(result.stdout ?? '').trim() : null;
+}
+
+function resolveGitWorktreeInfo(tenantRoot: string) {
+	const worktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']) ?? tenantRoot;
+	const rawCommonDir = runGitText(tenantRoot, ['rev-parse', '--git-common-dir']);
+	const gitCommonDir = rawCommonDir
+		? (isAbsolute(rawCommonDir) ? rawCommonDir : resolve(tenantRoot, rawCommonDir))
+		: null;
+	const rawBranch = runGitText(tenantRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
+	const branch = rawBranch && rawBranch !== 'HEAD' ? rawBranch : null;
+	return { worktreeRoot, gitCommonDir, branch };
+}
+
+function repositoryIndexId(tenantRoot: string, gitCommonDir: string | null) {
+	const source = gitCommonDir ?? tenantRoot;
+	return createHash('sha256').update(source).digest('hex').slice(0, 16);
+}
+
+function worktreeInstanceSuffix(tenantRoot: string) {
+	return createHash('sha256').update(resolve(tenantRoot)).digest('hex').slice(0, 10);
+}
+
+function repoFamilyIndexPath(tenantRoot: string, gitCommonDir: string | null) {
+	if (gitCommonDir) {
+		return resolve(gitCommonDir, DEV_REPO_INDEX_RELATIVE_PATH);
+	}
+	const cacheRoot = process.env.XDG_CACHE_HOME
+		? resolve(process.env.XDG_CACHE_HOME, 'treeseed', 'dev-instances')
+		: resolve(homedir(), '.cache', 'treeseed', 'dev-instances');
+	return resolve(cacheRoot, `${repositoryIndexId(tenantRoot, null)}.json`);
+}
+
+function instanceRuntimeScope(plan: Pick<TreeseedIntegratedDevPlan, 'commands'>) {
+	return runtimeScopeKey(plan.commands.map((command) => command.id));
+}
+
+function devInstanceDir(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_INSTANCE_DIR);
+}
+
+function devPidDir(tenantRoot: string) {
+	return resolve(tenantRoot, DEV_PID_DIR);
+}
+
+function devInstancePath(tenantRoot: string, runtimeScope: string) {
+	return resolve(devInstanceDir(tenantRoot), `${runtimeScope}.json`);
+}
+
+function devPidPath(tenantRoot: string, runtimeScope: string) {
+	return resolve(devPidDir(tenantRoot), `${runtimeScope}.pid`);
+}
+
+function portFromReadyCheck(checks: readonly TreeseedIntegratedDevReadinessCheck[], id: string) {
+	const check = checks.find((entry) => entry.id === id);
+	return parsePortFromUrl(check?.url);
+}
+
+function portsFromPlan(plan: TreeseedIntegratedDevPlan) {
+	return Object.fromEntries(
+		Object.entries({
+			web: parsePortFromUrl(plan.webUrl ?? undefined),
+			api: parsePortFromUrl(plan.apiBaseUrl),
+			mailpit: portFromReadyCheck(plan.readyChecks, 'mailpit'),
+			mailpitSmtp: Number(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT ?? '') || null,
+			postgres: Number(plan.commands[0]?.env.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? '') || null,
+		}).filter((entry): entry is [string, number] => Number.isInteger(entry[1]) && entry[1] > 0),
+	);
+}
+
+function urlsFromPlan(plan: TreeseedIntegratedDevPlan) {
+	return Object.fromEntries(
+		Object.entries({
+			web: plan.webUrl,
+			api: plan.apiBaseUrl,
+			apiHealth: `${plan.apiBaseUrl.replace(/\/+$/u, '')}/healthz`,
+			mailpit: plan.readyChecks.find((check) => check.id === 'mailpit')?.url ?? null,
+		}).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
+	);
+}
+
+function createDevInstanceRecord(
+	plan: TreeseedIntegratedDevPlan,
+	status: TreeseedDevInstanceStatus,
+	pid: number | null,
+	processGroupId: number | null = null,
+	startedAt = new Date().toISOString(),
+): TreeseedDevInstanceRecord {
+	const runtimeScope = instanceRuntimeScope(plan);
+	const git = resolveGitWorktreeInfo(plan.tenantRoot);
+	return {
+		schemaVersion: 1,
+		kind: 'treeseed.dev.instance',
+		projectRoot: plan.tenantRoot,
+		worktreeRoot: git.worktreeRoot,
+		branch: git.branch,
+		gitCommonDir: git.gitCommonDir,
+		status,
+		pid,
+		processGroupId,
+		startedAt,
+		updatedAt: new Date().toISOString(),
+		ports: portsFromPlan(plan),
+		urls: urlsFromPlan(plan),
+		logPath: plan.logPath,
+		runtimeScope,
+		surfaces: plan.commands.map((command) => command.id),
+		readyChecks: plan.readyChecks,
+		instancePath: devInstancePath(plan.tenantRoot, runtimeScope),
+		pidPath: devPidPath(plan.tenantRoot, runtimeScope),
+	};
+}
+
+function readDevInstanceFile(path: string): TreeseedDevInstanceRecord | null {
+	try {
+		const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<TreeseedDevInstanceRecord>;
+		if (parsed.kind !== 'treeseed.dev.instance' || typeof parsed.projectRoot !== 'string' || typeof parsed.instancePath !== 'string') {
+			return null;
+		}
+		return parsed as TreeseedDevInstanceRecord;
+	} catch {
+		return null;
+	}
+}
+
+function writeDevInstance(record: TreeseedDevInstanceRecord) {
+	const next = { ...record, updatedAt: new Date().toISOString() };
+	atomicWriteJson(next.instancePath, next);
+	mkdirSync(dirname(next.pidPath), { recursive: true });
+	if (next.pid) {
+		writeFileSync(next.pidPath, `${next.pid}\n`, 'utf8');
+	}
+	writeRepoFamilyIndexEntry(next);
+	return next;
+}
+
+function readRepoFamilyIndex(tenantRoot: string, gitCommonDir: string | null): TreeseedDevIndex {
+	const path = repoFamilyIndexPath(tenantRoot, gitCommonDir);
+	try {
+		const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<TreeseedDevIndex>;
+		if (parsed.kind === 'treeseed.dev.index' && Array.isArray(parsed.instances)) {
+			return parsed as TreeseedDevIndex;
+		}
+	} catch {
+		// Create a fresh index below.
+	}
+	return {
+		schemaVersion: 1,
+		kind: 'treeseed.dev.index',
+		repositoryId: repositoryIndexId(tenantRoot, gitCommonDir),
+		gitCommonDir,
+		instances: [],
+	};
+}
+
+function writeRepoFamilyIndex(index: TreeseedDevIndex, tenantRoot: string, gitCommonDir: string | null) {
+	atomicWriteJson(repoFamilyIndexPath(tenantRoot, gitCommonDir), index);
+}
+
+function writeRepoFamilyIndexEntry(record: TreeseedDevInstanceRecord) {
+	const index = readRepoFamilyIndex(record.projectRoot, record.gitCommonDir);
+	const entry: TreeseedDevIndexEntry = {
+		worktreeRoot: record.worktreeRoot,
+		instancePath: record.instancePath,
+		branch: record.branch,
+		pid: record.pid,
+		runtimeScope: record.runtimeScope,
+		updatedAt: record.updatedAt,
+	};
+	const instances = index.instances.filter((candidate) =>
+		!(candidate.worktreeRoot === entry.worktreeRoot && candidate.runtimeScope === entry.runtimeScope),
+	);
+	instances.push(entry);
+	writeRepoFamilyIndex({ ...index, instances }, record.projectRoot, record.gitCommonDir);
+}
+
+function removeRepoFamilyIndexEntry(record: TreeseedDevInstanceRecord) {
+	const index = readRepoFamilyIndex(record.projectRoot, record.gitCommonDir);
+	writeRepoFamilyIndex({
+		...index,
+		instances: index.instances.filter((candidate) =>
+			!(candidate.worktreeRoot === record.worktreeRoot && candidate.runtimeScope === record.runtimeScope),
+		),
+	}, record.projectRoot, record.gitCommonDir);
+}
+
+function listWorktreeDevInstances(tenantRoot: string) {
+	try {
+		return readdirSync(devInstanceDir(tenantRoot))
+			.filter((entry) => entry.endsWith('.json'))
+			.map((entry) => readDevInstanceFile(resolve(devInstanceDir(tenantRoot), entry)))
+			.filter((entry): entry is TreeseedDevInstanceRecord => Boolean(entry));
+	} catch {
+		return [];
+	}
+}
+
+function listRepoFamilyDevInstances(tenantRoot: string) {
+	const git = resolveGitWorktreeInfo(tenantRoot);
+	const index = readRepoFamilyIndex(tenantRoot, git.gitCommonDir);
+	return index.instances
+		.map((entry) => readDevInstanceFile(entry.instancePath))
+		.filter((entry): entry is TreeseedDevInstanceRecord => Boolean(entry));
+}
+
+function evaluateDevInstance(
+	record: TreeseedDevInstanceRecord,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'processIsAlive'>,
+): TreeseedDevInstanceRecord {
+	if (!record.pid || !deps.processIsAlive(record.pid)) {
+		return { ...record, status: 'stale', staleReason: record.pid ? `Process ${record.pid} is not running.` : 'No supervisor pid is recorded.' };
+	}
+	return record;
+}
+
+function removeDevInstanceRecord(record: TreeseedDevInstanceRecord) {
+	rmSync(record.instancePath, { force: true });
+	rmSync(record.pidPath, { force: true });
+	removeRepoFamilyIndexEntry(record);
+}
+
+function usedPortsFromInstances(records: readonly TreeseedDevInstanceRecord[], processIsAlive: ProcessStatusChecker) {
+	const ports = new Set<number>();
+	for (const record of records) {
+		const evaluated = evaluateDevInstance(record, { processIsAlive });
+		if (evaluated.status === 'stale') continue;
+		for (const port of Object.values(record.ports)) {
+			if (Number.isInteger(port) && port > 0) ports.add(port);
+		}
+	}
+	return ports;
+}
+
+function managedPortBlock(blockIndex: number) {
+	const offset = blockIndex * 10;
+	return {
+		web: TREESEED_DEFAULT_WEB_PORT + offset,
+		api: TREESEED_DEFAULT_API_PORT + offset,
+		postgres: TREESEED_DEFAULT_MARKET_POSTGRES_PORT + offset,
+		mailpitSmtp: TREESEED_DEFAULT_LOCAL_SMTP_PORT + offset,
+		mailpitUi: TREESEED_DEFAULT_MAILPIT_UI_PORT + offset,
+	};
+}
+
+function resolveManagedPortOverrides(
+	tenantRoot: string,
+	options: TreeseedManagedDevOptions,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'processIsAlive' | 'inspectPortOwners'>,
+) {
+	const existing = listWorktreeDevInstances(tenantRoot)
+		.map((record) => evaluateDevInstance(record, deps))
+		.find((record) => record.status !== 'stale');
+	if (existing && options.webPort == null && options.apiPort == null) {
+		return {
+			webPort: existing.ports.web,
+			apiPort: existing.ports.api,
+			env: {
+				TREESEED_MARKET_LOCAL_POSTGRES_PORT: existing.ports.postgres ? String(existing.ports.postgres) : undefined,
+				TREESEED_MAILPIT_SMTP_PORT: existing.ports.mailpitSmtp ? String(existing.ports.mailpitSmtp) : undefined,
+				TREESEED_MAILPIT_UI_PORT: existing.ports.mailpit ? String(existing.ports.mailpit) : undefined,
+				TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: `treeseed-market-local-postgres-${worktreeInstanceSuffix(tenantRoot)}`,
+				TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: `treeseed-market-local-postgres-data-${worktreeInstanceSuffix(tenantRoot)}`,
+				TREESEED_MAILPIT_CONTAINER_NAME: `treeseed-mailpit-${worktreeInstanceSuffix(tenantRoot)}`,
+			} as NodeJS.ProcessEnv,
+		};
+	}
+
+	const repoInstances = listRepoFamilyDevInstances(tenantRoot);
+	const usedPorts = usedPortsFromInstances(repoInstances, deps.processIsAlive);
+	for (const owner of deps.inspectPortOwners([
+		TREESEED_DEFAULT_WEB_PORT,
+		TREESEED_DEFAULT_API_PORT,
+		TREESEED_DEFAULT_MARKET_POSTGRES_PORT,
+		TREESEED_DEFAULT_LOCAL_SMTP_PORT,
+		TREESEED_DEFAULT_MAILPIT_UI_PORT,
+	])) {
+		if (owner.pid) usedPorts.add(owner.port);
+	}
+
+	for (let block = 0; block < 100; block += 1) {
+		const candidate = managedPortBlock(block);
+		const requestedWeb = options.webPort ?? candidate.web;
+		const requestedApi = options.apiPort ?? candidate.api;
+		const candidatePorts = [requestedWeb, requestedApi, candidate.postgres, candidate.mailpitSmtp, candidate.mailpitUi];
+		const liveOwners = deps.inspectPortOwners(candidatePorts).filter((owner) => owner.pid && owner.pid !== process.pid);
+		const blocked = candidatePorts.some((port) => usedPorts.has(port)) || liveOwners.length > 0;
+		if (!blocked || options.forceConflicts === true) {
+			return {
+				webPort: requestedWeb,
+				apiPort: requestedApi,
+				env: {
+					TREESEED_MARKET_LOCAL_POSTGRES_PORT: String(candidate.postgres),
+					TREESEED_MAILPIT_SMTP_PORT: String(candidate.mailpitSmtp),
+					TREESEED_MAILPIT_UI_PORT: String(candidate.mailpitUi),
+					TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: `treeseed-market-local-postgres-${worktreeInstanceSuffix(tenantRoot)}`,
+					TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: `treeseed-market-local-postgres-data-${worktreeInstanceSuffix(tenantRoot)}`,
+					TREESEED_MAILPIT_CONTAINER_NAME: `treeseed-mailpit-${worktreeInstanceSuffix(tenantRoot)}`,
+				} as NodeJS.ProcessEnv,
+			};
+		}
+	}
+
+	throw new Error('Unable to allocate a free Treeseed dev port block for this worktree.');
+}
+
+function renderManagedDevStatus(records: readonly TreeseedDevInstanceRecord[]) {
+	if (records.length === 0) return 'No managed Treeseed dev instances found.';
+	return records.map((record) => {
+		const url = record.urls.web ?? record.urls.api ?? '(no url)';
+		const branch = record.branch ? ` ${record.branch}` : '';
+		return `${record.status.padEnd(8)} pid ${record.pid ?? '-'}${branch} ${url} log ${record.logPath}`;
+	}).join('\n');
+}
+
+function renderDevLogJsonEventForHuman(parsed: Record<string, unknown>) {
+	if (parsed.kind === 'treeseed.dev.log' && parsed.type === 'start') {
+		const startedAt = typeof parsed.startedAt === 'string' ? ` at ${parsed.startedAt}` : '';
+		return `[dev] Log session started${startedAt}.`;
+	}
+	if (parsed.kind !== 'treeseed.dev.event') {
+		return null;
+	}
+	const surface = typeof parsed.surface === 'string'
+		? `[${parsed.surface}]`
+		: parsed.type === 'setup'
+			? '[setup]'
+			: '[dev]';
+	const message = typeof parsed.message === 'string'
+		? parsed.message
+		: typeof parsed.status === 'string'
+			? parsed.status
+			: '';
+	if (!message) {
+		return null;
+	}
+	if (surface === '[market-runner]') {
+		try {
+			const runner = JSON.parse(message) as Record<string, unknown>;
+			if (runner.ok === true && runner.claimed === false && runner.operation == null) {
+				return null;
+			}
+		} catch {
+			// Not a runner heartbeat payload.
+		}
+	}
+	return `${surface} ${message}`;
+}
+
+function renderDevLogForHuman(raw: string) {
+	const rendered: string[] = [];
+	for (const line of raw.split(/\r?\n/u)) {
+		if (!line) {
+			rendered.push(line);
+			continue;
+		}
+		if (line.trimStart().startsWith('{')) {
+			try {
+				const parsed = JSON.parse(line) as Record<string, unknown>;
+				const human = renderDevLogJsonEventForHuman(parsed);
+				if (human) rendered.push(human);
+				continue;
+			} catch {
+				// Non-JSON despite the leading brace; keep it as-is.
+			}
+		}
+		rendered.push(line);
+	}
+	return rendered.join('\n');
+}
+
+function readRecentDevLog(path: string, maxLines = 300, maxBytes = 256 * 1024) {
+	const stats = statSync(path);
+	const start = Math.max(0, stats.size - maxBytes);
+	const fd = openSync(path, 'r');
+	try {
+		const buffer = Buffer.alloc(stats.size - start);
+		readSync(fd, buffer, 0, buffer.length, start);
+		const lines = buffer.toString('utf8').split(/\r?\n/u);
+		return lines.slice(Math.max(0, lines.length - maxLines)).join('\n');
+	} finally {
+		closeSync(fd);
+	}
+}
+
+async function waitForManagedInstanceReady(
+	instancePath: string,
+	options: Pick<TreeseedManagedDevOptions, 'readinessTimeoutMs'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'processIsAlive'>,
+) {
+	const startedAt = Date.now();
+	const timeoutMs = options.readinessTimeoutMs ?? DEFAULT_READINESS_TIMEOUT_MS;
+	while (Date.now() - startedAt < timeoutMs) {
+		const record = readDevInstanceFile(instancePath);
+		if (record) {
+			const evaluated = evaluateDevInstance(record, deps);
+			if (evaluated.status === 'ready' || evaluated.status === 'degraded' || evaluated.status === 'stale') {
+				return evaluated;
+			}
+		}
+		await delay(500);
+	}
+	const record = readDevInstanceFile(instancePath);
+	return record ? { ...record, status: 'degraded' as const, staleReason: 'Timed out waiting for readiness.' } : null;
+}
+
+function managedDevResult(kind: string, ok: boolean, payload: unknown, options: Pick<TreeseedManagedDevOptions, 'json'>, write: TreeseedIntegratedDevDependencies['write']) {
+	if (options.json) {
+		write(`${JSON.stringify({ schemaVersion: 1, kind, ok, payload }, null, 2)}\n`, 'stdout');
+	} else if (typeof payload === 'string') {
+		write(`${payload}\n`, 'stdout');
+	} else if (Array.isArray(payload)) {
+		write(`${renderManagedDevStatus(payload as TreeseedDevInstanceRecord[])}\n`, 'stdout');
+	} else {
+		write(`${renderManagedDevStatus([payload as TreeseedDevInstanceRecord])}\n`, 'stdout');
+	}
+	return ok ? 0 : 1;
+}
+
+async function stopDevInstance(
+	record: TreeseedDevInstanceRecord,
+	options: Pick<TreeseedManagedDevOptions, 'shutdownGraceMs'>,
+	deps: Pick<TreeseedIntegratedDevDependencies, 'killProcess' | 'processIsAlive'>,
+) {
+	if (!record.pid || !deps.processIsAlive(record.pid)) {
+		removeDevInstanceRecord(record);
+		return { ...record, status: 'stale' as const, staleReason: 'Process was not running.' };
+	}
+	const targetPid = record.processGroupId && process.platform !== 'win32' ? -record.processGroupId : record.pid;
+	try {
+		deps.killProcess(targetPid, 'SIGTERM');
+	} catch {
+		// Already stopped or not owned by this process table.
+	}
+	if (!await waitForProcessExit(record.pid, deps.processIsAlive, options.shutdownGraceMs ?? DEFAULT_SHUTDOWN_GRACE_MS)) {
+		try {
+			deps.killProcess(targetPid, 'SIGKILL');
+		} catch {
+			// Ignore shutdown races.
+		}
+		await waitForProcessExit(record.pid, deps.processIsAlive, DEFAULT_KILL_GRACE_MS);
+	}
+	removeDevInstanceRecord(record);
+	return { ...record, status: 'stopped' as const, updatedAt: new Date().toISOString() };
+}
+
+export async function runTreeseedManagedDev(
+	options: TreeseedManagedDevOptions,
+	deps: Partial<ManagedStartDependencies> & {
+		supervisorCommand?: string;
+		supervisorArgs?: string[];
+	} = {},
+) {
+	const tenantRoot = resolve(options.cwd ?? process.cwd());
+	const write = deps.write ?? defaultWrite;
+	const spawnProcess = deps.spawn ?? spawn;
+	const fetchFn = deps.fetch ?? globalThis.fetch.bind(globalThis);
+	const processIsAlive = deps.processIsAlive ?? defaultProcessIsAlive;
+	const killProcess = deps.killProcess ?? defaultKillProcess;
+	const inspectPortOwners = deps.inspectPortOwners ?? defaultInspectPortOwners;
+	const baseDeps = { processIsAlive, inspectPortOwners };
+
+	if (options.action === 'status') {
+		const records = (options.all ? listRepoFamilyDevInstances(tenantRoot) : listWorktreeDevInstances(tenantRoot))
+			.map((record) => evaluateDevInstance(record, { processIsAlive }));
+		return managedDevResult('treeseed.dev.status', true, records, options, write);
+	}
+
+	if (options.action === 'logs') {
+		const record = listWorktreeDevInstances(tenantRoot)
+			.map((entry) => evaluateDevInstance(entry, { processIsAlive }))
+			.find((entry) => entry.status !== 'stale') ?? listWorktreeDevInstances(tenantRoot)[0];
+		if (!record) {
+			return managedDevResult('treeseed.dev.logs', false, 'No managed Treeseed dev instance found for this worktree.', options, write);
+		}
+		if (options.json) {
+			return managedDevResult('treeseed.dev.logs', true, { logPath: record.logPath, exists: existsSync(record.logPath) }, options, write);
+		}
+		if (!existsSync(record.logPath)) {
+			write(`Log file does not exist yet: ${record.logPath}\n`, 'stderr');
+			return 1;
+		}
+		if (options.follow) {
+			const tail = spawnProcess('tail', ['-f', record.logPath], { cwd: record.projectRoot, stdio: 'inherit' });
+			return await new Promise<number>((resolvePromise) => {
+				tail.on('exit', (code) => resolvePromise(code ?? 0));
+			});
+		}
+		write(renderDevLogForHuman(readRecentDevLog(record.logPath)), 'stdout');
+		return 0;
+	}
+
+	if (options.action === 'stop') {
+		const records = options.all ? listRepoFamilyDevInstances(tenantRoot) : listWorktreeDevInstances(tenantRoot);
+		const stopped = [];
+		for (const record of records) {
+			stopped.push(await stopDevInstance(record, options, { killProcess, processIsAlive }));
+		}
+		return managedDevResult('treeseed.dev.stop', true, stopped, options, write);
+	}
+
+	if (options.action === 'restart') {
+		await runTreeseedManagedDev({ ...options, action: 'stop' }, { ...deps, write: () => {} });
+		return runTreeseedManagedDev({ ...options, action: 'start' }, deps);
+	}
+
+	const allocated = resolveManagedPortOverrides(tenantRoot, options, baseDeps);
+	const effectiveEnv = {
+		...(options.env ?? {}),
+		...allocated.env,
+	};
+	const plan = createTreeseedIntegratedDevPlan({
+		...options,
+		cwd: tenantRoot,
+		webPort: allocated.webPort,
+		apiPort: allocated.apiPort,
+		env: effectiveEnv,
+	});
+	const runtimeScope = instanceRuntimeScope(plan);
+	const instancePath = devInstancePath(tenantRoot, runtimeScope);
+	const logPath = plan.logPath;
+	const existing = readDevInstanceFile(instancePath);
+	if (existing && evaluateDevInstance(existing, { processIsAlive }).status !== 'stale' && options.force !== true) {
+		return managedDevResult('treeseed.dev.start', true, evaluateDevInstance(existing, { processIsAlive }), options, write);
+	}
+	if (existing && options.force === true) {
+		await stopDevInstance(existing, options, { killProcess, processIsAlive });
+	}
+
+	mkdirSync(dirname(logPath), { recursive: true });
+	writeFileSync(logPath, '', { flag: 'a' });
+	const supervisorCommand = deps.supervisorCommand ?? process.execPath;
+	const supervisorArgs = [
+		...(deps.supervisorArgs ?? process.argv.slice(1).filter((arg) => !['start', 'restart', 'status', 'stop', 'logs'].includes(arg))),
+		'--port',
+		String(allocated.webPort),
+		'--api-port',
+		String(allocated.apiPort),
+		...(options.webHost ? ['--host', options.webHost] : []),
+		...(options.apiHost ? ['--api-host', options.apiHost] : []),
+		...(options.webRuntime ? ['--web-runtime', options.webRuntime] : []),
+		...(options.surfaces ? ['--surfaces', options.surfaces] : options.surface ? ['--surface', options.surface] : []),
+		...(options.setupMode ? ['--setup', options.setupMode] : []),
+		...(options.feedbackMode ? ['--feedback', options.feedbackMode] : []),
+		...(options.openMode ? ['--open', options.openMode] : []),
+		...(options.reset ? ['--reset'] : []),
+		...(options.forceConflicts ? ['--force'] : []),
+		...(options.projectId ? ['--project-id', options.projectId] : []),
+		...(options.teamId ? ['--team-id', options.teamId] : []),
+	];
+	const logFd = openSync(logPath, 'a');
+	const child = spawnProcess(supervisorCommand, supervisorArgs, {
+		cwd: tenantRoot,
+		env: {
+			...process.env,
+			...effectiveEnv,
+			TREESEED_MANAGED_DEV_INSTANCE: '1',
+			TREESEED_MANAGED_DEV_SUPPRESS_STDIO: '1',
+		},
+		stdio: ['ignore', logFd, logFd],
+		detached: true,
+	});
+	closeSync(logFd);
+	child.unref?.();
+	const childPid = typeof child.pid === 'number' ? child.pid : null;
+	const starting = writeDevInstance(createDevInstanceRecord(plan, 'starting', childPid, childPid && process.platform !== 'win32' ? childPid : null));
+	const ready = await waitForManagedInstanceReady(instancePath, options, { processIsAlive });
+	if (!ready) {
+		return managedDevResult('treeseed.dev.start', false, { ...starting, status: 'degraded', staleReason: 'Supervisor did not publish an instance record.' }, options, write);
+	}
+	if (ready.status === 'stale') {
+		return managedDevResult('treeseed.dev.start', false, ready, options, write);
+	}
+	// Touch HTTP readiness once more so stale startup records do not look successful.
+	for (const check of ready.readyChecks.filter((entry) => entry.required && entry.strategy === 'http' && entry.url)) {
+		if (!await fetchOk(fetchFn, check.url!, 2_000)) {
+			const degraded = writeDevInstance({ ...ready, status: 'degraded', staleReason: `${check.label} is not reachable at ${check.url}.` });
+			return managedDevResult('treeseed.dev.start', false, degraded, options, write);
+		}
+	}
+	return managedDevResult('treeseed.dev.start', ready.status === 'ready', ready, options, write);
+}
+
 type DevRuntimeState = {
 	pid: number;
 	tenantRoot: string;
@@ -1467,7 +2122,7 @@ function readDevRuntimeStateFile(path: string): DevRuntimeState | null {
 			return null;
 		}
 		const commandIds = Array.isArray(parsed.commandIds)
-			? parsed.commandIds.filter((id): id is TreeseedIntegratedDevCommandId => CANONICAL_COMMAND_IDS.includes(id as TreeseedIntegratedDevCommandId))
+			? parsed.commandIds.filter((id): id is TreeseedIntegratedDevCommandId => ALL_COMMAND_IDS.includes(id as TreeseedIntegratedDevCommandId))
 			: undefined;
 		return {
 			pid: parsed.pid!,
@@ -1563,7 +2218,9 @@ function formatPortOwner(owner: TreeseedDevPortOwner) {
 	return `port ${owner.port}${owner.pid ? ` pid ${owner.pid}` : ''}${owner.processName ? ` (${owner.processName})` : ''}`;
 }
 
-function writeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+function writeCurrentDevRuntimeState(plan: TreeseedIntegratedDevPlan, status: TreeseedDevInstanceStatus = 'starting') {
+	const tenantRoot = plan.tenantRoot;
+	const commandIds = plan.commands.map((command) => command.id);
 	const outputPath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
 	mkdirSync(dirname(outputPath), { recursive: true });
 	writeFileSync(
@@ -1576,16 +2233,35 @@ function writeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly Tr
 		}, null, 2)}\n`,
 		'utf8',
 	);
+	const managedProcessGroupId = process.env.TREESEED_MANAGED_DEV_INSTANCE === '1' && process.platform !== 'win32'
+		? process.pid
+		: null;
+	writeDevInstance(createDevInstanceRecord(plan, status, process.pid, managedProcessGroupId));
 	return outputPath;
 }
 
-function removeCurrentDevRuntimeState(tenantRoot: string, commandIds: readonly TreeseedIntegratedDevCommandId[]) {
+function updateCurrentDevRuntimeState(plan: TreeseedIntegratedDevPlan, status: TreeseedDevInstanceStatus, staleReason?: string) {
+	const existing = readDevInstanceFile(devInstancePath(plan.tenantRoot, instanceRuntimeScope(plan)));
+	if (!existing || existing.pid !== process.pid) {
+		return;
+	}
+	writeDevInstance({ ...existing, status, staleReason });
+}
+
+function removeCurrentDevRuntimeState(plan: TreeseedIntegratedDevPlan) {
+	const tenantRoot = plan.tenantRoot;
+	const commandIds = plan.commands.map((command) => command.id);
 	const statePath = devRuntimeStatePath(tenantRoot, runtimeScopeKey(commandIds));
 	const state = readDevRuntimeStateFile(statePath);
 	if (!state || state.pid !== process.pid) {
-		return;
+		// Still try the richer instance record; a legacy state race should not strand it.
+	} else {
+		rmSync(statePath, { force: true });
 	}
-	rmSync(statePath, { force: true });
+	const instance = readDevInstanceFile(devInstancePath(tenantRoot, instanceRuntimeScope(plan)));
+	if (instance?.pid === process.pid) {
+		removeDevInstanceRecord(instance);
+	}
 }
 
 async function waitForProcessExit(pid: number, processIsAlive: ProcessStatusChecker, timeoutMs: number) {
@@ -1746,14 +2422,12 @@ function createDevLogWrite(
 	logPath: string,
 ): TreeseedIntegratedDevDependencies['write'] {
 	mkdirSync(dirname(logPath), { recursive: true });
-	appendFileSync(logPath, `${JSON.stringify({
-		schemaVersion: 1,
-		kind: 'treeseed.dev.log',
-		type: 'start',
-		startedAt: new Date().toISOString(),
-	})}\n`, 'utf8');
+	appendFileSync(logPath, `[dev] Log session started at ${new Date().toISOString()}.\n`, 'utf8');
+	const suppressBaseWrite = process.env.TREESEED_MANAGED_DEV_SUPPRESS_STDIO === '1';
 	return (line, stream) => {
-		baseWrite(line, stream);
+		if (!suppressBaseWrite) {
+			baseWrite(line, stream);
+		}
 		appendFileSync(logPath, line, 'utf8');
 	};
 }
@@ -2393,7 +3067,7 @@ export async function runTreeseedIntegratedDev(
 		return 1;
 	}
 
-	writeCurrentDevRuntimeState(tenantRoot, commandIds);
+	writeCurrentDevRuntimeState(plan, 'starting');
 
 	const children = new Map<TreeseedIntegratedDevCommand['id'], ManagedDevProcess>();
 	const commandsById = new Map(plan.commands.map((command) => [command.id, command]));
@@ -2466,7 +3140,7 @@ export async function runTreeseedIntegratedDev(
 			for (const dispose of disposers) {
 				dispose();
 			}
-			removeCurrentDevRuntimeState(tenantRoot, commandIds);
+			removeCurrentDevRuntimeState(plan);
 			emitEvent(
 				options,
 				write,
@@ -2758,10 +3432,12 @@ export async function runTreeseedIntegratedDev(
 			}
 			readinessInProgress = false;
 			if (!allRequiredReady) {
+				updateCurrentDevRuntimeState(plan, 'degraded', 'One or more required readiness checks failed.');
 				startLiveWatch();
 				return;
 			}
 			readinessComplete = true;
+			updateCurrentDevRuntimeState(plan, 'ready');
 			if (plan.webUrl) {
 				emitEvent(options, write, { type: 'ready', url: plan.webUrl, message: `Treeseed dev ready at ${plan.webUrl}.` });
 			}

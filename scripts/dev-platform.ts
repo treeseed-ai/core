@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
+	runTreeseedManagedDev,
 	runTreeseedIntegratedDev,
 	type TreeseedIntegratedDevFeedbackMode,
 	type TreeseedLocalRuntimeMode,
 	type TreeseedIntegratedDevOpenMode,
 	type TreeseedIntegratedDevSetupMode,
 	type TreeseedIntegratedDevSurface,
+	type TreeseedManagedDevAction,
 } from '../src/dev.ts';
 
-const args = process.argv.slice(2);
+const rawArgs = process.argv.slice(2);
+const managedActions = new Set(['start', 'status', 'logs', 'stop', 'restart']);
+const action = managedActions.has(rawArgs[0] ?? '') ? rawArgs[0] as TreeseedManagedDevAction : null;
+const args = action ? rawArgs.slice(1) : rawArgs;
 
 function readFlag(name: string) {
 	return args.includes(name);
@@ -93,25 +101,52 @@ function readForwardedEnvironment() {
 	);
 }
 
-const exitCode = await runTreeseedIntegratedDev({
-	surface: parseSurface(readOption('--surface')),
-	surfaces: readOption('--surfaces'),
-	watch: readFlag('--watch'),
-	webHost: readOption('--host'),
-	webPort: readNumberOption('--port'),
-	apiHost: readOption('--api-host'),
-	apiPort: readNumberOption('--api-port'),
-	webRuntime: parseLocalRuntimeMode(readOption('--web-runtime')),
-	setupMode: parseSetupMode(readOption('--setup')),
-	feedbackMode: parseFeedbackMode(readOption('--feedback')),
-	openMode: parseOpenMode(readOption('--open')),
-	plan: readFlag('--plan'),
-	reset: readFlag('--reset'),
-	force: readFlag('--force'),
-	json: readFlag('--json'),
-	projectId: readOption('--project-id'),
-	teamId: readOption('--team-id'),
-	env: readForwardedEnvironment(),
-});
+function resolveSupervisorArgs() {
+	const scriptPath = fileURLToPath(import.meta.url);
+	if (scriptPath.endsWith('.ts')) {
+		const runnerPath = resolve(dirname(scriptPath), 'run-ts.mjs');
+		return existsSync(runnerPath) ? [runnerPath, scriptPath] : [scriptPath];
+	}
+	return [scriptPath];
+}
 
-process.exit(exitCode);
+async function main() {
+	const common = {
+		surface: parseSurface(readOption('--surface')),
+		surfaces: readOption('--surfaces'),
+		watch: readFlag('--watch'),
+		webHost: readOption('--host'),
+		webPort: readNumberOption('--port'),
+		apiHost: readOption('--api-host'),
+		apiPort: readNumberOption('--api-port'),
+		webRuntime: parseLocalRuntimeMode(readOption('--web-runtime')),
+		setupMode: parseSetupMode(readOption('--setup')),
+		feedbackMode: parseFeedbackMode(readOption('--feedback')),
+		openMode: parseOpenMode(readOption('--open')),
+		plan: readFlag('--plan'),
+		reset: readFlag('--reset'),
+		force: readFlag('--force'),
+		forceConflicts: readFlag('--force-conflicts'),
+		json: readFlag('--json'),
+		projectId: readOption('--project-id'),
+		teamId: readOption('--team-id'),
+		env: readForwardedEnvironment(),
+	};
+	if (!action) {
+		return runTreeseedIntegratedDev(common);
+	}
+	return runTreeseedManagedDev(
+		{
+			...common,
+			action,
+			all: readFlag('--all'),
+			follow: readFlag('--follow'),
+		},
+		{
+			supervisorCommand: process.execPath,
+			supervisorArgs: resolveSupervisorArgs(),
+		},
+	);
+}
+
+process.exit(await main());
