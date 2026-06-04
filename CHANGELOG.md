@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.19] - 2026-06-04
+
+### Added
+
+- feat(templates): add launch requirements to site templates (561fb3ec749f)
+
+### Dependencies
+
+- build(build): sync package dependency references (1d318815fd8d)
+- chore(core): bump version and update @treeseed/sdk (d665a5f89c37)
+- build(core): bump version and update @treeseed/sdk (c8ff1a42172c)
+- build(build): sync package dependency references (3cc10112384c)
+- build(core): bump version and update @treeseed/sdk (4909ddd66cb3)
+- chore(core): update version and @treeseed/sdk dependency (08d83c327dc9)
+- Release @treeseed/core 0.10.19.
+
 ## [0.10.18] - 2026-06-02
 
 ### Tests
