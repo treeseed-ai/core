@@ -7,6 +7,7 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 import {
 	createTreeseedIntegratedDevPlan,
+	runTreeseedManagedDev,
 	runTreeseedIntegratedDev,
 	runTreeseedIntegratedDevReset,
 } from '../../src/dev.ts';
@@ -673,6 +674,208 @@ surfaces:
 		expect(parsed.payload.restartPolicy.agentChanges).toBe('defer');
 		expect(parsed.payload.commands[0].env.GH_TOKEN).toBe('[redacted]');
 		expect(parsed.payload.commands[0].env.TREESEED_API_AUTH_SECRET).toBe('[redacted]');
+	});
+
+	it('starts a managed worktree dev instance with durable state, logs, ports, and discovery metadata', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const previousCacheHome = process.env.XDG_CACHE_HOME;
+		const childPid = 55_555;
+		const output: string[] = [];
+		const spawnCalls: Array<{ command: string; args: string[]; options: SpawnOptions }> = [];
+
+		try {
+			process.env.XDG_CACHE_HOME = resolve(tempRoot, '.cache');
+			const exitCode = await runTreeseedManagedDev(
+				{
+					action: 'start',
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					json: true,
+					readinessTimeoutMs: 1,
+				},
+				{
+					supervisorCommand: 'node',
+					supervisorArgs: ['dev-platform.js'],
+					spawn(command, args, options) {
+						spawnCalls.push({ command, args, options });
+						return new FakeChildProcess(childPid) as never;
+					},
+					processIsAlive(pid) {
+						return pid === childPid;
+					},
+					inspectPortOwners() {
+						return [];
+					},
+					fetch: async () => ({ ok: false }) as Response,
+					write(line) {
+						output.push(line);
+					},
+				},
+			);
+
+			expect(exitCode).toBe(1);
+			expect(spawnCalls).toHaveLength(1);
+			expect(spawnCalls[0]?.command).toBe('node');
+			expect(spawnCalls[0]?.args).toEqual(expect.arrayContaining(['dev-platform.js', '--port', '4321', '--api-port', '3000']));
+			expect(spawnCalls[0]?.args).not.toContain('--json');
+			expect(spawnCalls[0]?.options.detached).toBe(true);
+			expect(spawnCalls[0]?.options.stdio).toEqual(['ignore', expect.any(Number), expect.any(Number)]);
+			expect(spawnCalls[0]?.options.env).toMatchObject({
+				TREESEED_MANAGED_DEV_INSTANCE: '1',
+				TREESEED_MANAGED_DEV_SUPPRESS_STDIO: '1',
+			});
+			expect(String(spawnCalls[0]?.options.env?.TREESEED_MAILPIT_CONTAINER_NAME)).toMatch(/^treeseed-mailpit-[a-f0-9]+$/u);
+
+			const parsed = JSON.parse(output.join(''));
+			expect(parsed.kind).toBe('treeseed.dev.start');
+			expect(parsed.ok).toBe(false);
+			expect(parsed.payload).toMatchObject({
+				status: 'degraded',
+				pid: childPid,
+				processGroupId: childPid,
+				runtimeScope: 'web',
+				ports: { web: 4321, api: 3000, postgres: 55432, mailpitSmtp: 1025 },
+				urls: { web: 'http://127.0.0.1:4321' },
+			});
+
+			const instancePath = resolve(tempRoot, '.treeseed/dev/instances/web.json');
+			const pidPath = resolve(tempRoot, '.treeseed/dev/pids/web.pid');
+			const logPath = resolve(tempRoot, '.treeseed/logs/dev-web.jsonl');
+			expect(JSON.parse(readFileSync(instancePath, 'utf8'))).toMatchObject({
+				kind: 'treeseed.dev.instance',
+				projectRoot: tempRoot,
+				worktreeRoot: tempRoot,
+				status: 'degraded',
+				pid: childPid,
+				processGroupId: childPid,
+				logPath,
+			});
+			expect(readFileSync(pidPath, 'utf8').trim()).toBe(String(childPid));
+			expect(existsSync(logPath)).toBe(true);
+			expect(existsSync(resolve(tempRoot, '.cache/treeseed/dev-instances'))).toBe(true);
+		} finally {
+			if (previousCacheHome === undefined) {
+				delete process.env.XDG_CACHE_HOME;
+			} else {
+				process.env.XDG_CACHE_HOME = previousCacheHome;
+			}
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('reports stale managed dev instances and stops only the owned process group', async () => {
+		const tempRoot = writeTempTenant(`name: Test
+slug: test
+siteUrl: https://example.com
+contactEmail: hello@example.com
+surfaces:
+  web:
+    provider: cloudflare
+    local:
+      runtime: local
+`);
+		const previousCacheHome = process.env.XDG_CACHE_HOME;
+		const childPid = 55_556;
+		try {
+			process.env.XDG_CACHE_HOME = resolve(tempRoot, '.cache');
+			const startOutput: string[] = [];
+			await runTreeseedManagedDev(
+				{
+					action: 'start',
+					cwd: tempRoot,
+					surface: 'web',
+					setupMode: 'off',
+					feedbackMode: 'off',
+					openMode: 'off',
+					json: true,
+					readinessTimeoutMs: 1,
+				},
+				{
+					supervisorCommand: 'node',
+					supervisorArgs: ['dev-platform.js'],
+					spawn() {
+						return new FakeChildProcess(childPid) as never;
+					},
+					processIsAlive(pid) {
+						return pid === childPid;
+					},
+					inspectPortOwners() {
+						return [];
+					},
+					fetch: async () => ({ ok: false }) as Response,
+					write(line) {
+						startOutput.push(line);
+					},
+				},
+			);
+
+			const statusOutput: string[] = [];
+			const statusExit = await runTreeseedManagedDev(
+				{ action: 'status', cwd: tempRoot, json: true },
+				{
+					processIsAlive() {
+						return false;
+					},
+					write(line) {
+						statusOutput.push(line);
+					},
+				},
+			);
+			expect(statusExit).toBe(0);
+			const status = JSON.parse(statusOutput.join(''));
+			expect(status.kind).toBe('treeseed.dev.status');
+			expect(status.payload[0]).toMatchObject({
+				status: 'stale',
+				pid: childPid,
+				staleReason: `Process ${childPid} is not running.`,
+			});
+
+			const livePids = new Set([childPid]);
+			const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
+			const stopOutput: string[] = [];
+			const stopExit = await runTreeseedManagedDev(
+				{ action: 'stop', cwd: tempRoot, json: true, shutdownGraceMs: 0 },
+				{
+					processIsAlive(pid) {
+						return livePids.has(pid);
+					},
+					killProcess(pid, signal) {
+						killCalls.push({ pid, signal });
+						livePids.delete(Math.abs(pid));
+					},
+					write(line) {
+						stopOutput.push(line);
+					},
+				},
+			);
+
+			expect(stopExit).toBe(0);
+			expect(killCalls).toEqual([{ pid: process.platform === 'win32' ? childPid : -childPid, signal: 'SIGTERM' }]);
+			const stopped = JSON.parse(stopOutput.join(''));
+			expect(stopped.kind).toBe('treeseed.dev.stop');
+			expect(stopped.payload[0].status).toBe('stopped');
+			expect(existsSync(resolve(tempRoot, '.treeseed/dev/instances/web.json'))).toBe(false);
+			expect(existsSync(resolve(tempRoot, '.treeseed/dev/pids/web.pid'))).toBe(false);
+		} finally {
+			if (previousCacheHome === undefined) {
+				delete process.env.XDG_CACHE_HOME;
+			} else {
+				process.env.XDG_CACHE_HOME = previousCacheHome;
+			}
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
 	});
 
 	it('replaces an active previous dev runtime before spawning services', async () => {

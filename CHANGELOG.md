@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.21] - 2026-06-04
+
+### Added
+
+- feat(dev): introduce integrated managed development (e5dfdcd785ce)
+
+### Dependencies
+
+- build(core): bump version and update @treeseed/sdk (d2a37cb1ee60)
+- Release @treeseed/core 0.10.21.
+
 ## [0.10.20] - 2026-06-04
 
 ### Dependencies

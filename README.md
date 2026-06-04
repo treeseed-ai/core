@@ -71,6 +71,22 @@ What they do:
 - `build`: builds the internal fixture app in production-like mode
 - `test:smoke`: runs the packed-install smoke test
 
+### Integrated managed dev
+
+The published Core runtime also owns the integrated Treeseed dev supervisor used by the installable CLI:
+
+```bash
+npx trsd dev
+npx trsd dev start --web-runtime local --json
+npx trsd dev status --all --json
+npx trsd dev logs --follow
+npx trsd dev stop --json
+```
+
+`trsd dev` delegates to Core and runs the foreground supervisor. `trsd dev start` launches the same runtime as a worktree-scoped managed background instance, writing authoritative instance state under `.treeseed/dev/instances`, PID files under `.treeseed/dev/pids`, and logs under `.treeseed/logs`. The repository-family index under the git common dir is discovery-only and points back to those worktree-local records.
+
+Core should keep this runtime reusable by the CLI and by the root Market workspace. Do not duplicate process, port, PID, or log management in package-local callers.
+
 ### Full verification
 
 ```bash
