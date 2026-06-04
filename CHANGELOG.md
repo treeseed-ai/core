@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.20] - 2026-06-04
+
+### Dependencies
+
+- Release @treeseed/core 0.10.20.
+
 ## [0.10.19] - 2026-06-04
 
 ### Added
