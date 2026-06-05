@@ -464,6 +464,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 	});
 	const templateProductSchema = z.object({
 		slug: z.string(),
+		sourceRef: z.string().optional(),
 		title: z.string(),
 		description: z.string(),
 		summary: z.string(),
