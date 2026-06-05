@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.22] - 2026-06-05
+
+### Added
+
+- feat(templates): introduce sourceRef for template identification (7e4386f905e9)
+
+### Dependencies
+
+- Release @treeseed/core 0.10.22.
+
 ## [0.10.21] - 2026-06-04
 
 ### Added
