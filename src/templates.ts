@@ -9,6 +9,7 @@ export interface TemplateContentEntry {
 	id: string;
 	data: {
 		slug: string;
+		sourceRef?: string;
 		title: string;
 		summary: string;
 		description: string;
@@ -58,6 +59,7 @@ export interface TemplateCatalogProvider {
 
 export interface TemplateSiteCard {
 	slug: string;
+	sourceRef: string;
 	title: string;
 	summary: string;
 	category: string;
@@ -150,6 +152,7 @@ function contentCardFromEntry(entry: TemplateContentEntry): TemplateSiteCard | n
 	}
 	return {
 		slug: entry.data.slug,
+		sourceRef: entry.data.sourceRef ?? entry.data.slug,
 		title: entry.data.title,
 		summary: entry.data.summary,
 		category: entry.data.category,
@@ -200,6 +203,7 @@ function detailFromContentEntry(entry: TemplateContentEntry): TemplateSiteDetail
 function cardFromCatalogItem(item: CatalogItem): TemplateSiteCard {
 	return {
 		slug: item.slug,
+		sourceRef: catalogString(item.metadata, 'sourceRef') ?? item.slug,
 		title: item.title,
 		summary: item.summary ?? '',
 		category: catalogString(item.metadata, 'category') ?? 'Template',
@@ -262,28 +266,28 @@ export async function listSiteTemplates(context: TemplateSourceOptions = {}): Pr
 		? await context.catalogProvider.listItems({ locals: context.locals })
 		: [];
 	const localEntries = await listLocalTemplateEntries(context.listLocalEntries);
-	const cardsBySlug = new Map<string, TemplateSiteCard>();
+	const cardsBySourceRef = new Map<string, TemplateSiteCard>();
 	for (const entry of localEntries) {
 		const card = contentCardFromEntry(entry);
 		if (card) {
-			cardsBySlug.set(card.slug, card);
+			cardsBySourceRef.set(card.sourceRef, card);
 		}
 	}
 	for (const item of catalogItems) {
 		const card = cardFromCatalogItem(item);
-		const existing = cardsBySlug.get(card.slug);
+		const existing = cardsBySourceRef.get(card.sourceRef);
 		if (existing) {
-			cardsBySlug.set(card.slug, {
+			cardsBySourceRef.set(card.sourceRef, {
 				...existing,
 				launchRequirements: existing.launchRequirements ?? card.launchRequirements,
 			});
 		} else {
-			cardsBySlug.set(card.slug, card);
+			cardsBySourceRef.set(card.sourceRef, card);
 		}
 	}
 	return {
 		rendered: true,
-		items: sortTemplateCards([...cardsBySlug.values()]),
+		items: sortTemplateCards([...cardsBySourceRef.values()]),
 	};
 }
 
