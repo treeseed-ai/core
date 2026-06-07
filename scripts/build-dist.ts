@@ -256,6 +256,8 @@ function resolveWorkspaceSdkDeclarationPaths() {
 	}
 	return {
 		'@treeseed/sdk': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'index.d.ts'))],
+		'@treeseed/sdk/types': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'sdk-types.d.ts'))],
+		'@treeseed/sdk/types/*': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'types', '*.d.ts'))],
 		'@treeseed/sdk/*': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, '*.d.ts'))],
 	};
 }
