@@ -463,9 +463,11 @@ const MARKET_DEV_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 
 function isMarketWorkspace(tenantRoot: string) {
 	try {
 		const pkg = JSON.parse(readFileSync(resolve(tenantRoot, 'package.json'), 'utf8')) as { name?: unknown };
+		const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 		return pkg.name === '@treeseed/market'
-			&& existsSync(resolve(tenantRoot, 'src/api/server.js'))
-			&& existsSync(resolve(tenantRoot, 'src/market-operations-runner/entrypoint.js'));
+			&& existsSync(resolve(apiPackageRoot, 'package.json'))
+			&& existsSync(resolve(apiPackageRoot, 'src/api/server.js'))
+			&& existsSync(resolve(apiPackageRoot, 'src/market-operations-runner/entrypoint.js'));
 	} catch {
 		return false;
 	}
@@ -860,10 +862,11 @@ function createSetupSteps(
 		'dist/scripts/ensure-mailpit.js',
 	);
 	const dockerReady = dockerIsAvailable(env);
-	const marketMigrateScript = existsSync(resolve(tenantRoot, 'scripts/migrate-market-db.mjs'))
+	const marketApiPackageRoot = resolve(tenantRoot, 'packages/api');
+	const marketMigrateScript = existsSync(resolve(marketApiPackageRoot, 'scripts/migrate-market-db.mjs'))
 		? {
 			command: process.execPath,
-			args: [resolve(tenantRoot, 'scripts/migrate-market-db.mjs')],
+			args: [resolve(marketApiPackageRoot, 'scripts/migrate-market-db.mjs')],
 		}
 		: null;
 	const steps: TreeseedIntegratedDevSetupStep[] = [
@@ -892,7 +895,7 @@ function createSetupSteps(
 				command: marketMigrateScript?.command,
 				args: marketMigrateScript?.args,
 				status: marketMigrateScript ? 'planned' : 'failed',
-				detail: marketMigrateScript ? undefined : 'Unable to resolve scripts/migrate-market-db.mjs.',
+				detail: marketMigrateScript ? undefined : 'Unable to resolve packages/api/scripts/migrate-market-db.mjs.',
 			} satisfies TreeseedIntegratedDevSetupStep,
 		] : []),
 		{
@@ -1040,12 +1043,13 @@ function createMarketApiCommand(
 	apiHost: string,
 	apiPort: number,
 ): TreeseedIntegratedDevCommand {
+	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 	return {
 		id: 'api',
 		label: 'Treeseed Market API',
 		command: process.execPath,
-		args: [resolve(tenantRoot, 'src/api/server.js')],
-		cwd: tenantRoot,
+		args: [resolve(apiPackageRoot, 'src/api/server.js')],
+		cwd: apiPackageRoot,
 		env: {
 			...sharedEnv,
 			HOST: apiHost,
@@ -1062,22 +1066,23 @@ function createMarketOperationsRunnerCommand(
 	tenantRoot: string,
 	sharedEnv: NodeJS.ProcessEnv,
 ): TreeseedIntegratedDevCommand {
+	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 	return {
 		id: 'market-runner',
 		label: 'Market Operations Runner',
 		command: process.execPath,
 		args: [
-			'--experimental-transform-types',
-			resolve(tenantRoot, 'src/market-operations-runner/entrypoint.js'),
+			resolve(apiPackageRoot, 'src/market-operations-runner/entrypoint.js'),
+			'run',
+			'--watch',
 			'--market',
 			'local',
-			'--watch',
 			'--operation',
 			'project:web_deployment',
 			'--poll-interval-ms',
 			'5000',
 		],
-		cwd: tenantRoot,
+		cwd: apiPackageRoot,
 		env: {
 			...sharedEnv,
 			TREESEED_PLATFORM_RUNNER_ENVIRONMENT: sharedEnv.TREESEED_PLATFORM_RUNNER_ENVIRONMENT ?? 'local',

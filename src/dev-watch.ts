@@ -140,13 +140,14 @@ export function classifyChanges(changedPaths: string[], watchEntries: TreeseedDe
 	}
 	function isTenantApiInput(filePath: string) {
 		const normalized = filePath.split(sep).join('/');
+		const apiPackageSource = ['', 'packages', 'api', 'src'].join('/');
 		return (
 			normalized.endsWith('/treeseed.site.yaml') ||
 			normalized.endsWith('/treeseed.config.ts') ||
 			normalized.endsWith('/package.json') ||
 			normalized.endsWith('/tsconfig.json') ||
-			normalized.includes('/src/api/') ||
-			normalized.includes('/src/market-operations-runner/')
+			normalized.includes(`${apiPackageSource}/api/`) ||
+			normalized.includes(`${apiPackageSource}/market-operations-runner/`)
 		);
 	}
 	const tenantChanged = changedPaths.some((filePath) =>
