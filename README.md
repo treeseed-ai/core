@@ -2,7 +2,7 @@
 
 `@treeseed/core` is the Treeseed web framework package for Astro/Starlight sites. It contains the published web runtime, tenant site configuration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
 
-Backend API, agent runtime, manager, worker, and workday processing services are owned by `@treeseed/agent`.
+The Market backend API and Market operations runner are owned by `@treeseed/api`. Capacity-provider runtime, provider manager/runner, and workday processing services are owned by `@treeseed/agent`.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -43,7 +43,7 @@ The package builds directly against the canonical shared working-site fixture in
 
 `@treeseed/core` validates itself against the integrated shared fixture, not a Core-specific fork.
 
-That means the fixture may reference package surfaces owned by `sdk`, `core`, and `cli`, and isolated Core verification links the real local `core` package into the shared fixture instead of maintaining a separate agent package boundary.
+That means the fixture may reference package surfaces owned by `sdk`, `core`, `agent`, `api`, and `cli`, and isolated Core verification links the real local `core` package into the shared fixture instead of maintaining package-specific fixture forks.
 
 ## Commands
 
@@ -84,6 +84,14 @@ npx trsd dev stop --json
 ```
 
 `trsd dev` delegates to Core and runs the foreground supervisor. `trsd dev start` launches the same runtime as a worktree-scoped managed background instance, writing authoritative instance state under `.treeseed/dev/instances`, PID files under `.treeseed/dev/pids`, and logs under `.treeseed/logs`. The repository-family index under the git common dir is discovery-only and points back to those worktree-local records.
+
+For the Market workspace, the web process runs from the root repo and the API plus Market operations runner run from `packages/api`. A plan should show:
+
+```text
+web cwd: .
+api cwd: packages/api
+market-runner cwd: packages/api
+```
 
 Core should keep this runtime reusable by the CLI and by the root Market workspace. Do not duplicate process, port, PID, or log management in package-local callers.
 
