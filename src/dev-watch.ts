@@ -147,7 +147,7 @@ export function classifyChanges(changedPaths: string[], watchEntries: TreeseedDe
 			normalized.endsWith('/package.json') ||
 			normalized.endsWith('/tsconfig.json') ||
 			normalized.includes(`${apiPackageSource}/api/`) ||
-			normalized.includes(`${apiPackageSource}/market-operations-runner/`)
+			normalized.includes(`${apiPackageSource}/operations-runner/`)
 		);
 	}
 	const tenantChanged = changedPaths.some((filePath) =>

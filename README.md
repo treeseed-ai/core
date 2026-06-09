@@ -2,7 +2,9 @@
 
 `@treeseed/core` is the Treeseed web framework package for Astro/Starlight sites. It contains the published web runtime, tenant site configuration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
 
-The Market backend API and Market operations runner are owned by `@treeseed/api`. Capacity-provider runtime, provider manager/runner, and workday processing services are owned by `@treeseed/agent`.
+The Treeseed backend API and Treeseed operations runner are owned by `@treeseed/api`. Capacity-provider runtime, provider manager/runner, and workday processing services are owned by `@treeseed/agent`.
+
+Core/root web hosting is web-only desired state: Cloudflare web resources, generated web config, cache/content/email web settings, and API connection/proxy metadata. It must not deploy or mutate API-owned Railway services, PostgreSQL, operations runners, or public TreeDX federation. Hosting and local runtime infrastructure flow through the SDK-owned reconciliation platform documented in the root workspace `docs/reconciliation-platform.md`.
 
 This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
 
@@ -85,15 +87,15 @@ npx trsd dev stop --json
 
 `trsd dev` delegates to Core and runs the foreground supervisor. `trsd dev start` launches the same runtime as a worktree-scoped managed background instance, writing authoritative instance state under `.treeseed/dev/instances`, PID files under `.treeseed/dev/pids`, and logs under `.treeseed/logs`. The repository-family index under the git common dir is discovery-only and points back to those worktree-local records.
 
-For the Market workspace, the web process runs from the root repo and the API plus Market operations runner run from `packages/api`. A plan should show:
+For the Treeseed workspace, the web process runs from the root repo and the API plus operations runner run from `packages/api`. A plan should show:
 
 ```text
 web cwd: .
 api cwd: packages/api
-market-runner cwd: packages/api
+operations-runner cwd: packages/api
 ```
 
-Core should keep this runtime reusable by the CLI and by the root Market workspace. Do not duplicate process, port, PID, or log management in package-local callers.
+Core should keep this runtime reusable by the CLI and by the root web workspace. Do not duplicate process, port, PID, or log management in package-local callers.
 
 ### Full verification
 

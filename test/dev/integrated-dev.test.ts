@@ -90,14 +90,14 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
-	function writeMarketApiPackage(root: string) {
+	function writeApiPackage(root: string) {
 		const apiRoot = resolve(root, 'packages/api');
 		mkdirSync(resolve(apiRoot, 'src/api'), { recursive: true });
-		mkdirSync(resolve(apiRoot, 'src/market-operations-runner'), { recursive: true });
+		mkdirSync(resolve(apiRoot, 'src/operations-runner'), { recursive: true });
 		mkdirSync(resolve(apiRoot, 'scripts'), { recursive: true });
 		writeFileSync(resolve(apiRoot, 'package.json'), JSON.stringify({ name: '@treeseed/api', type: 'module' }, null, 2));
 		writeFileSync(resolve(apiRoot, 'src/api/server.js'), 'export {};\n');
-		writeFileSync(resolve(apiRoot, 'src/market-operations-runner/entrypoint.js'), 'export {};\n');
+		writeFileSync(resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'export {};\n');
 		writeFileSync(resolve(apiRoot, 'scripts/migrate-market-db.mjs'), 'export {};\n');
 		return apiRoot;
 	}
@@ -189,7 +189,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		try {
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
-			const apiRoot = writeMarketApiPackage(root);
+			const apiRoot = writeApiPackage(root);
 
 			const plan = createTreeseedIntegratedDevPlan({
 				cwd: root,
@@ -201,18 +201,18 @@ describe('Treeseed integrated dev orchestration', () => {
 				},
 			});
 
-			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'market-runner']);
-			expect(plan.commands.find((command) => command.id === 'api')?.label).toBe('Treeseed Market API');
+			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'operations-runner']);
+			expect(plan.commands.find((command) => command.id === 'api')?.label).toBe('Treeseed API');
 			expect(plan.commands.find((command) => command.id === 'api')?.args).toEqual([resolve(apiRoot, 'src/api/server.js')]);
 			expect(plan.commands.find((command) => command.id === 'api')?.cwd).toBe(apiRoot);
-			const runner = plan.commands.find((command) => command.id === 'market-runner');
-			expect(runner?.args).toEqual(expect.arrayContaining([resolve(apiRoot, 'src/market-operations-runner/entrypoint.js'), 'run', '--watch', '--operation', 'project:web_deployment']));
+			const runner = plan.commands.find((command) => command.id === 'operations-runner');
+			expect(runner?.args).toEqual(expect.arrayContaining([resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'run', '--watch', '--operation', 'project:web_deployment']));
 			expect(runner?.cwd).toBe(apiRoot);
 			expect(runner?.args).not.toContain('--mock-external');
 			expect(runner?.env.TREESEED_MARKET_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');
 			expect(runner?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
 			expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
-				expect.arrayContaining(['web', 'api', 'market-runner']),
+				expect.arrayContaining(['web', 'api', 'operations-runner']),
 			);
 			expect(plan.setupSteps.map((step) => step.id)).toEqual(expect.arrayContaining(['market-postgres', 'market-migrations']));
 		} finally {
@@ -224,7 +224,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-default-db-'));
 		try {
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
-			writeMarketApiPackage(root);
+			writeApiPackage(root);
 
 			const plan = createTreeseedIntegratedDevPlan({
 				cwd: root,
@@ -256,7 +256,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		try {
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
-			writeMarketApiPackage(root);
+			writeApiPackage(root);
 
 			const promise = runTreeseedIntegratedDev(
 				{

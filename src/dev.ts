@@ -21,6 +21,7 @@ import {
 	resolveWranglerBin,
 	stopKnownMailpitContainers,
 } from '@treeseed/sdk/workflow-support';
+import { discoverTreeseedApplications } from '@treeseed/sdk/hosting';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import {
 	startPollingWatch,
@@ -65,7 +66,7 @@ export type TreeseedIntegratedDevFeedbackMode = 'live' | 'restart' | 'off';
 export type TreeseedIntegratedDevOpenMode = 'auto' | 'on' | 'off';
 export type TreeseedLocalRuntimeMode = 'auto' | 'provider' | 'local';
 export type TreeseedSelectedLocalRuntime = 'astro-local' | 'cloudflare-wrangler-local' | 'node-local';
-export type TreeseedIntegratedDevCommandId = 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'market-runner';
+export type TreeseedIntegratedDevCommandId = 'web' | 'api' | 'manager' | 'worker' | 'agents' | 'operations-runner';
 
 export type TreeseedLocalRuntimeSelection = {
 	requested: TreeseedLocalRuntimeMode;
@@ -457,8 +458,8 @@ function webUrlFor(host: string, port: number) {
 }
 
 const CANONICAL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents'];
-const ALL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents', 'market-runner'];
-const MARKET_DEV_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'market-runner'];
+const ALL_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'manager', 'worker', 'agents', 'operations-runner'];
+const MARKET_DEV_COMMAND_IDS: TreeseedIntegratedDevCommandId[] = ['web', 'api', 'operations-runner'];
 
 function isMarketWorkspace(tenantRoot: string) {
 	try {
@@ -467,7 +468,7 @@ function isMarketWorkspace(tenantRoot: string) {
 		return pkg.name === '@treeseed/market'
 			&& existsSync(resolve(apiPackageRoot, 'package.json'))
 			&& existsSync(resolve(apiPackageRoot, 'src/api/server.js'))
-			&& existsSync(resolve(apiPackageRoot, 'src/market-operations-runner/entrypoint.js'));
+			&& existsSync(resolve(apiPackageRoot, 'src/operations-runner/entrypoint.js'));
 	} catch {
 		return false;
 	}
@@ -811,6 +812,14 @@ function createWatchEntries(tenantRoot: string, roots: {
 			{ kind: 'cli', root: resolve(roots.cliPackageRoot, 'dist', 'cli', 'handlers', 'dev.js'), restartRequired: true },
 		);
 	}
+	try {
+		for (const app of discoverTreeseedApplications(tenantRoot)) {
+			if (app.relativeRoot === '.') continue;
+			entries.push({ kind: 'tenant', root: app.configPath, restartRequired: true });
+		}
+	} catch {
+		// The root manifest watcher above still catches config edits while a manifest is mid-edit.
+	}
 
 	return entries;
 }
@@ -839,10 +848,10 @@ function createSetupSteps(
 	const hasWebCommand = planLike.commands.some((command) => command.id === 'web');
 	const hasLocalRuntimeCommand = planLike.commands.some((command) =>
 		command.id !== 'web'
-		&& command.id !== 'market-runner'
-		&& command.label !== 'Treeseed Market API'
+		&& command.id !== 'operations-runner'
+		&& command.label !== 'Treeseed API'
 	);
-	const hasMarketApiCommand = planLike.commands.some((command) => command.label === 'Treeseed Market API');
+	const hasApiCommand = planLike.commands.some((command) => command.label === 'Treeseed API');
 	const managedMarketPostgres = env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED === 'true';
 	const needsCloudflareLocalRuntime = usesCloudflareWebRuntime || hasLocalRuntimeCommand;
 	const coreScripts = [
@@ -862,11 +871,11 @@ function createSetupSteps(
 		'dist/scripts/ensure-mailpit.js',
 	);
 	const dockerReady = dockerIsAvailable(env);
-	const marketApiPackageRoot = resolve(tenantRoot, 'packages/api');
-	const marketMigrateScript = existsSync(resolve(marketApiPackageRoot, 'scripts/migrate-market-db.mjs'))
+	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
+	const marketMigrateScript = existsSync(resolve(apiPackageRoot, 'scripts/migrate-market-db.mjs'))
 		? {
 			command: process.execPath,
-			args: [resolve(marketApiPackageRoot, 'scripts/migrate-market-db.mjs')],
+			args: [resolve(apiPackageRoot, 'scripts/migrate-market-db.mjs')],
 		}
 		: null;
 	const steps: TreeseedIntegratedDevSetupStep[] = [
@@ -876,7 +885,7 @@ function createSetupSteps(
 			required: setupMode === 'auto',
 			status: 'planned',
 		},
-		...(hasMarketApiCommand && managedMarketPostgres ? [
+		...(hasApiCommand && managedMarketPostgres ? [
 			{
 				id: 'market-postgres',
 				label: 'Start local Market PostgreSQL',
@@ -884,10 +893,10 @@ function createSetupSteps(
 				status: dockerReady ? 'planned' : 'failed',
 				detail: dockerReady
 					? 'Treeseed will manage the local Market PostgreSQL container automatically.'
-					: 'Docker daemon is unavailable; local Market API requires managed PostgreSQL.',
+					: 'Docker daemon is unavailable; local API requires managed PostgreSQL.',
 			} satisfies TreeseedIntegratedDevSetupStep,
 		] : []),
-		...(hasMarketApiCommand ? [
+		...(hasApiCommand ? [
 			{
 				id: 'market-migrations',
 				label: 'Apply local Market database migrations',
@@ -1037,7 +1046,7 @@ function createAgentCommand(
 	};
 }
 
-function createMarketApiCommand(
+function createApiCommand(
 	tenantRoot: string,
 	sharedEnv: NodeJS.ProcessEnv,
 	apiHost: string,
@@ -1046,7 +1055,7 @@ function createMarketApiCommand(
 	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 	return {
 		id: 'api',
-		label: 'Treeseed Market API',
+		label: 'Treeseed API',
 		command: process.execPath,
 		args: [resolve(apiPackageRoot, 'src/api/server.js')],
 		cwd: apiPackageRoot,
@@ -1058,7 +1067,7 @@ function createMarketApiCommand(
 			TREESEED_API_ENVIRONMENT: sharedEnv.TREESEED_API_ENVIRONMENT ?? 'local',
 			TREESEED_API_REQUEST_LOGS: sharedEnv.TREESEED_API_REQUEST_LOGS ?? 'true',
 		},
-		localRuntime: nodeLocalRuntime('Treeseed Market API'),
+		localRuntime: nodeLocalRuntime('Treeseed API'),
 	};
 }
 
@@ -1068,11 +1077,11 @@ function createMarketOperationsRunnerCommand(
 ): TreeseedIntegratedDevCommand {
 	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 	return {
-		id: 'market-runner',
-		label: 'Market Operations Runner',
+		id: 'operations-runner',
+		label: 'Treeseed Operations Runner',
 		command: process.execPath,
 		args: [
-			resolve(apiPackageRoot, 'src/market-operations-runner/entrypoint.js'),
+			resolve(apiPackageRoot, 'src/operations-runner/entrypoint.js'),
 			'run',
 			'--watch',
 			'--market',
@@ -1087,7 +1096,7 @@ function createMarketOperationsRunnerCommand(
 			...sharedEnv,
 			TREESEED_PLATFORM_RUNNER_ENVIRONMENT: sharedEnv.TREESEED_PLATFORM_RUNNER_ENVIRONMENT ?? 'local',
 		},
-		localRuntime: nodeLocalRuntime('Market Operations Runner'),
+		localRuntime: nodeLocalRuntime('Treeseed Operations Runner'),
 	};
 }
 
@@ -1111,7 +1120,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	const selectedCommandIds = selectedSurfaceCommandIds(options);
 	const marketWorkspace = isMarketWorkspace(tenantRoot);
 	const effectiveCommandIds = marketWorkspace
-		? MARKET_DEV_COMMAND_IDS.filter((id) => selectedCommandIds.includes(id) || (id === 'market-runner' && selectedCommandIds.includes('api')))
+		? MARKET_DEV_COMMAND_IDS.filter((id) => selectedCommandIds.includes(id) || (id === 'operations-runner' && selectedCommandIds.includes('api')))
 		: selectedCommandIds;
 	const devResetId = options.reset ? String(Date.now()) : undefined;
 	const webUrl = effectiveCommandIds.includes('web') ? webUrlFor(webHost, webPort) : null;
@@ -1138,9 +1147,9 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		?? resolvedHostingTeamId
 		?? resolveSeededLocalTeamId(localD1PersistTo, projectId ?? null);
 	const marketPostgresPort = mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT);
-	const marketDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL
+	const apiDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL
 		?? `postgres://treeseed:treeseed@127.0.0.1:${marketPostgresPort}/market_local`;
-	const managedMarketPostgres = marketWorkspace && isTreeseedManagedMarketPostgresUrl(marketDatabaseUrl);
+	const managedMarketPostgres = marketWorkspace && isTreeseedManagedMarketPostgresUrl(apiDatabaseUrl);
 	const mailpitSmtpPort = mergedEnv.TREESEED_MAILPIT_SMTP_PORT ?? String(TREESEED_DEFAULT_LOCAL_SMTP_PORT);
 	const mailpitUiPort = mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(TREESEED_DEFAULT_MAILPIT_UI_PORT);
 	const webEntrypoint = resolveNodeEntrypoint(
@@ -1175,7 +1184,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
 		TREESEED_API_REQUEST_LOGS: mergedEnv.TREESEED_API_REQUEST_LOGS ?? 'true',
 		...(marketWorkspace ? {
-			TREESEED_MARKET_DATABASE_URL: marketDatabaseUrl,
+			TREESEED_MARKET_DATABASE_URL: apiDatabaseUrl,
 			TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER ?? TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER,
 			TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_VOLUME ?? TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME,
 			TREESEED_MARKET_LOCAL_POSTGRES_PORT: marketPostgresPort,
@@ -1243,10 +1252,10 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 	for (const id of effectiveCommandIds) {
 		if (id === 'web') continue;
 		if (marketWorkspace && id === 'api') {
-			commands.push(createMarketApiCommand(tenantRoot, sharedEnv, apiHost, apiPort));
+			commands.push(createApiCommand(tenantRoot, sharedEnv, apiHost, apiPort));
 			continue;
 		}
-		if (marketWorkspace && id === 'market-runner') {
+		if (marketWorkspace && id === 'operations-runner') {
 			commands.push(createMarketOperationsRunnerCommand(tenantRoot, sharedEnv));
 			continue;
 		}
@@ -1266,7 +1275,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		return {
 			id: command.id,
 			label: command.label,
-			required: command.id === 'market-runner',
+			required: command.id === 'operations-runner',
 			strategy: 'process',
 		};
 	});
@@ -1300,7 +1309,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			...(commands.some((command) => command.id === 'manager') ? { manager: nodeLocalRuntime('Manager') } : {}),
 			...(commands.some((command) => command.id === 'worker') ? { worker: nodeLocalRuntime('Worker Runner') } : {}),
 			...(commands.some((command) => command.id === 'agents') ? { agents: nodeLocalRuntime('Agents Loop') } : {}),
-			...(commands.some((command) => command.id === 'market-runner') ? { marketRunner: nodeLocalRuntime('Market Operations Runner') } : {}),
+			...(commands.some((command) => command.id === 'operations-runner') ? { marketRunner: nodeLocalRuntime('Treeseed Operations Runner') } : {}),
 		},
 		restartPolicy: {
 			initialBackoffMs: INITIAL_RESTART_BACKOFF_MS,
@@ -1848,7 +1857,7 @@ function renderDevLogJsonEventForHuman(parsed: Record<string, unknown>) {
 	if (!message) {
 		return null;
 	}
-	if (surface === '[market-runner]') {
+	if (surface === '[operations-runner]') {
 		try {
 			const runner = JSON.parse(message) as Record<string, unknown>;
 			if (runner.ok === true && runner.claimed === false && runner.operation == null) {
@@ -2033,6 +2042,10 @@ export async function runTreeseedManagedDev(
 	const runtimeScope = instanceRuntimeScope(plan);
 	const instancePath = devInstancePath(tenantRoot, runtimeScope);
 	const logPath = plan.logPath;
+	if (options.plan) {
+		writePlan(plan, options, write);
+		return 0;
+	}
 	const existing = readDevInstanceFile(instancePath);
 	if (existing && evaluateDevInstance(existing, { processIsAlive }).status !== 'stale' && options.force !== true) {
 		return managedDevResult('treeseed.dev.start', true, evaluateDevInstance(existing, { processIsAlive }), options, write);
@@ -2624,7 +2637,7 @@ function attachPrefixedLogReader(
 		stderr: { suppressWorkerdBrokenPipeBlock: false },
 	};
 	function shouldSuppressLogLine(line: string, name: 'stdout' | 'stderr') {
-		if (!options.json && surface === 'market-runner' && name === 'stdout') {
+		if (!options.json && surface === 'operations-runner' && name === 'stdout') {
 			try {
 				const parsed = JSON.parse(line) as Record<string, unknown>;
 				if (parsed.ok === true && parsed.claimed === false && parsed.operation == null) {
@@ -3365,8 +3378,8 @@ export async function runTreeseedIntegratedDev(
 								restartIds.add(id);
 							}
 						}
-						if ((change.tenantApiChanged || change.sdkChanged) && commandsById.has('market-runner')) {
-							restartIds.add('market-runner');
+						if ((change.tenantApiChanged || change.sdkChanged) && commandsById.has('operations-runner')) {
+							restartIds.add('operations-runner');
 						}
 						for (const id of restartIds) {
 							await restartCommand(id);
