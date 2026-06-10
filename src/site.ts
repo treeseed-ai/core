@@ -3,7 +3,7 @@ import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import rehypeKatex from 'rehype-katex';
@@ -202,6 +202,35 @@ function resolveUiComponentEntrypoint(
 	}
 
 	return require.resolve(uiEntrypoint);
+}
+
+function resolveUiDistRoot(projectRoot: string) {
+	const probeEntrypoint = '@treeseed/ui/components/astro/layouts/MainLayout.astro';
+	let resolvedProbe: string;
+	try {
+		resolvedProbe = createRequire(resolve(projectRoot, 'package.json')).resolve(probeEntrypoint);
+	} catch {
+		resolvedProbe = require.resolve(probeEntrypoint);
+	}
+
+	const distMarker = `${sep}dist${sep}astro${sep}`;
+	const markerIndex = resolvedProbe.lastIndexOf(distMarker);
+	if (markerIndex < 0) {
+		return null;
+	}
+	return resolvedProbe.slice(0, markerIndex + `${sep}dist`.length);
+}
+
+function createUiPackageAliases(projectRoot: string) {
+	const uiDistRoot = resolveUiDistRoot(projectRoot);
+	if (!uiDistRoot) return [];
+
+	return [
+		{ find: /^@treeseed\/ui\/components\/astro\/(.*)$/, replacement: `${uiDistRoot}/astro/$1` },
+		{ find: /^@treeseed\/ui\/styles\/(.*)$/, replacement: `${uiDistRoot}/styles/$1` },
+		{ find: /^@treeseed\/ui\/lib\/(.*)$/, replacement: `${uiDistRoot}/lib/$1` },
+		{ find: /^@treeseed\/ui\/theme\/schemes\/(.*)$/, replacement: `${uiDistRoot}/theme/schemes/$1` },
+	];
 }
 
 function resolveSitePluginExtensions(
@@ -410,6 +439,9 @@ export function createTreeseedSite(
 			},
 		},
 		vite: {
+			resolve: {
+				alias: createUiPackageAliases(projectRoot),
+			},
 			define: {
 				__TREESEED_TENANT_CONFIG__: injectedTenantConfig,
 				__TREESEED_PROJECT_ROOT__: injectedProjectRoot,
