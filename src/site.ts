@@ -188,8 +188,20 @@ function resolveUiComponentEntrypoint(
 	siteLayers: ReturnType<typeof buildTreeseedSiteLayers>,
 	resourcePath: string,
 	uiEntrypoint: string,
+	projectRoot?: string,
 ) {
-	return resolveTreeseedSiteResource(siteLayers, 'components', resourcePath) ?? require.resolve(uiEntrypoint);
+	const tenantEntrypoint = resolveTreeseedSiteResource(siteLayers, 'components', resourcePath);
+	if (tenantEntrypoint) return tenantEntrypoint;
+
+	if (projectRoot) {
+		try {
+			return createRequire(resolve(projectRoot, 'package.json')).resolve(uiEntrypoint);
+		} catch {
+			// Fall back to Core's package context for installed-package consumers.
+		}
+	}
+
+	return require.resolve(uiEntrypoint);
 }
 
 function resolveSitePluginExtensions(
@@ -467,14 +479,14 @@ export function createTreeseedSite(
 					{ icon: 'discord', label: `${siteConfig.site.name} Discord`, href: siteConfig.site.discordLink },
 				],
 				components: {
-					Footer: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Footer.astro', '@treeseed/ui/components/astro/docs/Footer.astro'),
-					Header: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Header.astro', '@treeseed/ui/components/astro/docs/Header.astro'),
-					PageTitle: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageTitle.astro', '@treeseed/ui/components/astro/docs/PageTitle.astro'),
-					PageFrame: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageFrame.astro', '@treeseed/ui/components/astro/docs/PageFrame.astro'),
-					PageSidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageSidebar.astro', '@treeseed/ui/components/astro/docs/PageSidebar.astro'),
-					Sidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Sidebar.astro', '@treeseed/ui/components/astro/docs/Sidebar.astro'),
-					SiteTitle: resolveUiComponentEntrypoint(siteLayers, 'components/SiteTitle.astro', '@treeseed/ui/components/astro/core/SiteTitle.astro'),
-					ThemeSelect: resolveUiComponentEntrypoint(siteLayers, 'components/docs/ThemeSelect.astro', '@treeseed/ui/components/astro/docs/ThemeSelect.astro'),
+					Footer: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Footer.astro', '@treeseed/ui/components/astro/docs/Footer.astro', projectRoot),
+					Header: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Header.astro', '@treeseed/ui/components/astro/docs/Header.astro', projectRoot),
+					PageTitle: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageTitle.astro', '@treeseed/ui/components/astro/docs/PageTitle.astro', projectRoot),
+					PageFrame: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageFrame.astro', '@treeseed/ui/components/astro/docs/PageFrame.astro', projectRoot),
+					PageSidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageSidebar.astro', '@treeseed/ui/components/astro/docs/PageSidebar.astro', projectRoot),
+					Sidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Sidebar.astro', '@treeseed/ui/components/astro/docs/Sidebar.astro', projectRoot),
+					SiteTitle: resolveUiComponentEntrypoint(siteLayers, 'components/SiteTitle.astro', '@treeseed/ui/components/astro/core/SiteTitle.astro', projectRoot),
+					ThemeSelect: resolveUiComponentEntrypoint(siteLayers, 'components/docs/ThemeSelect.astro', '@treeseed/ui/components/astro/docs/ThemeSelect.astro', projectRoot),
 					...siteExtensions.starlightComponents,
 				},
 				sidebar: booksRendered ? getStarlightSidebarConfigFromRuntime(bookRuntime) : [],
