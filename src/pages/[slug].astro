@@ -1,8 +1,8 @@
 ---
-import ContentLayout from '../layouts/ContentLayout.astro';
-import BridgeLayout from '../layouts/BridgeLayout.astro';
-import PublishedContentBody from '../components/site/PublishedContentBody.astro';
-import RouteNotFound from '../components/site/RouteNotFound.astro';
+import ContentLayout from '@treeseed/ui/components/astro/layouts/ContentLayout.astro';
+import BridgeLayout from '@treeseed/ui/components/astro/layouts/BridgeLayout.astro';
+import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
+import RouteNotFound from '@treeseed/ui/components/astro/site/RouteNotFound.astro';
 import { isPublishedRuntimeContentMode, loadPublishedEntry } from '../utils/site-content-runtime';
 
 export const prerender = false;

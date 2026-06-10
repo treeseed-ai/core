@@ -1,7 +1,7 @@
 ---
-import MainLayout from '../../layouts/MainLayout.astro';
-import SectionIntro from '../../components/site/SectionIntro.astro';
-import ChronicleList from '../../components/site/ChronicleList.astro';
+import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
+import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
+import ChronicleList from '@treeseed/ui/components/astro/site/ChronicleList.astro';
 import { getPublishedDecisions, resolveContributorsForEntries } from '../../utils/hub-content';
 import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
 
