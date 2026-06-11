@@ -219,8 +219,14 @@ export function resolveTreeseedSiteResource(
 
 export function resolveTreeseedPageEntrypoint(layers: TreeseedSiteLayer[], resourcePath: string) {
 	const hasExplicitExtension = /\.[A-Za-z0-9]+$/u.test(resourcePath);
+	const compiledCandidates = hasExplicitExtension && /\.[cm]?tsx?$/u.test(resourcePath)
+		? [
+			resourcePath.replace(/\.[cm]?tsx?$/u, '.js'),
+			resourcePath.replace(/\.[cm]?tsx?$/u, '.mjs'),
+		]
+		: [];
 	const candidates = hasExplicitExtension
-		? [resourcePath, `${resourcePath}.astro`, `${resourcePath}.ts`, `${resourcePath}.js`, `${resourcePath}.mjs`]
+		? [resourcePath, ...compiledCandidates, `${resourcePath}.astro`, `${resourcePath}.ts`, `${resourcePath}.js`, `${resourcePath}.mjs`]
 		: [resourcePath, `${resourcePath}.astro`, `${resourcePath}.ts`, `${resourcePath}.js`, `${resourcePath}.mjs`];
 
 	for (const candidate of candidates) {

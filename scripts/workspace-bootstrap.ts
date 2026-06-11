@@ -7,8 +7,11 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const requiredPackages = [
 	{ name: '@treeseed/sdk', dir: 'packages/sdk', build: true },
+	{ name: '@treeseed/ui', dir: 'packages/ui', build: true },
 	{ name: '@treeseed/core', dir: 'packages/core', build: true },
+	{ name: '@treeseed/admin', dir: 'packages/admin', build: true },
 	{ name: '@treeseed/cli', dir: 'packages/cli', build: true, binName: 'treeseed' },
+	{ name: '@treeseed/agent', dir: 'packages/agent', build: false },
 ];
 
 function packageState(root, entry) {
