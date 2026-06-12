@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.11.0] - 2026-06-12
+
+### Fixed
+
+- build(core): update version and @treeseed/sdk dependency (39d93a1af6f4)
+- build(build): fix package deploy gate timeout and hybrid save validation (f4cc9d90147a)
+- fix(core): update package version and @treeseed/sdk dependency (6274230aa863)
+- build(build): fix staging web monitor and ui edge theme runtime (5086ef05b797)
+- build(build): fix workspace deployment install readiness (630480bdfe7a)
+- build(build): fix ui pages staging reconciliation (9807a7443cbe)
+- build(build): fix package app cloudflare auth (96466368197c)
+- build(build): fix package hosted config sync and api deploy environment (c7355ce2ad01)
+- build(build): fix hosted repository gates and root lockfile refresh (b31a9a9fcc37)
+- build(build): fix manifest package save gates (10ff9bbc1646)
+- build(build): complete Market API package migration hosted checker fix (a8652e5fe647)
+
+### Tests
+
+- build(build): stage package submodule restructuring (7ce869c69fe6)
+- build(ui): migrate reusable ui components to treeseed ui (0b0d8c3cbaf1)
+- build(build): stabilize github credential test for configured scoped (99e002e7af0e)
+- build(build): Save reconciliation platform and live acceptance updates (18ca2b9d0aae)
+- build(release): complete Market API package migration (84efe8b05635)
+- build(build): complete Market API package migration (11da17dba4d7)
+
+### Dependencies
+
+- build(build): stage package submodule restructuring (95c162d65369)
+- build(build): add fast and promotion save lanes (0fef60faf371)
+- build(core): bump version and update @treeseed/sdk (403c34e02d7b)
+- build(build): bound git dependency smoke checks (ecd10e8a27f0)
+- build(build): build ui artifacts for hosted deploy (53f721199410)
+- build(build): migrate reusable ui components to treeseed ui (eb75b086f6d0)
+- build(build): migrate reusable ui components to treeseed ui (f7bbfb2e8d06)
+- build(build): migrate reusable ui components to treeseed ui (15e8137814d8)
+- build(build): migrate reusable ui components to treeseed ui (d33d78794c77)
+- build(build): integrate treeseed ui (81a446d91328)
+- build(build): sync package dependency references (c5d7fddcc68f)
+- build(build): Push clean hosted project repositories during save (7c892ea68a43)
+- build(build): Install project dependencies before hosted project (ee8ec01c2ffd)
+- build(build): Install project dependencies before hosted project (78841d8daed6)
+- build(build): Install project dependencies before hosted project (f5fdf606c5eb)
+- build(build): Treat API as a hosted project with verification gates (56c821306518)
+- build(build): Move API deployment acceptance into API package (3998b17da968)
+- build(build): Save reconciliation platform and live acceptance updates (28846752814f)
+- build(build): Save reconciliation platform and live acceptance updates (7ef01a1fb92f)
+- build(build): document and harden staging release workflow (516599541c49)
+- 16 additional changes omitted from this summary.
+
 ## [0.10.22] - 2026-06-05
 
 ### Added
