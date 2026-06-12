@@ -93,14 +93,48 @@ __WORKING_DIRECTORY_BLOCK__  web:
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const fs = require('fs'); for (const file of ['packages/sdk/package.json', 'packages/agent/package.json', 'packages/core/package.json', 'packages/cli/package.json']) { if (!fs.existsSync(file)) continue; const p = JSON.parse(fs.readFileSync(file, 'utf8')); if (p.scripts) delete p.scripts.prepare; fs.writeFileSync(file, JSON.stringify(p, null, '\t') + '\n'); }"
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const packageRoot = 'packages';
+          if (fs.existsSync(packageRoot)) {
+            const localPackageNames = new Set();
+            for (const entry of fs.readdirSync(packageRoot, { withFileTypes: true })) {
+              if (!entry.isDirectory()) continue;
+              const file = path.join(packageRoot, entry.name, 'package.json');
+              if (!fs.existsSync(file)) continue;
+              const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+              if (typeof manifest.name === 'string') localPackageNames.add(manifest.name);
+            }
+            for (const entry of fs.readdirSync(packageRoot, { withFileTypes: true })) {
+              if (!entry.isDirectory()) continue;
+              const file = path.join(packageRoot, entry.name, 'package.json');
+              if (!fs.existsSync(file)) continue;
+              const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+              let changed = false;
+              if (manifest.scripts?.prepare) {
+                delete manifest.scripts.prepare;
+                changed = true;
+              }
+              for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+                for (const dependencyName of Object.keys(manifest[section] ?? {})) {
+                  if (dependencyName !== manifest.name && localPackageNames.has(dependencyName)) {
+                    delete manifest[section][dependencyName];
+                    changed = true;
+                  }
+                }
+              }
+              if (changed) fs.writeFileSync(file, `${JSON.stringify(manifest, null, '\t')}\n`);
+            }
+          }
+          NODE
           npm ci --ignore-scripts
 
       - name: Build package artifacts
         shell: bash
         run: |
           set -euo pipefail
-          for dir in packages/sdk packages/core packages/cli; do
+          for dir in packages/sdk packages/ui packages/core packages/cli; do
             if test -f "${dir}/package.json"; then npm --prefix "${dir}" run build:dist; fi
           done
 

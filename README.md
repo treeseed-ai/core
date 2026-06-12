@@ -1,53 +1,78 @@
 # @treeseed/core
 
-`@treeseed/core` is the Treeseed web framework package for Astro/Starlight sites. It contains the published web runtime, tenant site configuration, shared components and styles, the knowledge-factory content model, and the forms stack used by Treeseed tenants.
+`@treeseed/core` is the Treeseed web runtime for Astro/Starlight sites. Use it when you want a Treeseed-compatible site that can load tenant configuration, compose package plugins, render content, run local development, and participate in Treeseed web hosting workflows.
 
-Backend API, agent runtime, manager, worker, and workday processing services are owned by `@treeseed/agent`.
+Core is not the admin portal and is not the reusable component library. `@treeseed/admin` contributes admin routes, and `@treeseed/ui` contributes layout-down components and styles.
 
-This repository is the package root. Run package commands from [`core`](./), not from the top-level `treeseed` workspace.
+## What You Can Build With Core
 
-## Requirements
-
-- Node `>=22`
-- npm `>=10`
+- Treeseed-compatible Astro/Starlight sites
+- host applications that layer packages through `treeseed.site.yaml`
+- local development sessions through `trsd dev`
+- web-only Cloudflare hosting surfaces
+- content and site runtime integration for Treeseed tenants
 
 ## Install
 
-For package contributors:
+```bash
+npm install @treeseed/core @treeseed/sdk @treeseed/ui
+```
+
+For package development from this repository:
 
 ```bash
-git submodule update --init --recursive
 npm install
+npm run verify:local
 ```
 
-This creates `package-lock.json`, installs dependencies, and runs the package `prepare` step to build `dist/`.
+## Use Core In A Site
 
-For CI or any fresh reproducible checkout:
+A host site declares plugins in `treeseed.site.yaml`:
+
+```yaml
+plugins:
+  - package: "@treeseed/core/plugin-default"
+  - package: "@treeseed/admin/plugin"
+```
+
+Core loads site layers, resolves routes, merges plugin hooks, and builds the Astro config used by the host app. The host app still owns deployment, tenant config, content, and branding.
+
+## Local Development
+
+The installable CLI delegates local web runtime orchestration to Core:
 
 ```bash
-npm ci
+npx trsd dev
+npx trsd dev start --web-runtime local --json
+npx trsd dev status --all --json
+npx trsd dev logs --follow
+npx trsd dev stop --json
 ```
+
+In the Treeseed market workspace, the web process runs from the root repo, while API and operations-runner processes run from `packages/api`.
+
+## How Core Fits With Other Packages
+
+- `@treeseed/ui` owns reusable components and styles.
+- `@treeseed/admin` owns admin routes, middleware, view models, and admin behavior.
+- `@treeseed/market` hosts the concrete Treeseed public site and future ecommerce.
+- `@treeseed/api` owns backend API, PostgreSQL, migrations, and operations runner.
+- `@treeseed/sdk` owns reconciliation, config, workflow, graph, and shared platform contracts.
+- `@treeseed/agent` owns capacity-provider runtime.
+- TreeDX is consumed through SDK/API integration when repository intelligence is configured.
+
+Core should stay reusable as a web runtime package and should not duplicate admin, API, agent, or market business logic.
 
 ## Package Layout
 
 - `src/`: package source
 - `scripts/`: build, release, and verification scripts
-- `test/`: unit tests run by Vitest
-- `.fixtures/treeseed-fixtures/`: pinned shared fixtures submodule
-- `.github/workflows/`: CI and publish workflows for this package repo
+- `test/`: package tests
+- `.fixtures/treeseed-fixtures/`: shared integrated fixture
+- `.github/workflows/`: package CI and publish workflows
 - `templates/github/deploy-web.workflow.yml`: downstream tenant web deploy workflow template
 
-The package builds directly against the canonical shared working-site fixture in `treeseed-fixtures`.
-
-## Shared Fixture Usage
-
-`@treeseed/core` validates itself against the integrated shared fixture, not a Core-specific fork.
-
-That means the fixture may reference package surfaces owned by `sdk`, `core`, and `cli`, and isolated Core verification links the real local `core` package into the shared fixture instead of maintaining a separate agent package boundary.
-
 ## Commands
-
-### Core development
 
 ```bash
 npm run dev
@@ -58,120 +83,39 @@ npm run test:unit
 npm run check
 npm run build
 npm run test:smoke
-```
-
-What they do:
-
-- `dev`: starts the Astro UI local runtime from `core`
-- `dev:web`: starts only the Astro UI dev surface through the `core` runtime
-- `fixtures:check`: verifies that the pinned shared fixture is initialized and usable
-- `build:dist`: builds the publishable `dist/` package output
-- `test:unit`: runs package unit tests with Vitest
-- `check`: runs `astro check` against the internal fixture app
-- `build`: builds the internal fixture app in production-like mode
-- `test:smoke`: runs the packed-install smoke test
-
-### Integrated managed dev
-
-The published Core runtime also owns the integrated Treeseed dev supervisor used by the installable CLI:
-
-```bash
-npx trsd dev
-npx trsd dev start --web-runtime local --json
-npx trsd dev status --all --json
-npx trsd dev logs --follow
-npx trsd dev stop --json
-```
-
-`trsd dev` delegates to Core and runs the foreground supervisor. `trsd dev start` launches the same runtime as a worktree-scoped managed background instance, writing authoritative instance state under `.treeseed/dev/instances`, PID files under `.treeseed/dev/pids`, and logs under `.treeseed/logs`. The repository-family index under the git common dir is discovery-only and points back to those worktree-local records.
-
-Core should keep this runtime reusable by the CLI and by the root Market workspace. Do not duplicate process, port, PID, or log management in package-local callers.
-
-### Full verification
-
-```bash
-npm run verify
 npm run verify:local
-npm run verify:action
 ```
-
-`npm run verify` uses the shared Treeseed SDK verify driver in auto mode.
-
-- `npm run verify` auto-selects between local direct verification and the `gh act` workflow path
-- `npm run verify:local` forces local direct verification against the current repo state
-- `npm run verify:action` forces the isolated workflow path through `gh act`
-- `npm run verify:direct` is the raw package verification chain used by the driver
 
 The direct verification chain is:
 
-1. `npm run build:dist`
-2. `npm run test:unit`
-3. `npm run check`
-4. `npm run build`
-5. `npm run test:smoke`
+1. build distributable `dist/`
+2. run unit tests
+3. run Astro check against the shared fixture
+4. build the fixture app
+5. run packed-install smoke tests
 
-If this command passes, the package is in the same state expected by CI and the publish workflow.
+## Shared Fixture
 
-### Release commands
+Core validates itself against the integrated shared fixture rather than a Core-specific fork. The fixture may reference SDK, Core, Admin, UI, API, CLI, and Agent surfaces where the canonical integrated project genuinely uses them. Package verification adapts to the fixture; it must not rewrite the fixture to satisfy one package.
+
+## GitHub Actions And Release
+
+Package workflows verify and publish the package from this repository. The downstream web deploy workflow template is for host applications, not for publishing Core.
 
 ```bash
-npm run release:check-tag -- 0.0.1
+npm run release:check-tag -- 0.1.0
 npm run release:publish
 ```
 
-- `release:check-tag` validates that a git tag matches the version in [`package.json`](./package.json)
-- `release:publish` publishes the package to npm
+The publish workflow expects `NPM_TOKEN` in the package repository GitHub `production` environment.
 
-## GitHub Actions
+## What Core Does Not Own
 
-This repo ships two package workflows:
+- reusable layout-down UI primitives; use `@treeseed/ui`
+- admin routes, auth/session UI, admin middleware, or admin view models; use `@treeseed/admin`
+- backend API implementation, PostgreSQL, operations runner, or migrations; use `@treeseed/api`
+- capacity provider runtime; use `@treeseed/agent`
+- checkout, billing, licensing, or marketplace policy; use root market/future commerce plugin
+- TreeDX service implementation
 
-- [`ci.yml`](./.github/workflows/ci.yml): runs on push and pull request, installs with `npm ci`, then runs `npm run verify`
-- [`publish.yml`](./.github/workflows/publish.yml): runs on `workflow_dispatch` and on plain semver tags like `0.1.0`; it installs with `npm ci`, validates the tag with `release:check-tag`, runs `npm run verify`, and publishes with `NPM_TOKEN`
-
-The deploy workflow template at [`templates/github/deploy-web.workflow.yml`](./templates/github/deploy-web.workflow.yml) is for downstream Treeseed web repositories, not for publishing this package. Processing host deploy assets are owned by `@treeseed/agent`.
-
-## Consumer Contract
-
-The package publishes built artifacts from `dist/` and exposes runtime entrypoints through [`package.json`](./package.json) `exports`.
-
-The published package includes:
-
-- `dist/`
-- `tsconfigs/`
-- `templates/`
-- `style/`
-- `utils/`
-- `README.md`
-
-The package currently depends on `@treeseed/sdk` plus the runtime packages needed for its web surfaces. It does not depend on `@treeseed/cli` or `@treeseed/agent`.
-
-## Contributor Workflow
-
-Typical local workflow:
-
-```bash
-npm install
-npm run verify
-```
-
-If you only need one stage:
-
-```bash
-npm run test:unit
-npm run check
-npm run build
-```
-
-When changing exported package code, rerun `npm run build:dist` and then `npm run verify`.
-
-## Publishing
-
-Release flow for this repo:
-
-1. Update the package version in [`package.json`](./package.json).
-2. Run `npm run verify`.
-3. Create a matching tag: `<version>` such as `0.1.0`.
-4. Push the tag or run the publish workflow manually.
-
-The publish workflow expects the npm auth token in `NPM_TOKEN`.
+See the root [Package Ownership](../../docs/package-ownership.md) guide for the full package map.

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { detectTreeseedBootstrapMode } from '../../scripts/workspace-bootstrap.ts';
 
-const packageDirs = ['sdk', 'core', 'cli'];
+const packageDirs = ['sdk', 'ui', 'core', 'admin', 'cli', 'agent'];
 
 function makeRoot() {
 	return mkdtempSync(join(tmpdir(), 'treeseed-bootstrap-mode-'));
@@ -32,8 +32,11 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 		expect(state.mode).toBe('registry');
 		expect(state.missing.map((entry) => entry.relativeDir)).toEqual([
 			'packages/sdk',
+			'packages/ui',
 			'packages/core',
+			'packages/admin',
 			'packages/cli',
+			'packages/agent',
 		]);
 	});
 
@@ -58,6 +61,8 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 
 		expect(state.mode).toBe('partial');
 		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/cli');
+		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/admin');
+		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/agent');
 	});
 
 	it('accepts auto mode and still resolves workspace from the checkout', () => {

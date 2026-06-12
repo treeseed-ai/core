@@ -2,7 +2,8 @@ import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import rehypeKatex from 'rehype-katex';
@@ -30,6 +31,7 @@ import { isSiteRenderedModel } from './utils/site-models';
 
 const TENANT_THEME_VIRTUAL_ID = 'virtual:treeseed/tenant-theme.css';
 const RESOLVED_TENANT_THEME_VIRTUAL_ID = '\0treeseed:tenant-theme.css';
+const require = createRequire(import.meta.url);
 
 type SiteCreateDependencies = {
 	starlight: (config: Record<string, unknown>) => unknown;
@@ -182,12 +184,53 @@ function resolveRouteEntry(
 	throw new Error(`Treeseed route "${route.pattern}" must define either entrypoint or resourcePath.`);
 }
 
-function resolveCoreComponentEntrypoint(
+function resolveUiComponentEntrypoint(
 	siteLayers: ReturnType<typeof buildTreeseedSiteLayers>,
 	resourcePath: string,
-	fallbackPath: string,
+	uiEntrypoint: string,
+	projectRoot?: string,
 ) {
-	return resolveTreeseedSiteResource(siteLayers, 'components', resourcePath) ?? packageFile(fallbackPath);
+	const tenantEntrypoint = resolveTreeseedSiteResource(siteLayers, 'components', resourcePath);
+	if (tenantEntrypoint) return tenantEntrypoint;
+
+	if (projectRoot) {
+		try {
+			return createRequire(resolve(projectRoot, 'package.json')).resolve(uiEntrypoint);
+		} catch {
+			// Fall back to Core's package context for installed-package consumers.
+		}
+	}
+
+	return require.resolve(uiEntrypoint);
+}
+
+function resolveUiDistRoot(projectRoot: string) {
+	const probeEntrypoint = '@treeseed/ui/components/astro/layouts/MainLayout.astro';
+	let resolvedProbe: string;
+	try {
+		resolvedProbe = createRequire(resolve(projectRoot, 'package.json')).resolve(probeEntrypoint);
+	} catch {
+		resolvedProbe = require.resolve(probeEntrypoint);
+	}
+
+	const distMarker = `${sep}dist${sep}astro${sep}`;
+	const markerIndex = resolvedProbe.lastIndexOf(distMarker);
+	if (markerIndex < 0) {
+		return null;
+	}
+	return resolvedProbe.slice(0, markerIndex + `${sep}dist`.length);
+}
+
+function createUiPackageAliases(projectRoot: string) {
+	const uiDistRoot = resolveUiDistRoot(projectRoot);
+	if (!uiDistRoot) return [];
+
+	return [
+		{ find: /^@treeseed\/ui\/components\/astro\/(.*)$/, replacement: `${uiDistRoot}/astro/$1` },
+		{ find: /^@treeseed\/ui\/styles\/(.*)$/, replacement: `${uiDistRoot}/styles/$1` },
+		{ find: /^@treeseed\/ui\/lib\/(.*)$/, replacement: `${uiDistRoot}/lib/$1` },
+		{ find: /^@treeseed\/ui\/theme\/schemes\/(.*)$/, replacement: `${uiDistRoot}/theme/schemes/$1` },
+	];
 }
 
 function resolveSitePluginExtensions(
@@ -396,6 +439,9 @@ export function createTreeseedSite(
 			},
 		},
 		vite: {
+			resolve: {
+				alias: createUiPackageAliases(projectRoot),
+			},
 			define: {
 				__TREESEED_TENANT_CONFIG__: injectedTenantConfig,
 				__TREESEED_PROJECT_ROOT__: injectedProjectRoot,
@@ -465,14 +511,14 @@ export function createTreeseedSite(
 					{ icon: 'discord', label: `${siteConfig.site.name} Discord`, href: siteConfig.site.discordLink },
 				],
 				components: {
-					Footer: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/Footer.astro', './components/docs/Footer.astro'),
-					Header: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/Header.astro', './components/docs/Header.astro'),
-					PageTitle: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/PageTitle.astro', './components/docs/PageTitle.astro'),
-					PageFrame: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/PageFrame.astro', './components/docs/PageFrame.astro'),
-					PageSidebar: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/PageSidebar.astro', './components/docs/PageSidebar.astro'),
-					Sidebar: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/Sidebar.astro', './components/docs/Sidebar.astro'),
-					SiteTitle: resolveCoreComponentEntrypoint(siteLayers, 'components/SiteTitle.astro', './components/SiteTitle.astro'),
-					ThemeSelect: resolveCoreComponentEntrypoint(siteLayers, 'components/docs/ThemeSelect.astro', './components/docs/ThemeSelect.astro'),
+					Footer: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Footer.astro', '@treeseed/ui/components/astro/docs/Footer.astro', projectRoot),
+					Header: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Header.astro', '@treeseed/ui/components/astro/docs/Header.astro', projectRoot),
+					PageTitle: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageTitle.astro', '@treeseed/ui/components/astro/docs/PageTitle.astro', projectRoot),
+					PageFrame: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageFrame.astro', '@treeseed/ui/components/astro/docs/PageFrame.astro', projectRoot),
+					PageSidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/PageSidebar.astro', '@treeseed/ui/components/astro/docs/PageSidebar.astro', projectRoot),
+					Sidebar: resolveUiComponentEntrypoint(siteLayers, 'components/docs/Sidebar.astro', '@treeseed/ui/components/astro/docs/Sidebar.astro', projectRoot),
+					SiteTitle: resolveUiComponentEntrypoint(siteLayers, 'components/SiteTitle.astro', '@treeseed/ui/components/astro/core/SiteTitle.astro', projectRoot),
+					ThemeSelect: resolveUiComponentEntrypoint(siteLayers, 'components/docs/ThemeSelect.astro', '@treeseed/ui/components/astro/docs/ThemeSelect.astro', projectRoot),
 					...siteExtensions.starlightComponents,
 				},
 				sidebar: booksRendered ? getStarlightSidebarConfigFromRuntime(bookRuntime) : [],

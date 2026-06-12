@@ -1,8 +1,8 @@
 ---
-import ProfileLayout from '../../layouts/ProfileLayout.astro';
+import ProfileLayout from '@treeseed/ui/components/astro/layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
-import PublishedContentBody from '../../components/site/PublishedContentBody.astro';
-import RouteNotFound from '../../components/site/RouteNotFound.astro';
+import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
+import RouteNotFound from '@treeseed/ui/components/astro/site/RouteNotFound.astro';
 import { isPublishedRuntimeContentMode, loadPublishedEntry, metadataFromPublishedContent, resolvePublishedReferences } from '../../utils/site-content-runtime';
 
 export const prerender = false;
