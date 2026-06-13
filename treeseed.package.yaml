@@ -17,4 +17,4 @@ artifacts:
   - provider: npm
     name: "@treeseed/core"
 releaseGate:
-  workflow: publish.yml
+  workflow: release-gate.yml
