@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
-	runTreeseedManagedDev,
 	runTreeseedIntegratedDev,
 	type TreeseedIntegratedDevFeedbackMode,
 	type TreeseedLocalRuntimeMode,
@@ -13,6 +9,7 @@ import {
 	type TreeseedIntegratedDevSurface,
 	type TreeseedManagedDevAction,
 } from '../src/dev.ts';
+import { runTreeseedManagedDev } from '@treeseed/sdk';
 
 const rawArgs = process.argv.slice(2);
 const managedActions = new Set(['start', 'status', 'logs', 'stop', 'restart']);
@@ -101,15 +98,6 @@ function readForwardedEnvironment() {
 	);
 }
 
-function resolveSupervisorArgs() {
-	const scriptPath = fileURLToPath(import.meta.url);
-	if (scriptPath.endsWith('.ts')) {
-		const runnerPath = resolve(dirname(scriptPath), 'run-ts.mjs');
-		return existsSync(runnerPath) ? [runnerPath, scriptPath] : [scriptPath];
-	}
-	return [scriptPath];
-}
-
 async function main() {
 	const common = {
 		surface: parseSurface(readOption('--surface')),
@@ -139,12 +127,9 @@ async function main() {
 		{
 			...common,
 			action,
+			cwd: process.cwd(),
 			all: readFlag('--all'),
 			follow: readFlag('--follow'),
-		},
-		{
-			supervisorCommand: process.execPath,
-			supervisorArgs: resolveSupervisorArgs(),
 		},
 	);
 }

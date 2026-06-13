@@ -19,6 +19,7 @@ import {
 	resolveTreeseedMachineEnvironmentValues,
 	resolveTreeseedToolBinary,
 	resolveWranglerBin,
+	runTreeseedGit,
 	stopKnownMailpitContainers,
 } from '@treeseed/sdk/workflow-support';
 import { discoverTreeseedApplications } from '@treeseed/sdk/hosting';
@@ -1521,7 +1522,7 @@ function atomicWriteJson(path: string, value: unknown) {
 }
 
 function runGitText(cwd: string, args: string[]) {
-	const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+	const result = runTreeseedGit(args, { cwd, mode: 'read', allowFailure: true });
 	return (result.status ?? 1) === 0 ? String(result.stdout ?? '').trim() : null;
 }
 
