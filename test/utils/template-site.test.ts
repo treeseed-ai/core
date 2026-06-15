@@ -105,7 +105,7 @@ describe('template site resolution', () => {
 						templateApiVersion: 1,
 						minCliVersion: '0.1.0',
 						minCoreVersion: '0.1.0',
-						offer: { priceModel: 'free' },
+						offer: { priceModel: 'subscription' },
 						fulfillment: {
 							mode: 'git',
 							source: { kind: 'git', repoUrl: 'https://example.com/repo.git', directory: 'template', ref: 'main' },
@@ -122,6 +122,7 @@ describe('template site resolution', () => {
 		expect(listing.items).toContainEqual(expect.objectContaining({
 			slug: 'local-template',
 			source: 'content',
+			priceModel: 'subscription',
 		}));
 		expect(listing.items).toContainEqual(expect.objectContaining({
 			slug: 'starter',
