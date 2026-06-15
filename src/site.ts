@@ -1,6 +1,7 @@
 import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
+import react from '@astrojs/react';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve, sep } from 'node:path';
@@ -138,13 +139,25 @@ function collectLocalPageRouteEntries(tenantConfig: TreeseedTenantConfig, projec
 	}));
 }
 
-function createTreeseedRoutesIntegration(tenantConfig: TreeseedTenantConfig, routes: SiteRoute[] = []) {
+function tenantPageRouteExists(projectRoot: string, pattern: string) {
+	if (pattern.includes('[') || pattern.includes(']')) return false;
+	const cleanPattern = pattern.replace(/\/+$/u, '') || '/';
+	const routePath = cleanPattern === '/'
+		? 'index'
+		: cleanPattern.replace(/^\/+/u, '').replace(/\/$/u, '/index');
+	return ['astro', 'mdx', 'md', 'ts', 'js'].some((extension) =>
+		existsSync(resolve(projectRoot, 'src', 'pages', `${routePath}.${extension}`)),
+	);
+}
+
+function createTreeseedRoutesIntegration(tenantConfig: TreeseedTenantConfig, projectRoot: string, routes: SiteRoute[] = []) {
 	return {
 		name: 'treeseed-routes',
 		hooks: {
 			'astro:config:setup'({ injectRoute }: { injectRoute: (route: SiteRoute) => void }) {
 				for (const route of routes) {
 					if (route.model && !isSiteRenderedModel(tenantConfig, route.model)) continue;
+					if (tenantPageRouteExists(projectRoot, route.pattern)) continue;
 					injectRoute(route);
 				}
 			},
@@ -491,7 +504,8 @@ export function createTreeseedSite(
 			},
 		},
 		integrations: [
-			createTreeseedRoutesIntegration(tenantConfig, [
+			react(),
+			createTreeseedRoutesIntegration(tenantConfig, projectRoot, [
 				...packageRoutes.map((route) => resolveRouteEntry(route, siteLayers)),
 				...siteExtensions.routes.map((route) => resolveRouteEntry(route, siteLayers)),
 			]),
