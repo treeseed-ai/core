@@ -90,18 +90,6 @@ describe('Treeseed integrated dev orchestration', () => {
 		return root;
 	}
 
-	function writeApiPackage(root: string) {
-		const apiRoot = resolve(root, 'packages/api');
-		mkdirSync(resolve(apiRoot, 'src/api'), { recursive: true });
-		mkdirSync(resolve(apiRoot, 'src/operations-runner'), { recursive: true });
-		mkdirSync(resolve(apiRoot, 'scripts'), { recursive: true });
-		writeFileSync(resolve(apiRoot, 'package.json'), JSON.stringify({ name: '@treeseed/api', type: 'module' }, null, 2));
-		writeFileSync(resolve(apiRoot, 'src/api/server.js'), 'export {};\n');
-		writeFileSync(resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'export {};\n');
-		writeFileSync(resolve(apiRoot, 'scripts/migrate-market-db.mjs'), 'export {};\n');
-		return apiRoot;
-	}
-
 	function writeLocalD1Project(root: string, id: string, slug = 'market') {
 		const d1Root = resolve(root, '.treeseed/generated/environments/local/.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
 		mkdirSync(d1Root, { recursive: true });
@@ -184,124 +172,51 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[3]?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
 	}, 10_000);
 
-	it('turns the Market repo root dev plan into web API runner orchestration with managed local state', () => {
+	it('keeps the Market repo root Core dev plan web-only', () => {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-'));
 		try {
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
-			const apiRoot = writeApiPackage(root);
+			const apiRoot = resolve(root, 'packages/api');
+			mkdirSync(resolve(apiRoot, 'src/api'), { recursive: true });
+			writeFileSync(resolve(apiRoot, 'package.json'), JSON.stringify({ name: '@treeseed/api', type: 'module' }, null, 2));
+			writeFileSync(resolve(apiRoot, 'src/api/server.js'), 'export {};\n');
 
 			const plan = createTreeseedIntegratedDevPlan({
 				cwd: root,
 				surfaces: 'web,api',
 				webRuntime: 'local',
 				env: {
-					TREESEED_MARKET_DATABASE_URL: undefined,
 					TREESEED_PLATFORM_RUNNER_SECRET: undefined,
 				},
 			});
 
-			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'operations-runner']);
-			expect(plan.commands.find((command) => command.id === 'api')?.label).toBe('Treeseed API');
-			expect(plan.commands.find((command) => command.id === 'api')?.args).toEqual([resolve(apiRoot, 'src/api/server.js')]);
-			expect(plan.commands.find((command) => command.id === 'api')?.cwd).toBe(apiRoot);
-			const runner = plan.commands.find((command) => command.id === 'operations-runner');
-			expect(runner?.args).toEqual(expect.arrayContaining([resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'run', '--watch', '--operation', 'project:web_deployment']));
-			expect(runner?.cwd).toBe(apiRoot);
-			expect(runner?.args).not.toContain('--mock-external');
-			expect(runner?.env.TREESEED_MARKET_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');
-			expect(runner?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
-			expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
-				expect.arrayContaining(['web', 'api', 'operations-runner']),
-			);
-			expect(plan.setupSteps.map((step) => step.id)).toEqual(expect.arrayContaining(['market-postgres', 'market-migrations']));
+			expect(plan.commands.map((command) => command.id)).toEqual(['web']);
+			expect(plan.commands.find((command) => command.id === 'api')).toBeUndefined();
+			expect(plan.commands.find((command) => command.id === 'operations-runner')).toBeUndefined();
+			expect(plan.setupSteps.map((step) => step.id)).not.toContain('market-postgres');
+			expect(plan.setupSteps.map((step) => step.id)).not.toContain('market-migrations');
+			expect(plan.commands[0]?.env.TREESEED_DATABASE_URL).toBeUndefined();
+			expect(plan.commands[0]?.env.TREESEED_MARKET_DATABASE_URL).toBeUndefined();
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
 
-	it('treats the default Market PostgreSQL URL as managed local reset state', () => {
-		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-default-db-'));
-		try {
-			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
-			writeApiPackage(root);
-
-			const plan = createTreeseedIntegratedDevPlan({
-				cwd: root,
-				surfaces: 'web,api',
-				webRuntime: 'local',
-				reset: true,
-				env: {
-					TREESEED_MARKET_DATABASE_URL: 'postgres://treeseed:treeseed@127.0.0.1:55432/market_local',
-				},
-			});
-
-			expect(plan.commands.find((command) => command.id === 'api')?.env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED).toBe('true');
-			expect(plan.setupSteps.map((step) => step.id)).toContain('market-postgres');
-			expect(plan.reset?.actions.find((action) => action.id === 'market-postgres')).toMatchObject({
-				status: 'planned',
-				label: 'Reset local Market PostgreSQL',
-				detail: expect.stringContaining('database'),
-			});
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
-	});
-
-	it('hides idle Market runner poll JSON from human dev logs', async () => {
+	it('does not run the Market API from Core when the api surface is requested', () => {
 		const root = mkdtempSync(resolve(tmpdir(), 'treeseed-market-dev-logs-'));
-		const signalHandlers = new Map<NodeJS.Signals, () => void>();
-		const children: FakeChildProcess[] = [];
-		const output: string[] = [];
 		try {
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
-			writeApiPackage(root);
 
-			const promise = runTreeseedIntegratedDev(
-				{
-					cwd: root,
-					surfaces: 'api',
-					setupMode: 'off',
-					feedbackMode: 'off',
-					openMode: 'off',
-					shutdownGraceMs: 0,
-					env: {
-						TREESEED_MARKET_DATABASE_URL: 'postgres://configured-market-db',
-					},
-				},
-				{
-					spawn() {
-						const child = new FakeChildProcess();
-						children.push(child);
-						return child as never;
-					},
-					onSignal(signal, handler) {
-						signalHandlers.set(signal, handler);
-						return () => signalHandlers.delete(signal);
-					},
-					inspectPortOwners() {
-						return [];
-					},
-					prepareEnvironment() {},
-					fetch: async () => ({ ok: true }) as Response,
-					write(line) {
-						output.push(line);
-					},
-				},
-			);
+			const plan = createTreeseedIntegratedDevPlan({
+				cwd: root,
+				surfaces: 'api',
+				setupMode: 'off',
+			});
 
-			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
-			const runner = children[1];
-			runner?.stdout.write('{"ok":true,"claimed":false,"operation":null}\n');
-			runner?.stdout.write('{"ok":true,"claimed":true,"operation":{"id":"op_1"}}\n');
-			await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
-			signalHandlers.get('SIGINT')?.();
-
-			await expect(promise).resolves.toBe(130);
-			const joined = output.join('');
-			expect(joined).not.toContain('"claimed":false');
-			expect(joined).toContain('"claimed":true');
+			expect(plan.commands).toEqual([]);
+			expect(plan.readyChecks).toEqual([]);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
@@ -747,7 +662,7 @@ surfaces:
 				pid: childPid,
 				processGroupId: childPid,
 				runtimeScope: 'web',
-				ports: { web: 4321, api: 3000, postgres: 55432, mailpitSmtp: 1025 },
+				ports: { web: 4321, api: 3000, mailpitSmtp: 1025 },
 				urls: { web: 'http://127.0.0.1:4321' },
 			});
 
@@ -1345,9 +1260,6 @@ surfaces:
 					rmSync(path, { recursive: true, force: true });
 				},
 				stopMailpitContainers() {
-					return true;
-				},
-				resetMarketPostgres() {
 					return true;
 				},
 			});
