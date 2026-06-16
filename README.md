@@ -2,7 +2,7 @@
 
 `@treeseed/core` is the Treeseed web runtime for Astro/Starlight sites. Use it when you want a Treeseed-compatible site that can load tenant configuration, compose package plugins, render content, run local development, and participate in Treeseed web hosting workflows.
 
-Core is not the admin portal and is not the reusable component library. `@treeseed/admin` contributes admin routes, and `@treeseed/ui` contributes layout-down components and styles.
+Core is not the admin portal, the reusable component library, the agent runtime, or the capacity provider runtime. `@treeseed/admin` contributes admin routes, `@treeseed/ui` contributes layout-down components and styles, and `@treeseed/agent` owns AgentKernel execution and provider runtime.
 
 ## What You Can Build With Core
 
@@ -58,7 +58,7 @@ In the Treeseed market workspace, the web process runs from the root repo, while
 - `@treeseed/market` hosts the concrete Treeseed public site and future ecommerce.
 - `@treeseed/api` owns backend API, PostgreSQL, migrations, and operations runner.
 - `@treeseed/sdk` owns reconciliation, config, workflow, graph, and shared platform contracts.
-- `@treeseed/agent` owns capacity-provider runtime.
+- `@treeseed/agent` owns capacity-provider runtime, AgentKernel execution, mode scheduling, and provider-local lifecycle.
 - TreeDX is consumed through SDK/API integration when repository intelligence is configured.
 
 Core should stay reusable as a web runtime package and should not duplicate admin, API, agent, or market business logic.
@@ -115,6 +115,7 @@ The publish workflow expects `NPM_TOKEN` in the package repository GitHub `produ
 - admin routes, auth/session UI, admin middleware, or admin view models; use `@treeseed/admin`
 - backend API implementation, PostgreSQL, operations runner, or migrations; use `@treeseed/api`
 - capacity provider runtime; use `@treeseed/agent`
+- AgentKernel execution, mode scheduling, and provider assignment runtime; use `@treeseed/agent` with SDK/API contracts
 - checkout, billing, licensing, or marketplace policy; use root market/future commerce plugin
 - TreeDX service implementation
 
