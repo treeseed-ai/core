@@ -49,13 +49,13 @@ npx trsd dev logs --follow
 npx trsd dev stop --json
 ```
 
-In the Treeseed market workspace, the web process runs from the root repo, while API and operations-runner processes run from `packages/api`.
+In the Treeseed market workspace, the web process runs from the root repo. API, PostgreSQL migrations, and operations-runner processes are discovered from `packages/api` package metadata and managed separately by SDK/CLI local-dev orchestration.
 
 ## How Core Fits With Other Packages
 
 - `@treeseed/ui` owns reusable components and styles.
 - `@treeseed/admin` owns admin routes, middleware, view models, and admin behavior.
-- `@treeseed/market` hosts the concrete Treeseed public site and future ecommerce.
+- `@treeseed/market` hosts the concrete Treeseed public site, buyer marketplace, and Commons participant pages.
 - `@treeseed/api` owns backend API, PostgreSQL, migrations, and operations runner.
 - `@treeseed/sdk` owns reconciliation, config, workflow, graph, and shared platform contracts.
 - `@treeseed/agent` owns capacity-provider runtime.
@@ -115,7 +115,7 @@ The publish workflow expects `NPM_TOKEN` in the package repository GitHub `produ
 - admin routes, auth/session UI, admin middleware, or admin view models; use `@treeseed/admin`
 - backend API implementation, PostgreSQL, operations runner, or migrations; use `@treeseed/api`
 - capacity provider runtime; use `@treeseed/agent`
-- checkout, billing, licensing, or marketplace policy; use root market/future commerce plugin
+- checkout, billing, licensing, backend ecommerce state, PostgreSQL migrations, operations-runner behavior, or marketplace policy; use root market for buyer pages and `@treeseed/api` for backend state
 - TreeDX service implementation
 
 See the root [Package Ownership](../../docs/package-ownership.md) guide for the full package map.
