@@ -1,8 +1,35 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+
+function hasSourceRunnerDependencies() {
+	try {
+		require.resolve('esbuild');
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function ensureSourceRunnerDependencies() {
+	if (hasSourceRunnerDependencies()) {
+		return;
+	}
+	const result = spawnSync('npm', ['install'], {
+		cwd: process.cwd(),
+		env: { ...process.env, npm_config_ignore_scripts: 'true' },
+		stdio: 'inherit',
+	});
+	if (result.status !== 0) {
+		process.exit(result.status ?? 1);
+	}
+}
 
 function runDirectVerify() {
+	ensureSourceRunnerDependencies();
 	const result = spawnSync('npm', ['run', 'verify:direct'], {
 		cwd: process.cwd(),
 		env: process.env,
@@ -25,8 +52,10 @@ try {
 			process.exit(1);
 		}
 		if (process.env.TREESEED_VERIFY_DRIVER === 'act') {
-			process.stderr.write('Treeseed core verify: `act` mode requires @treeseed/sdk to be installed.\n');
-			process.exit(1);
+			process.stderr.write(
+				'Treeseed core verify: @treeseed/sdk verify driver is unavailable; running direct package verification.\n',
+			);
+			runDirectVerify();
 		}
 		runDirectVerify();
 	}
