@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import ProfileLayout from '@treeseed/ui/components/astro/layouts/ProfileLayout.astro';
 import { resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
@@ -28,6 +29,8 @@ const relatedObjectives = publishedRuntime
 	: agent ? await resolveReferences(agent.data.relatedObjectives) : [];
 ---
 
+<CoreStyleScope>
+
 {
 	!agent || (!Content && !publishedAgent?.html) ? (
 		<RouteNotFound title="Agent not found" description="The requested agent profile could not be found in this Treeseed." currentPath="/agents/" />
@@ -44,3 +47,4 @@ const relatedObjectives = publishedRuntime
 		</ProfileLayout>
 	)
 }
+</CoreStyleScope>

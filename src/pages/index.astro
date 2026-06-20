@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import Hero from '@treeseed/ui/components/astro/site/Hero.astro';
 import StageBanner from '@treeseed/ui/components/astro/site/StageBanner.astro';
@@ -143,6 +144,8 @@ const ctaPrimaryLabel = questionsRendered ? 'Browse questions' : objectivesRende
 const ctaSecondaryHref = booksRendered ? '/books/' : notesRendered ? '/notes/' : '/vision/';
 const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Read notes' : 'Read vision';
 ---
+
+<CoreStyleScope>
 
 <MainLayout
 	title="Home"
@@ -461,3 +464,4 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 		/>
 	</div>
 </MainLayout>
+</CoreStyleScope>

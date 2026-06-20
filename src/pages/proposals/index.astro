@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
 import ChronicleList from '@treeseed/ui/components/astro/site/ChronicleList.astro';
@@ -25,6 +26,8 @@ const contributors = publishedRuntime
 	: await resolveContributorsForEntries(proposals);
 ---
 
+<CoreStyleScope>
+
 <MainLayout title="Proposals" description="Proposals that move Treeseed from context to an explicit suggested change." currentPath="/proposals/">
 	<div class="space-y-10">
 		<SectionIntro
@@ -45,3 +48,4 @@ const contributors = publishedRuntime
 		/>
 	</div>
 </MainLayout>
+</CoreStyleScope>

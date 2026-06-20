@@ -1074,6 +1074,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_PLATFORM_RUNNER_SECRET: mergedEnv.TREESEED_PLATFORM_RUNNER_SECRET ?? 'treeseed-platform-runner-dev-secret',
 		TREESEED_FORM_TOKEN_SECRET: mergedEnv.TREESEED_FORM_TOKEN_SECRET ?? 'treeseed-local-form-token-secret',
 		TREESEED_BETTER_AUTH_SECRET: mergedEnv.TREESEED_BETTER_AUTH_SECRET ?? 'treeseed-local-better-auth-secret-minimum-32-characters',
+		TREESEED_ACCEPTANCE_EXPOSE_AUTH_TOKENS: mergedEnv.TREESEED_ACCEPTANCE_EXPOSE_AUTH_TOKENS ?? '1',
 		...(devResetId ? { TREESEED_DEV_RESET_ID: devResetId } : {}),
 		TREESEED_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
 		TREESEED_SMTP_PORT: mailpitSmtpPort,

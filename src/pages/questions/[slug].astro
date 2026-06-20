@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import AuthoredEntryLayout from '@treeseed/ui/components/astro/layouts/AuthoredEntryLayout.astro';
 import { resolveContributor, resolveReferences } from '../../utils/hub-content';
 import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
@@ -37,6 +38,8 @@ const relatedBooks = publishedRuntime
 	: question ? await resolveReferences(question.data.relatedBooks) : [];
 ---
 
+<CoreStyleScope>
+
 {
 	!question || (!Content && !publishedQuestion?.html) ? (
 		<RouteNotFound title="Question not found" description="The requested question could not be found in this Treeseed." currentPath="/questions/" />
@@ -58,3 +61,4 @@ const relatedBooks = publishedRuntime
 		</AuthoredEntryLayout>
 	)
 }
+</CoreStyleScope>
