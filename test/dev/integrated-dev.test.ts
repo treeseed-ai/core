@@ -196,7 +196,7 @@ describe('Treeseed integrated dev orchestration', () => {
 				surfaces: 'web,api',
 				webRuntime: 'local',
 				env: {
-					TREESEED_MARKET_DATABASE_URL: undefined,
+					TREESEED_DATABASE_URL: undefined,
 					TREESEED_PLATFORM_RUNNER_SECRET: undefined,
 				},
 			});
@@ -209,7 +209,8 @@ describe('Treeseed integrated dev orchestration', () => {
 			expect(runner?.args).toEqual(expect.arrayContaining([resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'run', '--watch', '--operation', 'project:web_deployment']));
 			expect(runner?.cwd).toBe(apiRoot);
 			expect(runner?.args).not.toContain('--mock-external');
-			expect(runner?.env.TREESEED_MARKET_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');
+			expect(runner?.env.TREESEED_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');
+			expect(runner?.env.TREESEED_MARKET_DATABASE_URL).toBeUndefined();
 			expect(runner?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
 			expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
 				expect.arrayContaining(['web', 'api', 'operations-runner']),
@@ -232,7 +233,7 @@ describe('Treeseed integrated dev orchestration', () => {
 				webRuntime: 'local',
 				reset: true,
 				env: {
-					TREESEED_MARKET_DATABASE_URL: 'postgres://treeseed:treeseed@127.0.0.1:55432/market_local',
+					TREESEED_DATABASE_URL: 'postgres://treeseed:treeseed@127.0.0.1:55432/market_local',
 				},
 			});
 
@@ -267,7 +268,7 @@ describe('Treeseed integrated dev orchestration', () => {
 					openMode: 'off',
 					shutdownGraceMs: 0,
 					env: {
-						TREESEED_MARKET_DATABASE_URL: 'postgres://configured-market-db',
+						TREESEED_DATABASE_URL: 'postgres://configured-market-db',
 					},
 				},
 				{

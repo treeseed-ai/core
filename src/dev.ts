@@ -735,7 +735,7 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 				status: managedMarketPostgres ? 'planned' : 'skipped',
 				detail: managedMarketPostgres
 					? 'The Treeseed-managed Market PostgreSQL container, database, and volume will be removed and recreated on the next dev run.'
-					: 'TREESEED_MARKET_DATABASE_URL points at an external database, so dev reset will not drop it.',
+					: 'TREESEED_DATABASE_URL points at an external database, so dev reset will not drop it.',
 			} satisfies TreeseedIntegratedDevResetAction] : []),
 			resetActionForPath('wrangler-tmp', 'Remove Wrangler temporary output', resolve(tenantRoot, '.wrangler', 'tmp')),
 			resetActionForPath('worker-bundle', 'Remove generated local worker bundle', resolve(tenantRoot, '.treeseed', 'generated', 'worker')),
@@ -1148,7 +1148,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		?? resolvedHostingTeamId
 		?? resolveSeededLocalTeamId(localD1PersistTo, projectId ?? null);
 	const marketPostgresPort = mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? String(TREESEED_DEFAULT_MARKET_POSTGRES_PORT);
-	const apiDatabaseUrl = mergedEnv.TREESEED_MARKET_DATABASE_URL
+	const apiDatabaseUrl = mergedEnv.TREESEED_DATABASE_URL
 		?? `postgres://treeseed:treeseed@127.0.0.1:${marketPostgresPort}/market_local`;
 	const managedMarketPostgres = marketWorkspace && isTreeseedManagedMarketPostgresUrl(apiDatabaseUrl);
 	const mailpitSmtpPort = mergedEnv.TREESEED_MAILPIT_SMTP_PORT ?? String(TREESEED_DEFAULT_LOCAL_SMTP_PORT);
@@ -1185,7 +1185,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_MARKET_API_BASE_URL: mergedEnv.TREESEED_MARKET_API_BASE_URL ?? apiBaseUrl,
 		TREESEED_API_REQUEST_LOGS: mergedEnv.TREESEED_API_REQUEST_LOGS ?? 'true',
 		...(marketWorkspace ? {
-			TREESEED_MARKET_DATABASE_URL: apiDatabaseUrl,
+			TREESEED_DATABASE_URL: apiDatabaseUrl,
 			TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER ?? TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER,
 			TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: mergedEnv.TREESEED_MARKET_LOCAL_POSTGRES_VOLUME ?? TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME,
 			TREESEED_MARKET_LOCAL_POSTGRES_PORT: marketPostgresPort,
