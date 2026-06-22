@@ -1376,12 +1376,16 @@ function runGitText(cwd: string, args: string[]) {
 }
 
 function resolveGitWorktreeInfo(tenantRoot: string) {
-	const worktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']) ?? tenantRoot;
+	const detectedWorktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']);
+	const isTreeseedTemporaryRoot = detectedWorktreeRoot
+		? relative(resolve(detectedWorktreeRoot, '.treeseed', 'tmp'), resolve(tenantRoot)).split(sep)[0] !== '..'
+		: false;
+	const worktreeRoot = isTreeseedTemporaryRoot ? tenantRoot : detectedWorktreeRoot ?? tenantRoot;
 	const rawCommonDir = runGitText(tenantRoot, ['rev-parse', '--git-common-dir']);
-	const gitCommonDir = rawCommonDir
+	const gitCommonDir = rawCommonDir && !isTreeseedTemporaryRoot
 		? (isAbsolute(rawCommonDir) ? rawCommonDir : resolve(tenantRoot, rawCommonDir))
 		: null;
-	const rawBranch = runGitText(tenantRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
+	const rawBranch = isTreeseedTemporaryRoot ? null : runGitText(tenantRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
 	const branch = rawBranch && rawBranch !== 'HEAD' ? rawBranch : null;
 	return { worktreeRoot, gitCommonDir, branch };
 }
