@@ -29,7 +29,10 @@ try {
 	if (entrypointCheckOnly) {
 		process.exit(0);
 	}
-	process.exit(runTreeseedVerifyDriver({ packageRoot: process.cwd() }));
+	process.exit(runTreeseedVerifyDriver({
+		packageRoot: process.cwd(),
+		localTreeseedExtraSiblingDependencies: ['@treeseed/agent'],
+	}));
 } catch (error) {
 	if (error && typeof error === 'object' && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND') {
 		if (entrypointCheckOnly) {

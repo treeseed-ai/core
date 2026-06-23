@@ -337,7 +337,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		}
 	});
 
-	it('lets local agent services discover the generated Wrangler D1 sqlite by default', () => {
+	it('keeps generated Wrangler D1 sqlite scoped to the web knowledge hub by default', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			setupMode: 'off',
@@ -351,7 +351,7 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands.find((command) => command.id === 'web')?.env.TREESEED_API_D1_LOCAL_PERSIST_TO).toBe('/tmp/treeseed-generated-d1');
 	});
 
-	it('preserves an explicit local agent service D1 override', () => {
+	it('does not pass explicit D1 overrides to local agent services', () => {
 		const plan = createTreeseedIntegratedDevPlan({
 			cwd: tenantRoot,
 			setupMode: 'off',
@@ -360,8 +360,8 @@ describe('Treeseed integrated dev orchestration', () => {
 			}),
 		});
 
-		expect(plan.commands.find((command) => command.id === 'manager')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBe('/tmp/treeseed-agent.sqlite');
-		expect(plan.commands.find((command) => command.id === 'worker')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBe('/tmp/treeseed-agent.sqlite');
+		expect(plan.commands.find((command) => command.id === 'manager')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
+		expect(plan.commands.find((command) => command.id === 'worker')?.env.TREESEED_AGENT_D1_PERSIST_TO).toBeUndefined();
 	});
 
 	it('selects provider-local Wrangler for Cloudflare web surfaces', () => {

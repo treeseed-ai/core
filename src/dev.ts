@@ -1023,7 +1023,11 @@ function createAgentCommand(
 	};
 	const config = configs[id];
 	const entrypoint = resolveNodeEntrypoint(agentPackageRoot, config.source, config.dist);
-	const explicitAgentPersistTo = sharedEnv.TREESEED_AGENT_D1_PERSIST_TO?.trim();
+	const {
+		TREESEED_AGENT_D1_DATABASE: _agentD1Database,
+		TREESEED_AGENT_D1_PERSIST_TO: _agentD1PersistTo,
+		...agentSharedEnv
+	} = sharedEnv;
 	return {
 		id,
 		label: config.label,
@@ -1031,10 +1035,8 @@ function createAgentCommand(
 		args: [...entrypoint.args, ...(config.extraArgs ?? [])],
 		cwd: tenantRoot,
 		env: {
-			...sharedEnv,
+			...agentSharedEnv,
 			TREESEED_AGENT_REPO_ROOT: tenantRoot,
-			TREESEED_AGENT_D1_DATABASE: sharedEnv.TREESEED_API_D1_DATABASE_NAME ?? 'SITE_DATA_DB',
-			...(explicitAgentPersistTo ? { TREESEED_AGENT_D1_PERSIST_TO: explicitAgentPersistTo } : {}),
 			TREESEED_ENVIRONMENT: sharedEnv.TREESEED_ENVIRONMENT ?? 'local',
 			...config.extraEnv,
 		},
