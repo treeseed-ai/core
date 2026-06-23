@@ -1521,8 +1521,17 @@ function runGitText(cwd: string, args: string[]) {
 	return (result.status ?? 1) === 0 ? String(result.stdout ?? '').trim() : null;
 }
 
+function isInsideTreeseedInternalPath(worktreeRoot: string, tenantRoot: string) {
+	const rel = relative(worktreeRoot, tenantRoot);
+	return rel.split(sep).includes('.treeseed');
+}
+
 function resolveGitWorktreeInfo(tenantRoot: string) {
-	const worktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']) ?? tenantRoot;
+	const resolvedWorktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']);
+	if (!resolvedWorktreeRoot || isInsideTreeseedInternalPath(resolvedWorktreeRoot, tenantRoot)) {
+		return { worktreeRoot: tenantRoot, gitCommonDir: null, branch: null };
+	}
+	const worktreeRoot = resolvedWorktreeRoot;
 	const rawCommonDir = runGitText(tenantRoot, ['rev-parse', '--git-common-dir']);
 	const gitCommonDir = rawCommonDir
 		? (isAbsolute(rawCommonDir) ? rawCommonDir : resolve(tenantRoot, rawCommonDir))
