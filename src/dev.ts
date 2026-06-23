@@ -331,12 +331,11 @@ function resolvePackageRootEnvOverride(env: NodeJS.ProcessEnv, envName: string, 
 
 function resolveNodeEntrypoint(packageDir: string, sourceRelativePath: string, distRelativePath: string) {
 	const sourcePath = resolve(packageDir, sourceRelativePath);
-	const runTsPath = resolve(packageDir, 'scripts', 'run-ts.mjs');
 
-	if (existsSync(sourcePath) && existsSync(runTsPath)) {
+	if (existsSync(sourcePath)) {
 		return {
-			command: process.execPath,
-			args: [runTsPath, sourcePath],
+			command: 'tsx',
+			args: [sourcePath],
 		};
 	}
 
@@ -348,11 +347,10 @@ function resolveNodeEntrypoint(packageDir: string, sourceRelativePath: string, d
 
 function resolveOptionalScriptEntrypoint(packageDir: string, sourceRelativePath: string, distRelativePath: string) {
 	const sourcePath = resolve(packageDir, sourceRelativePath);
-	const runTsPath = resolve(packageDir, 'scripts', 'run-ts.mjs');
-	if (existsSync(sourcePath) && existsSync(runTsPath)) {
+	if (existsSync(sourcePath)) {
 		return {
-			command: process.execPath,
-			args: [runTsPath, sourcePath],
+			command: 'tsx',
+			args: [sourcePath],
 		};
 	}
 	const distPath = resolve(packageDir, distRelativePath);
@@ -468,8 +466,8 @@ function isMarketWorkspace(tenantRoot: string) {
 		const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 		return pkg.name === '@treeseed/market'
 			&& existsSync(resolve(apiPackageRoot, 'package.json'))
-			&& existsSync(resolve(apiPackageRoot, 'src/api/server.js'))
-			&& existsSync(resolve(apiPackageRoot, 'src/operations-runner/entrypoint.js'));
+			&& existsSync(resolve(apiPackageRoot, 'src/api/server.ts'))
+			&& existsSync(resolve(apiPackageRoot, 'src/operations-runner/entrypoint.ts'));
 	} catch {
 		return false;
 	}
@@ -774,7 +772,7 @@ function createWatchEntries(tenantRoot: string, roots: {
 		{ kind: 'tenant', root: resolve(tenantRoot, 'content') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'public') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'astro.config.ts') },
-		{ kind: 'tenant', root: resolve(tenantRoot, 'astro.config.mjs') },
+		{ kind: 'tenant', root: resolve(tenantRoot, 'astro.config.ts') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'treeseed.site.yaml') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'treeseed.config.ts') },
 		{ kind: 'tenant', root: resolve(tenantRoot, 'package.json') },
@@ -785,7 +783,6 @@ function createWatchEntries(tenantRoot: string, roots: {
 		entries.push(
 			{ kind: 'core', root: resolve(packageRoot, 'src') },
 			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'build-tenant-worker.ts') },
-			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'run-ts.mjs') },
 			{ kind: 'core', root: resolve(packageRoot, 'package.json') },
 			{ kind: 'core', root: resolve(packageRoot, 'src', 'dev.ts'), restartRequired: true },
 			{ kind: 'core', root: resolve(packageRoot, 'scripts', 'dev-platform.ts'), restartRequired: true },
@@ -796,7 +793,6 @@ function createWatchEntries(tenantRoot: string, roots: {
 			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'src') },
 			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'tenant-astro-command.ts') },
 			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'tenant-d1-migrate-local.ts') },
-			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'scripts', 'run-ts.mjs') },
 			{ kind: 'sdk', root: resolve(roots.sdkPackageRoot, 'package.json') },
 		);
 	}
@@ -804,7 +800,6 @@ function createWatchEntries(tenantRoot: string, roots: {
 		entries.push(
 			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'src') },
 			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'package.json') },
-			{ kind: 'agent', root: resolve(roots.agentPackageRoot, 'scripts', 'run-ts.mjs') },
 		);
 	}
 	if (roots.cliPackageRoot && !roots.cliPackageRoot.split(sep).includes('node_modules')) {
@@ -873,10 +868,10 @@ function createSetupSteps(
 	);
 	const dockerReady = dockerIsAvailable(env);
 	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
-	const marketMigrateScript = existsSync(resolve(apiPackageRoot, 'scripts/migrate-market-db.mjs'))
+	const marketMigrateScript = existsSync(resolve(apiPackageRoot, 'scripts/migrate-db.ts'))
 		? {
-			command: process.execPath,
-			args: [resolve(apiPackageRoot, 'scripts/migrate-market-db.mjs')],
+			command: 'tsx',
+			args: [resolve(apiPackageRoot, 'scripts/migrate-db.ts')],
 		}
 		: null;
 	const steps: TreeseedIntegratedDevSetupStep[] = [
@@ -905,7 +900,7 @@ function createSetupSteps(
 				command: marketMigrateScript?.command,
 				args: marketMigrateScript?.args,
 				status: marketMigrateScript ? 'planned' : 'failed',
-				detail: marketMigrateScript ? undefined : 'Unable to resolve packages/api/scripts/migrate-market-db.mjs.',
+				detail: marketMigrateScript ? undefined : 'Unable to resolve packages/api/scripts/migrate-db.ts.',
 			} satisfies TreeseedIntegratedDevSetupStep,
 		] : []),
 		{
@@ -1057,8 +1052,8 @@ function createApiCommand(
 	return {
 		id: 'api',
 		label: 'Treeseed API',
-		command: process.execPath,
-		args: [resolve(apiPackageRoot, 'src/api/server.js')],
+		command: 'tsx',
+		args: [resolve(apiPackageRoot, 'src/api/server.ts')],
 		cwd: apiPackageRoot,
 		env: {
 			...sharedEnv,
@@ -1080,9 +1075,9 @@ function createMarketOperationsRunnerCommand(
 	return {
 		id: 'operations-runner',
 		label: 'Treeseed Operations Runner',
-		command: process.execPath,
+		command: 'tsx',
 		args: [
-			resolve(apiPackageRoot, 'src/operations-runner/entrypoint.js'),
+			resolve(apiPackageRoot, 'src/operations-runner/entrypoint.ts'),
 			'run',
 			'--watch',
 			'--market',

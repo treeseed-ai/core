@@ -231,6 +231,12 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		summary: z.string(),
 		draft: z.boolean().default(NOTE_MODEL_DEFAULTS.draft ?? false),
 		canonicalRoute: z.string().optional(),
+		about: z.array(z.string()).default([]),
+		relatedObjectives: z.array(z.string()).default([]),
+		relatedQuestions: z.array(z.string()).default([]),
+		relatedProposals: z.array(z.string()).default([]),
+		relatedDecisions: z.array(z.string()).default([]),
+		relatedBooks: z.array(z.string()).default([]),
 	});
 
 	const questionSchema = z.preprocess((value) => preprocessAliasedRecord(questionFieldAliases, value), z.object({

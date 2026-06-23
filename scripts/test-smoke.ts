@@ -199,7 +199,7 @@ function pack(root: string, outputRoot: string, fallbackName: string) {
 		.sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
 		.at(-1);
 
-	if (bundledTarball && !existsSync(resolve(root, 'scripts', 'run-ts.mjs'))) {
+	if (bundledTarball && !existsSync(resolve(root, 'scripts', 'build-dist.ts'))) {
 		return bundledTarball;
 	}
 
@@ -242,7 +242,7 @@ try {
 	const coreTarball = pack(packageRoot, packRoot, 'treeseed-core.tgz');
 	const workspaceRuntimePackageRoots = resolveWorkspaceRuntimePackageRoots();
 
-	if (existsSync(resolve(sdkPackageRoot, 'scripts', 'run-ts.mjs'))) {
+	if (existsSync(resolve(sdkPackageRoot, 'scripts', 'build-dist.ts'))) {
 		const sdkTarball = pack(sdkPackageRoot, packRoot, 'treeseed-sdk.tgz');
 		installPackagedPackage(extractRoot, installRoot, sdkTarball, 'sdk');
 	} else {

@@ -3,7 +3,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { packageRoot } from './package-tools.ts';
 
-const textExtensions = new Set(['.js', '.ts', '.mjs', '.cjs', '.d.ts', '.json', '.astro', '.css']);
+const textExtensions = new Set(['.js', '.ts', '.d.ts', '.json', '.astro', '.css']);
 const forbiddenPatterns = [
 	/['"`]file:[^'"`\n]+['"`]/,
 	/['"`]workspace:[^'"`\n]+['"`]/,

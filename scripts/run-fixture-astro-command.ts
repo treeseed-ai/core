@@ -7,7 +7,7 @@ import { fixtureRoot, packageRoot } from './paths.ts';
 const [command, ...rest] = process.argv.slice(2);
 
 if (!command) {
-	console.error('Usage: node ./scripts/run-fixture-astro-command.mjs <check|build|preview|dev> [...args]');
+	console.error('Usage: tsx ./scripts/run-fixture-astro-command.ts <check|build|preview|dev> [...args]');
 	process.exit(1);
 }
 

@@ -62,7 +62,6 @@ describe('Treeseed integrated dev orchestration', () => {
 		mkdirSync(resolve(root, 'src/api'), { recursive: true });
 		mkdirSync(resolve(root, 'src/services'), { recursive: true });
 		writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/agent', type: 'module' }, null, 2));
-		writeFileSync(resolve(root, 'scripts/run-ts.mjs'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/api/server.ts'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/services/manager.ts'), 'export {};\n');
 		writeFileSync(resolve(root, 'src/services/workday-manager.ts'), 'export {};\n');
@@ -96,9 +95,9 @@ describe('Treeseed integrated dev orchestration', () => {
 		mkdirSync(resolve(apiRoot, 'src/operations-runner'), { recursive: true });
 		mkdirSync(resolve(apiRoot, 'scripts'), { recursive: true });
 		writeFileSync(resolve(apiRoot, 'package.json'), JSON.stringify({ name: '@treeseed/api', type: 'module' }, null, 2));
-		writeFileSync(resolve(apiRoot, 'src/api/server.js'), 'export {};\n');
-		writeFileSync(resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'export {};\n');
-		writeFileSync(resolve(apiRoot, 'scripts/migrate-market-db.mjs'), 'export {};\n');
+		writeFileSync(resolve(apiRoot, 'src/api/server.ts'), 'export {};\n');
+		writeFileSync(resolve(apiRoot, 'src/operations-runner/entrypoint.ts'), 'export {};\n');
+		writeFileSync(resolve(apiRoot, 'scripts/migrate-db.ts'), 'export {};\n');
 		return apiRoot;
 	}
 
@@ -203,10 +202,20 @@ describe('Treeseed integrated dev orchestration', () => {
 
 			expect(plan.commands.map((command) => command.id)).toEqual(['web', 'api', 'operations-runner']);
 			expect(plan.commands.find((command) => command.id === 'api')?.label).toBe('Treeseed API');
-			expect(plan.commands.find((command) => command.id === 'api')?.args).toEqual([resolve(apiRoot, 'src/api/server.js')]);
+			expect(plan.commands.find((command) => command.id === 'api')?.command).toBe('tsx');
+			expect(plan.commands.find((command) => command.id === 'api')?.args).toEqual([
+				resolve(apiRoot, 'src/api/server.ts'),
+			]);
 			expect(plan.commands.find((command) => command.id === 'api')?.cwd).toBe(apiRoot);
 			const runner = plan.commands.find((command) => command.id === 'operations-runner');
-			expect(runner?.args).toEqual(expect.arrayContaining([resolve(apiRoot, 'src/operations-runner/entrypoint.js'), 'run', '--watch', '--operation', 'project:web_deployment']));
+			expect(runner?.command).toBe('tsx');
+			expect(runner?.args).toEqual(expect.arrayContaining([
+				resolve(apiRoot, 'src/operations-runner/entrypoint.ts'),
+				'run',
+				'--watch',
+				'--operation',
+				'project:web_deployment',
+			]));
 			expect(runner?.cwd).toBe(apiRoot);
 			expect(runner?.args).not.toContain('--mock-external');
 			expect(runner?.env.TREESEED_DATABASE_URL).toBe('postgres://treeseed:treeseed@127.0.0.1:55432/market_local');

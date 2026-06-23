@@ -121,9 +121,8 @@ function resolveInstalledCoreScript(root, scriptRelativePath) {
 
 function runStarlightPatchFromRegistry(root) {
 	const workspacePatchScript = resolve(root, 'packages', 'core', 'scripts', 'patch-starlight-content-path.ts');
-	const workspaceRunner = resolve(root, 'packages', 'core', 'scripts', 'run-ts.mjs');
-	if (existsSync(workspacePatchScript) && existsSync(workspaceRunner)) {
-		run(process.execPath, [workspaceRunner, workspacePatchScript], { cwd: root });
+	if (existsSync(workspacePatchScript)) {
+		run('tsx', [workspacePatchScript], { cwd: root });
 		return;
 	}
 
@@ -133,7 +132,7 @@ function runStarlightPatchFromRegistry(root) {
 
 function runStarlightPatchFromWorkspace(root, packages) {
 	const corePackage = packages.find((entry) => entry.name === '@treeseed/core');
-	run(process.execPath, [resolve(corePackage.dir, 'scripts/run-ts.mjs'), resolve(corePackage.dir, 'scripts/patch-starlight-content-path.ts')], { cwd: root });
+	run('tsx', [resolve(corePackage.dir, 'scripts/patch-starlight-content-path.ts')], { cwd: root });
 }
 
 function linkWorkspacePackages(root, packages) {

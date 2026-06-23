@@ -18,10 +18,10 @@ vi.mock('@treeseed/sdk/platform/plugins', () => ({
 				agents: {
 					execution: 'stub',
 					mutation: 'stub',
-					repository: 'stub',
-					verification: 'stub',
-					notification: 'stub',
-					research: 'stub',
+					repository: 'git',
+					verification: 'local',
+					notification: 'sdk_message',
+					research: 'project_graph',
 				},
 				deploy: 'cloudflare',
 				content: {

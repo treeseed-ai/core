@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.11.1-dev.demo.20260621T224422Z",
+  "version": "0.11.1-dev.demo.20260623T000050Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -20,7 +20,7 @@
   "files": [
     "README.md",
     "dist",
-    "scripts/verify-driver.mjs",
+    "scripts/verify-driver.ts",
     "tsconfigs",
     "templates",
     "style",
@@ -35,32 +35,32 @@
   "scripts": {
     "setup": "npm install",
     "setup:ci": "npm ci",
-    "build:dist": "node ./scripts/run-ts.mjs ./scripts/build-dist.ts",
-    "prepare": "node ./scripts/prepare.mjs",
+    "build:dist": "tsx ./scripts/build-dist.ts",
+    "prepare": "tsx ./scripts/prepare.ts",
     "prepack": "npm run build:dist",
-    "dev": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts",
-    "dev:web": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --surface web",
-    "dev:watch": "node ./scripts/run-ts.mjs ./scripts/dev-platform.ts --watch",
-    "starlight:patch": "node ./scripts/run-ts.mjs ./scripts/patch-starlight-content-path.ts",
+    "dev": "tsx ./scripts/dev-platform.ts",
+    "dev:web": "tsx ./scripts/dev-platform.ts --surface web",
+    "dev:watch": "tsx ./scripts/dev-platform.ts --watch",
+    "starlight:patch": "tsx ./scripts/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
-    "check": "node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts check",
-    "prebuild": "npm run starlight:patch && node ./scripts/run-ts.mjs ./scripts/aggregate-book.ts",
-    "build": "TREESEED_LOCAL_DEV_MODE=cloudflare node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts build",
-    "preview": "node ./scripts/run-ts.mjs ./scripts/run-fixture-astro-command.ts preview",
+    "check": "tsx ./scripts/run-fixture-astro-command.ts check",
+    "prebuild": "npm run starlight:patch && tsx ./scripts/aggregate-book.ts",
+    "build": "TREESEED_LOCAL_DEV_MODE=cloudflare tsx ./scripts/run-fixture-astro-command.ts build",
+    "preview": "tsx ./scripts/run-fixture-astro-command.ts preview",
     "test:unit": "vitest run --config ./vitest.config.ts",
     "test": "npm run test:unit",
     "lint": "npm run fixtures:check && npm run starlight:patch && npm run build:dist",
     "verify:direct": "npm run release:verify",
-    "verify:local": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='direct'; await import('./scripts/verify-driver.mjs')\"",
-    "verify:action": "node --input-type=module -e \"process.env.TREESEED_VERIFY_DRIVER='act'; await import('./scripts/verify-driver.mjs')\"",
-    "verify": "node --input-type=module -e \"await import('./scripts/verify-driver.mjs')\"",
-    "test:smoke": "node ./scripts/run-ts.mjs ./scripts/test-smoke.ts",
-    "fixtures:resolve": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts resolve",
-    "fixtures:check": "node ./scripts/run-ts.mjs ./scripts/fixture-tools.ts check",
+    "verify:local": "TREESEED_VERIFY_DRIVER=direct tsx ./scripts/verify-driver.ts",
+    "verify:action": "TREESEED_VERIFY_DRIVER=act tsx ./scripts/verify-driver.ts",
+    "verify": "tsx ./scripts/verify-driver.ts",
+    "test:smoke": "tsx ./scripts/test-smoke.ts",
+    "fixtures:resolve": "tsx ./scripts/fixture-tools.ts resolve",
+    "fixtures:check": "tsx ./scripts/fixture-tools.ts check",
     "release:setup": "npm run setup:ci",
-    "release:check-tag": "node ./scripts/run-ts.mjs ./scripts/assert-release-tag-version.ts",
-    "release:verify": "node ./scripts/run-ts.mjs ./scripts/release-verify.ts",
-    "release:publish": "node ./scripts/run-ts.mjs ./scripts/publish-package.ts"
+    "release:check-tag": "tsx ./scripts/assert-release-tag-version.ts",
+    "release:verify": "tsx ./scripts/release-verify.ts",
+    "release:publish": "tsx ./scripts/publish-package.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.8",
@@ -71,8 +71,8 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#0.11.1-dev.demo.20260621T224355Z",
-    "@treeseed/ui": "github:treeseed-ai/ui#0.11.1-dev.demo.20260621T211118Z",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#0.11.1-dev.demo.20260622T235935Z",
+    "@treeseed/ui": "github:treeseed-ai/ui#0.11.1-dev.demo.20260622T235800Z",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
@@ -92,7 +92,8 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@types/nodemailer": "^7.0.11"
+    "@types/nodemailer": "^7.0.11",
+    "tsx": "^4.21.0"
   },
   "exports": {
     ".": {
