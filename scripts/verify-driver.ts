@@ -2,10 +2,37 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+const require = createRequire(import.meta.url);
+
+function hasSourceRunnerDependencies() {
+	try {
+		require.resolve('esbuild');
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function ensureSourceRunnerDependencies() {
+	if (hasSourceRunnerDependencies()) {
+		return;
+	}
+	const result = spawnSync('npm', ['install'], {
+		cwd: process.cwd(),
+		env: { ...process.env, npm_config_ignore_scripts: 'true' },
+		stdio: 'inherit',
+	});
+	if (result.status !== 0) {
+		process.exit(result.status ?? 1);
+	}
+}
+
 function runDirectVerify() {
+	ensureSourceRunnerDependencies();
 	const result = spawnSync('npm', ['run', 'verify:direct'], {
 		cwd: process.cwd(),
 		env: process.env,
@@ -25,6 +52,7 @@ async function importSdkVerifier() {
 }
 
 try {
+	ensureSourceRunnerDependencies();
 	const { runTreeseedVerifyDriver } = await importSdkVerifier();
 	if (entrypointCheckOnly) {
 		process.exit(0);

@@ -5,6 +5,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
+import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
 import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
@@ -32,6 +33,7 @@ const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
 const agentTriggerTypeValues = ['schedule', 'message', 'follow', 'startup'] as const;
 const agentPermissionOperationValues = ['get', 'read', 'search', 'follow', 'pick', 'create', 'update'] as const;
+const commerceOfferModeValues = [...COMMERCE_OFFER_MODES] as [CommerceOfferMode, ...CommerceOfferMode[]];
 
 type DocsDependencies = {
 	docsLoader: (options: Record<string, unknown>) => unknown;
@@ -494,7 +496,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 			supportsReconcile: z.boolean().default(true),
 		}),
 		offer: z.object({
-			priceModel: z.enum(['free', 'paid', 'contact', 'one_time_current_version', 'subscription_updates', 'private']).default('free'),
+			priceModel: z.enum(commerceOfferModeValues).default('free'),
 			license: z.string().optional(),
 			support: z.string().optional(),
 		}).default({ priceModel: 'free' }),

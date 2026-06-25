@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.11.1-dev.demo.20260625T232452Z",
+  "version": "0.11.1-dev.demo.20260625T233020Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {

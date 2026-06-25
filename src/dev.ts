@@ -1530,7 +1530,10 @@ function isInsideTreeseedInternalPath(worktreeRoot: string, tenantRoot: string) 
 
 function resolveGitWorktreeInfo(tenantRoot: string) {
 	const resolvedWorktreeRoot = runGitText(tenantRoot, ['rev-parse', '--show-toplevel']);
-	if (!resolvedWorktreeRoot || isInsideTreeseedInternalPath(resolvedWorktreeRoot, tenantRoot)) {
+	const isTreeseedTemporaryRoot = resolvedWorktreeRoot
+		? relative(resolve(resolvedWorktreeRoot, '.treeseed', 'tmp'), resolve(tenantRoot)).split(sep)[0] !== '..'
+		: false;
+	if (!resolvedWorktreeRoot || isInsideTreeseedInternalPath(resolvedWorktreeRoot, tenantRoot) || isTreeseedTemporaryRoot) {
 		return { worktreeRoot: tenantRoot, gitCommonDir: null, branch: null };
 	}
 	const worktreeRoot = resolvedWorktreeRoot;

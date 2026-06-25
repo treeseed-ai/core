@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../layouts/CoreStyleScope.astro';
 import ContentLayout from '@treeseed/ui/components/astro/layouts/ContentLayout.astro';
 import BridgeLayout from '@treeseed/ui/components/astro/layouts/BridgeLayout.astro';
 import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
@@ -21,6 +22,8 @@ const Content = rendered?.Content ?? null;
 const currentPath = Astro.url.pathname;
 ---
 
+<CoreStyleScope>
+
 {
 	!entry || (!Content && !publishedEntry?.html) ? (
 		<RouteNotFound title="Page not found" description="The requested page is not available in this Treeseed." currentPath={currentPath} />
@@ -34,3 +37,4 @@ const currentPath = Astro.url.pathname;
 		</ContentLayout>
 	)
 }
+</CoreStyleScope>

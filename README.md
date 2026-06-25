@@ -55,7 +55,7 @@ In the Treeseed market workspace, the web process runs from the root repo, while
 
 - `@treeseed/ui` owns reusable components and styles.
 - `@treeseed/admin` owns admin routes, middleware, view models, and admin behavior.
-- `@treeseed/market` hosts the concrete Treeseed public site and future ecommerce.
+- `@treeseed/market` hosts the concrete Treeseed public site, buyer marketplace, and Commons participant pages.
 - `@treeseed/api` owns backend API, PostgreSQL, migrations, and operations runner.
 - `@treeseed/sdk` owns reconciliation, config, workflow, graph, and shared platform contracts.
 - `@treeseed/agent` owns capacity-provider runtime, AgentKernel execution, mode scheduling, and provider-local lifecycle.
@@ -116,7 +116,7 @@ The publish workflow expects `NPM_TOKEN` in the package repository GitHub `produ
 - backend API implementation, PostgreSQL, operations runner, or migrations; use `@treeseed/api`
 - capacity provider runtime; use `@treeseed/agent`
 - AgentKernel execution, mode scheduling, and provider assignment runtime; use `@treeseed/agent` with SDK/API contracts
-- checkout, billing, licensing, or marketplace policy; use root market/future commerce plugin
+- checkout, billing, licensing, backend ecommerce state, PostgreSQL migrations, operations-runner behavior, or marketplace policy; use root market for buyer pages and `@treeseed/api` for backend state
 - TreeDX service implementation
 
 See the root [Package Ownership](../../docs/package-ownership.md) guide for the full package map.

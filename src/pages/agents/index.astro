@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
 import ProfileList from '@treeseed/ui/components/astro/site/ProfileList.astro';
@@ -9,6 +10,8 @@ const agents = publishedRuntime
 	? await loadPublishedCollection(Astro.locals, 'agents')
 	: await (await import('astro:content')).getCollection('agents');
 ---
+
+<CoreStyleScope>
 
 <MainLayout title="Agents" description="Software contributors participating in the TreeSeed working site." currentPath="/agents/">
 	<div class="space-y-10">
@@ -28,3 +31,4 @@ const agents = publishedRuntime
 		/>
 	</div>
 </MainLayout>
+</CoreStyleScope>

@@ -1,7 +1,7 @@
 import { getCollection } from 'astro:content';
 import { normalizeTemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
 import type { TemplateLaunchRequirements } from '@treeseed/sdk/template-launch-requirements';
-import type { CatalogItem, CatalogItemOfferMode } from '@treeseed/sdk/types';
+import type { CatalogItem, CommerceOfferMode } from '@treeseed/sdk/types';
 import { RUNTIME_TENANT } from './tenant/runtime-config.ts';
 import { siteModelRendered } from './utils/site-models.ts';
 
@@ -23,9 +23,9 @@ export interface TemplateContentEntry {
 		templateApiVersion: number;
 		minCliVersion: string;
 		minCoreVersion: string;
-		offer?: {
-			priceModel?: CatalogItemOfferMode | string;
-		};
+			offer?: {
+				priceModel?: CommerceOfferMode;
+			};
 		fulfillment: {
 			mode?: string;
 			source:
@@ -66,7 +66,7 @@ export interface TemplateSiteCard {
 	featured: boolean;
 	publisherName: string;
 	templateVersion?: string;
-	priceModel?: CatalogItemOfferMode | string;
+	priceModel?: CommerceOfferMode;
 	source: 'catalog' | 'content';
 	launchRequirements?: TemplateLaunchRequirements;
 }

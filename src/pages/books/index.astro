@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
 import BookList from '@treeseed/ui/components/astro/site/BookList.astro';
@@ -9,6 +10,8 @@ const books = publishedRuntime
 	? (await loadPublishedCollection(Astro.locals, 'books')).sort((a, b) => Number(a.data.order ?? 0) - Number(b.data.order ?? 0))
 	: (await (await import('astro:content')).getCollection('books')).sort((a, b) => a.data.order - b.data.order);
 ---
+
+<CoreStyleScope>
 
 <MainLayout title="Books" description="Queryable book metadata for the TreeSeed working site." currentPath="/books/">
 	<div class="space-y-10">
@@ -29,3 +32,4 @@ const books = publishedRuntime
 		/>
 	</div>
 </MainLayout>
+</CoreStyleScope>

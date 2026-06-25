@@ -1,4 +1,5 @@
 ---
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
 import EmptyState from '@treeseed/ui/components/astro/surface/EmptyState.astro';
@@ -32,28 +33,30 @@ for (const [name, value] of Object.entries(viewModel.cache.headers)) {
 }
 ---
 
-<MainLayout title={viewModel.title} description={viewModel.description} currentPath={viewModel.currentPath} helpContext={viewModel.help} feedbackContext={viewModel.feedback}>
-	<ReaderTemplate
-		title={viewModel.title}
-		description={viewModel.description}
-		actions={viewModel.actions}
-		navGroups={viewModel.navGroups}
-	>
-		{viewModel.status === 'ready' ? (
-			viewModel.publishedHtml ? (
-				<PublishedContentBody html={viewModel.publishedHtml} />
-			) : Content ? (
-				<Content />
+<CoreStyleScope>
+	<MainLayout title={viewModel.title} description={viewModel.description} currentPath={viewModel.currentPath} helpContext={viewModel.help} feedbackContext={viewModel.feedback}>
+		<ReaderTemplate
+			title={viewModel.title}
+			description={viewModel.description}
+			actions={viewModel.actions}
+			navGroups={viewModel.navGroups}
+		>
+			{viewModel.status === 'ready' ? (
+				viewModel.publishedHtml ? (
+					<PublishedContentBody html={viewModel.publishedHtml} />
+				) : Content ? (
+					<Content />
+				) : (
+					<EmptyState title="Knowledge page unavailable" description="This local knowledge page could not be rendered." />
+				)
 			) : (
-				<EmptyState title="Knowledge page unavailable" description="This local knowledge page could not be rendered." />
-			)
-		) : (
-			<EmptyState
-				eyebrow={viewModel.source === 'r2_published_manifest' ? 'Published runtime' : 'Knowledge'}
-				title={viewModel.errorTitle ?? viewModel.title}
-				description={viewModel.errorDescription ?? viewModel.description}
-				actions={[{ label: 'Open books', href: '/books/' }]}
-			/>
-		)}
-	</ReaderTemplate>
-</MainLayout>
+				<EmptyState
+					eyebrow={viewModel.source === 'r2_published_manifest' ? 'Published runtime' : 'Knowledge'}
+					title={viewModel.errorTitle ?? viewModel.title}
+					description={viewModel.errorDescription ?? viewModel.description}
+					actions={[{ label: 'Open books', href: '/books/' }]}
+				/>
+			)}
+		</ReaderTemplate>
+	</MainLayout>
+</CoreStyleScope>

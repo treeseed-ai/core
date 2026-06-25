@@ -1,10 +1,13 @@
 ---
+import CoreStyleScope from '../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import ContactForm from '@treeseed/ui/components/astro/forms/ContactForm.astro';
 
 const status = Astro.url.searchParams.get('formStatus');
 const code = Astro.url.searchParams.get('formCode');
 ---
+
+<CoreStyleScope>
 
 <MainLayout
 	title="Contact"
@@ -25,3 +28,4 @@ const code = Astro.url.searchParams.get('formCode');
 		<ContactForm status={status} code={code} />
 	</div>
 </MainLayout>
+</CoreStyleScope>

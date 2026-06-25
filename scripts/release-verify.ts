@@ -30,6 +30,10 @@ function runtimeDependencyNames() {
 	return Object.keys(packageJson.dependencies ?? {});
 }
 
+function isPackedTarballSpecifier(value: string): boolean {
+	return /^file:/u.test(value) && /\.tgz(?:[?#].*)?$/u.test(value);
+}
+
 function ensureWorkspaceRuntimePackageLinks() {
 	for (const packageName of runtimeDependencyNames()) {
 		if (!packageName.startsWith('@treeseed/')) {
@@ -52,7 +56,7 @@ function assertNoLocalDependencyLinks() {
 	const packageJson = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as Record<string, Record<string, string> | undefined>;
 	for (const sectionName of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
 		for (const [dependencyName, version] of Object.entries(packageJson[sectionName] ?? {})) {
-			if (version.startsWith('workspace:') || version.startsWith('file:')) {
+			if (version.startsWith('workspace:') || (version.startsWith('file:') && !isPackedTarballSpecifier(version))) {
 				throw new Error(`package.json ${sectionName}.${dependencyName} must not use local dependency specifiers: ${version}`);
 			}
 		}
@@ -72,7 +76,7 @@ function assertNoLocalDependencyLinks() {
 		if (
 			resolved.startsWith('../')
 			|| resolved.startsWith('./')
-			|| resolved.startsWith('file:')
+			|| (resolved.startsWith('file:') && !isPackedTarballSpecifier(resolved))
 			|| resolved.startsWith('workspace:')
 		) {
 			throw new Error(`package-lock.json contains forbidden local resolution for ${entryKey}: ${resolved}`);
