@@ -67,6 +67,7 @@ const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resou
 	{ pattern: '/', resourcePath: 'pages/index.astro' },
 	{ pattern: '/404', resourcePath: 'pages/404.astro' },
 	{ pattern: '/contact', resourcePath: 'pages/contact.astro' },
+	{ pattern: '/api/feedback/submit', resourcePath: 'pages/api/feedback/submit.ts' },
 	{ pattern: '/feed.xml', resourcePath: 'pages/feed.xml', model: 'notes' },
 	{ pattern: '/ui', resourcePath: 'pages/ui/index.astro' },
 	{ pattern: '/agents', resourcePath: 'pages/agents/index.astro', model: 'agents' },
@@ -423,7 +424,7 @@ export function createTreeseedSite(
 	const packageRoutes = [
 		...PACKAGE_ROUTE_ENTRIES,
 		...pageRoutes,
-		...(docsRendered && publishedRuntime
+		...(docsRendered
 			? [
 				{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro', model: 'docs' as const },
 				{ pattern: '/knowledge/[...slug]', resourcePath: 'pages/docs-runtime/[...slug].astro', model: 'docs' as const },

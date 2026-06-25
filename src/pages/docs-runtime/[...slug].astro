@@ -1,102 +1,60 @@
 ---
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import PublishedContentBody from '@treeseed/ui/components/astro/site/PublishedContentBody.astro';
-import RouteNotFound from '@treeseed/ui/components/astro/site/RouteNotFound.astro';
-import { loadHostedBookRuntime, loadHostedDocsTree } from '../../utils/published-content';
-import { loadPublishedEntry } from '../../utils/site-content-runtime';
+import EmptyState from '@treeseed/ui/components/astro/surface/EmptyState.astro';
+import ReaderTemplate from '@treeseed/ui/components/astro/templates/ReaderTemplate.astro';
+import { isPublishedRuntimeContentMode } from '../../utils/site-content-runtime';
+import { buildPublicKnowledgeReaderViewModel } from '../../utils/runtime-reader';
+
+export const prerender = false;
 
 const slug = String(Astro.params.slug ?? '').replace(/^\/+|\/+$/gu, '');
-const publishedSlug = slug ? `knowledge/${slug}` : 'knowledge';
-const currentPath = slug ? `/knowledge/${slug}/` : '/knowledge/';
-const runtime = await loadHostedBookRuntime(Astro.locals);
-const docsTree = await loadHostedDocsTree(Astro.locals);
-const document = await loadPublishedEntry(Astro.locals, 'docs', publishedSlug);
-
-const pathStartsWith = (candidate, prefix) =>
-	String(candidate ?? '').replace(/\/+$/u, '').startsWith(String(prefix ?? '').replace(/\/+$/u, ''));
-
-const activeBook = runtime?.BOOKS.find((book) => pathStartsWith(currentPath, book.basePath)) ?? null;
-const sidebarEntries = activeBook
-	? (docsTree ?? []).filter((entry) => pathStartsWith(entry.path, activeBook.basePath))
-	: docsTree ?? [];
-const download = activeBook
-	? {
-		title: activeBook.downloadTitle,
-		href: activeBook.downloadHref,
-	}
-	: runtime?.TREESEED_LIBRARY_DOWNLOAD
-		? {
-			title: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadTitle,
-			href: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadHref,
-		}
-		: null;
+const publishedRuntime = isPublishedRuntimeContentMode();
+const contentApi = publishedRuntime ? null : await import('astro:content');
+const localEntries = contentApi ? await contentApi.getCollection('docs').catch(() => []) : [];
+const viewModel = await buildPublicKnowledgeReaderViewModel({
+	locals: Astro.locals,
+	slug,
+	localDocuments: localEntries.map((entry: any) => ({
+		id: entry.id,
+		slug: entry.slug,
+		data: entry.data,
+	})),
+});
+const localEntry = contentApi && viewModel.localDocumentId
+	? localEntries.find((entry: any) => entry.id === viewModel.localDocumentId) ?? null
+	: null;
+const rendered = contentApi && localEntry ? await contentApi.render(localEntry) : null;
+const Content = rendered?.Content ?? null;
+if (viewModel.status === 'not_found') Astro.response.status = 404;
+if (viewModel.status === 'unavailable') Astro.response.status = 503;
+for (const [name, value] of Object.entries(viewModel.cache.headers)) {
+	Astro.response.headers.set(name, value);
+}
 ---
 
-{
-	!document ? (
-		<RouteNotFound
-			title="Knowledge page not found"
-			description="The requested knowledge page is not available in published runtime content."
-			currentPath={currentPath}
-		/>
-	) : (
-		<MainLayout
-			title={document.entry.data.title ?? 'Knowledge page'}
-			description={document.entry.data.summary ?? 'Published knowledge page'}
-			currentPath={currentPath}
-		>
-			<div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
-				<aside class="space-y-6 border border-[color:var(--ts-color-border)] bg-[color:var(--ts-color-surface)] p-6">
-					<div class="space-y-3">
-						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">
-							{activeBook?.sectionLabel ?? 'Knowledge'}
-						</p>
-						<a href={runtime?.TREESEED_LINKS.home ?? '/books/'} class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Books home</a>
-						{activeBook?.landingPath && (
-							<a href={activeBook.landingPath} class="block text-sm font-medium text-[color:var(--ts-color-text-muted)] hover:text-[color:var(--ts-color-text)]">Open book landing page</a>
-						)}
-						{download && (
-							<a
-								href={download.href}
-								class="inline-flex border border-[color:var(--ts-color-accent)] bg-[color:var(--ts-color-accent)] px-4 py-2 text-sm font-semibold text-[color:var(--ts-color-text)] transition hover:border-[color:var(--ts-color-info)] hover:bg-[color:var(--ts-color-info-soft)]"
-							>
-								{download.title}
-							</a>
-						)}
-					</div>
-					<ul class="space-y-2 text-sm text-[color:var(--ts-color-text-muted)]">
-						{sidebarEntries.map((entry) => (
-							<li>
-								<a
-									href={entry.path}
-									class:list={[
-										'hover:text-[color:var(--ts-color-text)]',
-										entry.path === currentPath && 'font-semibold text-[color:var(--ts-color-text)]',
-									]}
-								>
-									{entry.title ?? entry.slug}
-								</a>
-							</li>
-						))}
-					</ul>
-				</aside>
-				<article class="space-y-6">
-					<header class="space-y-4 border-b border-[color:var(--ts-color-border)] pb-6">
-						<p class="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ts-color-info-text)]">
-							{activeBook?.sectionLabel ?? 'Knowledge'}
-						</p>
-						<h1 class="font-serif text-5xl font-bold tracking-tight text-[color:var(--ts-color-text)] md:text-6xl">
-							{document.entry.data.title ?? document.entry.slug}
-						</h1>
-						{document.entry.data.summary && (
-							<p class="max-w-3xl text-xl leading-10 text-[color:var(--ts-color-text-muted)]">{document.entry.data.summary}</p>
-						)}
-					</header>
-					<div class="prose max-w-none">
-						<PublishedContentBody html={document.html} />
-					</div>
-				</article>
-			</div>
-		</MainLayout>
-	)
-}
+<MainLayout title={viewModel.title} description={viewModel.description} currentPath={viewModel.currentPath} helpContext={viewModel.help} feedbackContext={viewModel.feedback}>
+	<ReaderTemplate
+		title={viewModel.title}
+		description={viewModel.description}
+		actions={viewModel.actions}
+		navGroups={viewModel.navGroups}
+	>
+		{viewModel.status === 'ready' ? (
+			viewModel.publishedHtml ? (
+				<PublishedContentBody html={viewModel.publishedHtml} />
+			) : Content ? (
+				<Content />
+			) : (
+				<EmptyState title="Knowledge page unavailable" description="This local knowledge page could not be rendered." />
+			)
+		) : (
+			<EmptyState
+				eyebrow={viewModel.source === 'r2_published_manifest' ? 'Published runtime' : 'Knowledge'}
+				title={viewModel.errorTitle ?? viewModel.title}
+				description={viewModel.errorDescription ?? viewModel.description}
+				actions={[{ label: 'Open books', href: '/books/' }]}
+			/>
+		)}
+	</ReaderTemplate>
+</MainLayout>

@@ -31,3 +31,9 @@ export {
 	isSiteRenderedModel,
 	siteModelRendered,
 } from './utils/site-models.ts';
+export {
+	buildPrivateKnowledgeReaderViewModel,
+	type RuntimeReaderNavGroup,
+	type RuntimeReaderNavItem,
+	type RuntimeReaderViewModel,
+} from './utils/runtime-reader.ts';

@@ -52,6 +52,50 @@ describe('core UI ownership boundary', () => {
 		}
 	});
 
+	it('renders the public knowledge runtime reader through ReaderTemplate without page-local styling', () => {
+		for (const path of [
+			'src/pages/docs-runtime/index.astro',
+			'src/pages/docs-runtime/[...slug].astro',
+		]) {
+			const contents = source(path);
+			expect(contents, path).toContain('ReaderTemplate');
+			expect(contents, path).toContain('buildPublicKnowledgeReaderViewModel');
+			expect(contents, path).toContain('helpContext={viewModel.help}');
+			expect(contents, path).toContain('feedbackContext={viewModel.feedback}');
+			expect(contents, path).not.toContain('<style');
+			expect(contents, path).not.toMatch(/border-\[|text-\[|bg-\[|Market API|fetch\(|HelpDrawer|data-ts-help/u);
+		}
+	});
+
+	it('contributes the /knowledge reader routes whenever docs are rendered', () => {
+		const site = source('src/site.ts');
+		expect(site).toContain("{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro'");
+		expect(site).toContain("{ pattern: '/knowledge/[...slug]', resourcePath: 'pages/docs-runtime/[...slug].astro'");
+		expect(site).toContain("{ pattern: '/api/feedback/submit', resourcePath: 'pages/api/feedback/submit.ts'");
+		expect(site).not.toContain('docsRendered && publishedRuntime');
+	});
+
+	it('routes Core Knowledge Hub feedback to Market/API without local persistence', () => {
+		const helper = source('src/utils/runtime-reader.ts');
+		const endpoint = source('src/pages/api/feedback/submit.ts');
+		expect(helper).toContain("submissionEndpoint: '/api/feedback/submit'");
+		expect(helper).toContain("capabilityId: 'core.public-knowledge-reader'");
+		expect(helper).toContain('publicHelpContext');
+		expect(helper).toContain("source: 'runtime-content'");
+		expect(endpoint).toContain('/v1/feedback');
+		expect(endpoint).toContain('cache-control');
+		expect(endpoint).not.toMatch(/recordAuditEvent|upsertTeamInboxItem|new MarketControlPlaneStore/iu);
+	});
+
+	it('keeps private reader helper server-only and no-leak', () => {
+		const helper = source('src/utils/runtime-reader.ts');
+		expect(helper).toContain('buildPrivateKnowledgeReaderViewModel');
+		expect(helper).toContain('r2_private_manifest');
+		expect(helper).toContain('private, no-store');
+		expect(helper).not.toMatch(/localDocuments[^)]*buildPrivateKnowledgeReaderViewModel/u);
+		expect(helper).not.toContain('r2://');
+	});
+
 	it('keeps removed reusable source trees absent', () => {
 		for (const path of [
 			'src/components/ui',
