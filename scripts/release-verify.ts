@@ -52,6 +52,29 @@ function ensureWorkspaceRuntimePackageLinks() {
 	}
 }
 
+function prepareWorkspaceRuntimePackageBuilds() {
+	for (const packageName of runtimeDependencyNames()) {
+		if (!packageName.startsWith('@treeseed/')) {
+			continue;
+		}
+		const runtimePackageRoot = resolve(packageRoot, '..', packageName.slice('@treeseed/'.length));
+		const packageJsonPath = resolve(runtimePackageRoot, 'package.json');
+		if (!existsSync(packageJsonPath)) {
+			continue;
+		}
+		const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+			scripts?: Record<string, string>;
+		};
+		if (packageJson.scripts?.['build:dist']) {
+			run('npm', ['run', 'build:dist'], runtimePackageRoot);
+			continue;
+		}
+		if (packageJson.scripts?.build) {
+			run('npm', ['run', 'build'], runtimePackageRoot);
+		}
+	}
+}
+
 function assertNoLocalDependencyLinks() {
 	const packageJson = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as Record<string, Record<string, string> | undefined>;
 	for (const sectionName of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
@@ -111,6 +134,7 @@ function scanDirectory(root: string) {
 
 assertNoLocalDependencyLinks();
 ensureWorkspaceRuntimePackageLinks();
+prepareWorkspaceRuntimePackageBuilds();
 run('npm', ['run', 'lint']);
 scanDirectory(resolve(packageRoot, 'dist'));
 run('npm', ['run', 'test:unit']);
