@@ -4,7 +4,7 @@ import {
 	type KnowledgeHubProviderLaunchInput,
 	type KnowledgeHubProviderLaunchResult,
 	type KnowledgeHubProviderLaunchPreflightReport,
-} from '@treeseed/sdk';
+} from '@treeseed/sdk/operations/hub-provider-launch';
 
 export {
 	executeKnowledgeHubProviderLaunch,
