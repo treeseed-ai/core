@@ -1363,7 +1363,10 @@ surfaces:
 			});
 
 			expect(result?.actions.filter((action) => action.kind === 'path' && action.id !== 'dev-reload').every((action) => action.status === 'removed')).toBe(true);
-			expect(result?.actions.find((action) => action.id === 'mailpit')?.detail).toContain('inbox');
+			expect(result?.actions.find((action) => action.id === 'mailpit')).toMatchObject({
+				status: 'skipped',
+				detail: expect.stringContaining('Mailpit is disabled'),
+			});
 			expect(result?.actions.find((action) => action.id === 'dev-reload')?.status).toBe('refreshed');
 			expect(existsSync(d1Path)).toBe(false);
 			expect(existsSync(rootKvPath)).toBe(false);

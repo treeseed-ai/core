@@ -20,7 +20,6 @@ import {
 	resolveTreeseedToolBinary,
 	resolveWranglerBin,
 	runTreeseedGit,
-	stopKnownMailpitContainers,
 } from '@treeseed/sdk/workflow-support';
 import { discoverTreeseedApplications } from '@treeseed/sdk/hosting';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
@@ -861,11 +860,6 @@ function createSetupSteps(
 			args: [packageScriptPath('tenant-build')],
 		}
 		: null;
-	const mailpit = resolveOptionalScriptEntrypoint(
-		sdkPackageRoot,
-		'scripts/ensure-mailpit.ts',
-		'dist/scripts/ensure-mailpit.js',
-	);
 	const dockerReady = dockerIsAvailable(env);
 	const apiPackageRoot = resolve(tenantRoot, 'packages/api');
 	const marketMigrateScript = existsSync(resolve(apiPackageRoot, 'scripts/migrate-db.ts'))
@@ -944,13 +938,13 @@ function createSetupSteps(
 		{
 			id: 'mailpit',
 			label: mailpitEnabled ? 'Start Mailpit email runtime' : 'Disable Mailpit email runtime',
-			required: mailpitEnabled,
-			command: mailpitEnabled ? mailpit?.command : undefined,
-			args: mailpitEnabled ? mailpit?.args : undefined,
-			status: mailpitEnabled ? (mailpit ? 'planned' : 'failed') : 'skipped',
+			required: false,
+			command: undefined,
+			args: undefined,
+			status: 'skipped',
 			detail: mailpitEnabled
-				? (mailpit ? 'Mailpit SMTP will listen on 127.0.0.1:1025 and the web UI on http://127.0.0.1:8025.' : 'Unable to resolve the Mailpit startup script.')
-				: 'Docker Compose is unavailable, so Mailpit is disabled for this local dev run.',
+				? 'Mailpit is owned by the SDK reconciled local dev graph.'
+				: 'Mailpit is disabled for this legacy integrated dev run.',
 		},
 	];
 
@@ -1170,7 +1164,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		],
 	};
 	const watchEntries = watch ? createWatchEntries(tenantRoot, { sdkPackageRoot, agentPackageRoot, cliPackageRoot }) : [];
-	const mailpitEnabled = dockerComposeIsAvailable(mergedEnv);
+	const mailpitEnabled = false;
 	const resetRequested = options.reset === true;
 
 	const sharedEnv: NodeJS.ProcessEnv = {
@@ -3046,7 +3040,7 @@ export async function runTreeseedIntegratedDev(
 	const startWatch = deps.startWatch ?? startPollingWatch;
 	const prepareEnvironment = deps.prepareEnvironment ?? defaultPrepareEnvironment;
 	const removePath = deps.removePath ?? defaultRemovePath;
-	const stopMailpit = deps.stopMailpitContainers ?? stopKnownMailpitContainers;
+	const stopMailpit = deps.stopMailpitContainers ?? (() => true);
 	const resetMarketPostgresContainer = deps.resetMarketPostgres ?? defaultResetMarketPostgres;
 	const stopMarketPostgresContainer = deps.stopMarketPostgres ?? defaultStopMarketPostgres;
 	const inspectPortOwners = deps.inspectPortOwners ?? defaultInspectPortOwners;
