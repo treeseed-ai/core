@@ -29,6 +29,7 @@ const pageLayoutValues = ['article', 'bridge'] as const;
 const questionTypeValues = ['research', 'implementation', 'strategy', 'evaluation'] as const;
 const proposalTypeValues = ['strategy', 'policy', 'implementation', 'research'] as const;
 const decisionTypeValues = ['approved', 'rejected', 'deferred', 'request_changes', 'superseded'] as const;
+const governanceStatusValues = ['draft', 'open', 'voting', 'accepted', 'rejected', 'no_decision_quorum_failed', 'withdrawn', 'superseded'] as const;
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
 const agentTriggerTypeValues = ['schedule', 'message', 'follow', 'startup'] as const;
@@ -171,6 +172,14 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
 		relatedNotes: { key: 'relatedNotes', aliases: ['related_notes'] },
 		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+		governanceId: { key: 'governanceId', aliases: ['governance_id'] },
+		governanceProviderId: { key: 'governanceProviderId', aliases: ['governance_provider_id'] },
+		governancePolicyId: { key: 'governancePolicyId', aliases: ['governance_policy_id'] },
+		governanceStatus: { key: 'governanceStatus', aliases: ['governance_status'] },
+		proposalVersion: { key: 'proposalVersion', aliases: ['proposal_version'] },
+		proposalContentHash: { key: 'proposalContentHash', aliases: ['proposal_content_hash'] },
+		votingStartsAt: { key: 'votingStartsAt', aliases: ['voting_starts_at'] },
+		votingEndsAt: { key: 'votingEndsAt', aliases: ['voting_ends_at'] },
 		canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
 	};
 	const decisionFieldAliases: TreeseedFieldAliasRegistry = {
@@ -181,6 +190,17 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		relatedNotes: { key: 'relatedNotes', aliases: ['related_notes'] },
 		relatedProposals: { key: 'relatedProposals', aliases: ['related_proposals'] },
 		relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
+		governanceDecisionId: { key: 'governanceDecisionId', aliases: ['governance_decision_id'] },
+		governanceProviderId: { key: 'governanceProviderId', aliases: ['governance_provider_id'] },
+		sourceProposalGovernanceId: { key: 'sourceProposalGovernanceId', aliases: ['source_proposal_governance_id'] },
+		sourceProposalVersion: { key: 'sourceProposalVersion', aliases: ['source_proposal_version'] },
+		sourceProposalHash: { key: 'sourceProposalHash', aliases: ['source_proposal_hash'] },
+		governanceRule: { key: 'governanceRule', aliases: ['governance_rule'] },
+		electorateSnapshot: { key: 'electorateSnapshot', aliases: ['electorate_snapshot'] },
+		voteResult: { key: 'voteResult', aliases: ['vote_result'] },
+		voterReasons: { key: 'voterReasons', aliases: ['voter_reasons'] },
+		decidedAt: { key: 'decidedAt', aliases: ['decided_at'] },
+		decisionSnapshotHash: { key: 'decisionSnapshotHash', aliases: ['decision_snapshot_hash'] },
 		canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
 	};
 	const agentFieldAliases: TreeseedFieldAliasRegistry = {
@@ -288,6 +308,14 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		relatedBooks: z.array(reference('books')).default([]),
 		decision: reference('decisions').optional(),
 		supersedes: z.array(reference('proposals')).default([]),
+		governanceId: z.string().optional(),
+		governanceProviderId: z.string().optional(),
+		governancePolicyId: z.string().optional(),
+		governanceStatus: z.enum(governanceStatusValues).optional(),
+		proposalVersion: z.number().int().positive().optional(),
+		proposalContentHash: z.string().optional(),
+		votingStartsAt: z.coerce.date().optional(),
+		votingEndsAt: z.coerce.date().optional(),
 		canonicalRoute: z.string().optional(),
 	}));
 
@@ -310,6 +338,18 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		relatedBooks: z.array(reference('books')).default([]),
 		supersedes: z.array(reference('decisions')).default([]),
 		implements: z.array(z.string()).default([]),
+		immutable: z.boolean().default(false),
+		governanceDecisionId: z.string().optional(),
+		governanceProviderId: z.string().optional(),
+		sourceProposalGovernanceId: z.string().optional(),
+		sourceProposalVersion: z.number().int().positive().optional(),
+		sourceProposalHash: z.string().optional(),
+		governanceRule: z.record(z.unknown()).optional(),
+		electorateSnapshot: z.record(z.unknown()).optional(),
+		voteResult: z.record(z.unknown()).optional(),
+		voterReasons: z.array(z.record(z.unknown())).default([]),
+		decidedAt: z.coerce.date().optional(),
+		decisionSnapshotHash: z.string().optional(),
 		canonicalRoute: z.string().optional(),
 	}));
 
