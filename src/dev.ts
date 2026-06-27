@@ -134,7 +134,7 @@ export type TreeseedIntegratedDevSetupStep = {
 };
 
 export type TreeseedIntegratedDevReadinessCheck = {
-	id: TreeseedIntegratedDevCommand['id'] | 'mailpit';
+	id: TreeseedIntegratedDevCommand['id'];
 	label: string;
 	required: boolean;
 	strategy: 'http' | 'process';
@@ -147,7 +147,6 @@ export type TreeseedIntegratedDevResetAction = {
 		| 'generated-d1-state'
 		| 'generated-wrangler-state'
 		| 'legacy-local-sqlite'
-		| 'mailpit'
 		| 'market-postgres'
 		| 'root-wrangler-state'
 		| 'wrangler-tmp'
@@ -702,7 +701,6 @@ function resolveSeededLocalTeamId(persistTo: string, projectId: string | null, t
 export function createTreeseedIntegratedDevResetPlan(options: {
 	tenantRoot: string;
 	env: NodeJS.ProcessEnv;
-	mailpitEnabled: boolean;
 	enabled?: boolean;
 }): TreeseedIntegratedDevResetPlan | null {
 	if (!options.enabled) {
@@ -716,15 +714,6 @@ export function createTreeseedIntegratedDevResetPlan(options: {
 		enabled: true,
 		actions: [
 			...knownLocalRuntimeStateResetActions(tenantRoot, d1PersistTo),
-			{
-				id: 'mailpit',
-				label: options.mailpitEnabled ? 'Reset Mailpit email runtime' : 'Skip Mailpit email runtime',
-				kind: 'service',
-				status: options.mailpitEnabled ? 'planned' : 'skipped',
-				detail: options.mailpitEnabled
-					? 'The Treeseed-managed Mailpit container and inbox will be stopped and removed.'
-					: 'Docker Compose is unavailable, so Mailpit is disabled for this local dev run.',
-			},
 			...(marketWorkspace ? [{
 				id: 'market-postgres',
 				label: managedMarketPostgres ? 'Reset local Market PostgreSQL' : 'Skip external Market PostgreSQL',
@@ -825,7 +814,6 @@ function createSetupSteps(
 	sdkPackageRoot: string,
 	planLike: Pick<TreeseedIntegratedDevPlan, 'commands'>,
 	env: NodeJS.ProcessEnv,
-	mailpitEnabled: boolean,
 	usesCloudflareWebRuntime: boolean,
 ): TreeseedIntegratedDevSetupStep[] {
 	if (setupMode === 'off') {
@@ -935,17 +923,6 @@ function createSetupSteps(
 				detail: script ? undefined : `Script not found at ${source}.`,
 			} satisfies TreeseedIntegratedDevSetupStep;
 		}) : [])),
-		{
-			id: 'mailpit',
-			label: mailpitEnabled ? 'Start Mailpit email runtime' : 'Disable Mailpit email runtime',
-			required: false,
-			command: undefined,
-			args: undefined,
-			status: 'skipped',
-			detail: mailpitEnabled
-				? 'Mailpit is owned by the SDK reconciled local dev graph.'
-				: 'Mailpit is disabled for this legacy integrated dev run.',
-		},
 	];
 
 	if (needsCloudflareLocalRuntime) {
@@ -1164,7 +1141,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		],
 	};
 	const watchEntries = watch ? createWatchEntries(tenantRoot, { sdkPackageRoot, agentPackageRoot, cliPackageRoot }) : [];
-	const mailpitEnabled = false;
 	const resetRequested = options.reset === true;
 
 	const sharedEnv: NodeJS.ProcessEnv = {
@@ -1209,13 +1185,11 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		TREESEED_MAILPIT_SMTP_HOST: TREESEED_DEFAULT_LOCAL_SMTP_HOST,
 		TREESEED_MAILPIT_SMTP_PORT: mailpitSmtpPort,
 		TREESEED_MAILPIT_UI_PORT: mailpitUiPort,
-		TREESEED_MAILPIT_CONTAINER_NAME: mergedEnv.TREESEED_MAILPIT_CONTAINER_NAME,
 		TREESEED_AUTH_EMAIL_FROM: mergedEnv.TREESEED_AUTH_EMAIL_FROM ?? 'Treeseed Market <auth@treeseed.local>',
 	};
 	const reset = createTreeseedIntegratedDevResetPlan({
 		tenantRoot,
 		env: sharedEnv,
-		mailpitEnabled,
 		enabled: resetRequested,
 	});
 
@@ -1271,16 +1245,6 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 			strategy: 'process',
 		};
 	});
-	if (mailpitEnabled && setupMode !== 'off') {
-		readyChecks.push({
-			id: 'mailpit',
-			label: 'Mailpit',
-			required: true,
-			strategy: 'http',
-			url: `http://127.0.0.1:${sharedEnv.TREESEED_MAILPIT_UI_PORT ?? TREESEED_DEFAULT_MAILPIT_UI_PORT}`,
-		});
-	}
-
 	return {
 		surface,
 		setupMode,
@@ -1290,7 +1254,7 @@ export function createTreeseedIntegratedDevPlan(options: TreeseedIntegratedDevOp
 		tenantRoot,
 		apiBaseUrl,
 		webUrl,
-		setupSteps: createSetupSteps(tenantRoot, setupMode, sdkPackageRoot, { commands }, sharedEnv, mailpitEnabled, usesCloudflareWebRuntime),
+		setupSteps: createSetupSteps(tenantRoot, setupMode, sdkPackageRoot, { commands }, sharedEnv, usesCloudflareWebRuntime),
 		readyChecks,
 		watchEntries,
 		commands,
@@ -1579,17 +1543,11 @@ function devPidPath(tenantRoot: string, runtimeScope: string) {
 	return resolve(devPidDir(tenantRoot), `${runtimeScope}.pid`);
 }
 
-function portFromReadyCheck(checks: readonly TreeseedIntegratedDevReadinessCheck[], id: string) {
-	const check = checks.find((entry) => entry.id === id);
-	return parsePortFromUrl(check?.url);
-}
-
 function portsFromPlan(plan: TreeseedIntegratedDevPlan) {
 	return Object.fromEntries(
 		Object.entries({
 			web: parsePortFromUrl(plan.webUrl ?? undefined),
 			api: parsePortFromUrl(plan.apiBaseUrl),
-			mailpit: portFromReadyCheck(plan.readyChecks, 'mailpit'),
 			mailpitSmtp: Number(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT ?? '') || null,
 			postgres: Number(plan.commands[0]?.env.TREESEED_MARKET_LOCAL_POSTGRES_PORT ?? '') || null,
 		}).filter((entry): entry is [string, number] => Number.isInteger(entry[1]) && entry[1] > 0),
@@ -1602,7 +1560,6 @@ function urlsFromPlan(plan: TreeseedIntegratedDevPlan) {
 			web: plan.webUrl,
 			api: plan.apiBaseUrl,
 			apiHealth: `${plan.apiBaseUrl.replace(/\/+$/u, '')}/healthz`,
-			mailpit: plan.readyChecks.find((check) => check.id === 'mailpit')?.url ?? null,
 		}).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
 	);
 }
@@ -1765,8 +1722,6 @@ function managedPortBlock(blockIndex: number) {
 		web: TREESEED_DEFAULT_WEB_PORT + offset,
 		api: TREESEED_DEFAULT_API_PORT + offset,
 		postgres: TREESEED_DEFAULT_MARKET_POSTGRES_PORT + offset,
-		mailpitSmtp: TREESEED_DEFAULT_LOCAL_SMTP_PORT + offset,
-		mailpitUi: TREESEED_DEFAULT_MAILPIT_UI_PORT + offset,
 	};
 }
 
@@ -1784,11 +1739,8 @@ function resolveManagedPortOverrides(
 			apiPort: existing.ports.api,
 			env: {
 				TREESEED_MARKET_LOCAL_POSTGRES_PORT: existing.ports.postgres ? String(existing.ports.postgres) : undefined,
-				TREESEED_MAILPIT_SMTP_PORT: existing.ports.mailpitSmtp ? String(existing.ports.mailpitSmtp) : undefined,
-				TREESEED_MAILPIT_UI_PORT: existing.ports.mailpit ? String(existing.ports.mailpit) : undefined,
 				TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: `treeseed-market-local-postgres-${worktreeInstanceSuffix(tenantRoot)}`,
 				TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: `treeseed-market-local-postgres-data-${worktreeInstanceSuffix(tenantRoot)}`,
-				TREESEED_MAILPIT_CONTAINER_NAME: `treeseed-mailpit-${worktreeInstanceSuffix(tenantRoot)}`,
 			} as NodeJS.ProcessEnv,
 		};
 	}
@@ -1799,8 +1751,6 @@ function resolveManagedPortOverrides(
 		TREESEED_DEFAULT_WEB_PORT,
 		TREESEED_DEFAULT_API_PORT,
 		TREESEED_DEFAULT_MARKET_POSTGRES_PORT,
-		TREESEED_DEFAULT_LOCAL_SMTP_PORT,
-		TREESEED_DEFAULT_MAILPIT_UI_PORT,
 	])) {
 		if (owner.pid) usedPorts.add(owner.port);
 	}
@@ -1809,7 +1759,7 @@ function resolveManagedPortOverrides(
 		const candidate = managedPortBlock(block);
 		const requestedWeb = options.webPort ?? candidate.web;
 		const requestedApi = options.apiPort ?? candidate.api;
-		const candidatePorts = [requestedWeb, requestedApi, candidate.postgres, candidate.mailpitSmtp, candidate.mailpitUi];
+		const candidatePorts = [requestedWeb, requestedApi, candidate.postgres];
 		const liveOwners = deps.inspectPortOwners(candidatePorts).filter((owner) => owner.pid && owner.pid !== process.pid);
 		const blocked = candidatePorts.some((port) => usedPorts.has(port)) || liveOwners.length > 0;
 		if (!blocked || options.forceConflicts === true) {
@@ -1818,11 +1768,8 @@ function resolveManagedPortOverrides(
 				apiPort: requestedApi,
 				env: {
 					TREESEED_MARKET_LOCAL_POSTGRES_PORT: String(candidate.postgres),
-					TREESEED_MAILPIT_SMTP_PORT: String(candidate.mailpitSmtp),
-					TREESEED_MAILPIT_UI_PORT: String(candidate.mailpitUi),
 					TREESEED_MARKET_LOCAL_POSTGRES_CONTAINER: `treeseed-market-local-postgres-${worktreeInstanceSuffix(tenantRoot)}`,
 					TREESEED_MARKET_LOCAL_POSTGRES_VOLUME: `treeseed-market-local-postgres-data-${worktreeInstanceSuffix(tenantRoot)}`,
-					TREESEED_MAILPIT_CONTAINER_NAME: `treeseed-mailpit-${worktreeInstanceSuffix(tenantRoot)}`,
 				} as NodeJS.ProcessEnv,
 			};
 		}
@@ -3434,16 +3381,10 @@ export async function runTreeseedIntegratedDev(
 						url: check.url,
 						message: `${check.label} did not become ready${check.url ? ` at ${check.url}` : ''}; keeping dev alive and retrying.`,
 					});
-					if (check.id !== 'mailpit') {
-						scheduleCommandRestart(check.id as TreeseedIntegratedDevCommand['id']);
-					} else {
-						scheduleSetupRetry('Mailpit readiness failed.');
-					}
+					scheduleCommandRestart(check.id);
 					continue;
 				}
-				if (ready && check.id !== 'mailpit') {
-					restartAttempts.set(check.id as TreeseedIntegratedDevCommand['id'], 0);
-				}
+				if (ready) restartAttempts.set(check.id, 0);
 				emitEvent(options, write, {
 					type: 'ready',
 					surface: check.id,

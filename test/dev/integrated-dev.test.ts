@@ -145,18 +145,11 @@ describe('Treeseed integrated dev orchestration', () => {
 		expect(plan.commands[0]?.localRuntime?.selected).toBe('cloudflare-wrangler-local');
 		expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--local', '--config']));
 		expect(plan.setupSteps.map((step) => step.id)).toEqual(
-			expect.arrayContaining(['workspace-links', 'wrangler', 'wrangler-config', 'web-build', 'mailpit']),
+			expect.arrayContaining(['workspace-links', 'wrangler', 'wrangler-config', 'web-build']),
 		);
-		expect(plan.readyChecks.map((check) => check.id)).toEqual(
-			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
-				? ['web', 'api', 'manager', 'worker', 'mailpit']
-				: ['web', 'api', 'manager', 'worker'],
-		);
-		expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(
-			plan.setupSteps.find((step) => step.id === 'mailpit')?.required
-				? ['web', 'api', 'mailpit']
-				: ['web', 'api'],
-		);
+		expect(plan.setupSteps.map((step) => step.id)).not.toContain('mailpit');
+		expect(plan.readyChecks.map((check) => check.id)).toEqual(['web', 'api', 'manager', 'worker']);
+		expect(plan.readyChecks.filter((check) => check.required).map((check) => check.id)).toEqual(['web', 'api']);
 		expect(plan.watchEntries.length).toBeGreaterThan(0);
 		expect(plan.commands[0]?.env.TREESEED_PUBLIC_DEV_WATCH_RELOAD).toBe('true');
 		expect(plan.commands[0]?.env.TREESEED_SITE_URL).toBe('http://127.0.0.1:4321');
@@ -747,7 +740,7 @@ surfaces:
 				TREESEED_MANAGED_DEV_INSTANCE: '1',
 				TREESEED_MANAGED_DEV_SUPPRESS_STDIO: '1',
 			});
-			expect(String(spawnCalls[0]?.options.env?.TREESEED_MAILPIT_CONTAINER_NAME)).toMatch(/^treeseed-mailpit-[a-f0-9]+$/u);
+			expect(Object.keys(spawnCalls[0]?.options.env ?? {}).some((key) => /MAILPIT_.*CONTAINER/u.test(key))).toBe(false);
 
 			const parsed = JSON.parse(output.join(''));
 			expect(parsed.kind).toBe('treeseed.dev.start');
@@ -1252,7 +1245,6 @@ surfaces:
 			expect(plan.reset?.enabled).toBe(true);
 			expect(plan.reset?.actions.map((action) => action.id)).toEqual([
 				'root-wrangler-state',
-				'mailpit',
 				'wrangler-tmp',
 				'worker-bundle',
 				'dev-reload',
@@ -1363,10 +1355,7 @@ surfaces:
 			});
 
 			expect(result?.actions.filter((action) => action.kind === 'path' && action.id !== 'dev-reload').every((action) => action.status === 'removed')).toBe(true);
-			expect(result?.actions.find((action) => action.id === 'mailpit')).toMatchObject({
-				status: 'skipped',
-				detail: expect.stringContaining('Mailpit is disabled'),
-			});
+			expect(result?.actions.find((action) => action.id === 'mailpit')).toBeUndefined();
 			expect(result?.actions.find((action) => action.id === 'dev-reload')?.status).toBe('refreshed');
 			expect(existsSync(d1Path)).toBe(false);
 			expect(existsSync(rootKvPath)).toBe(false);
