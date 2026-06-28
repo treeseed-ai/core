@@ -71,7 +71,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#72cf1cd16b22e6967dce2950a71b7e1ace14383b",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#9b83c3485e010aaa094b97b2aa647d4388de54d0",
     "@treeseed/ui": "github:treeseed-ai/ui#d26b266f163bde3c64db2a1d8bc976c0ef95f81f",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
