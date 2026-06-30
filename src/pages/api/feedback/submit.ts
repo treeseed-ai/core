@@ -17,7 +17,7 @@ function marketApiBaseUrl(locals: App.Locals | Record<string, unknown> | null | 
 	return (
 		envValue(locals, 'TREESEED_MARKET_API_BASE_URL')
 		|| envValue(locals, 'TREESEED_CENTRAL_MARKET_API_BASE_URL')
-		|| 'https://api.treeseed.ai'
+		|| 'https://api.treeseed.dev'
 	).replace(/\/+$/u, '');
 }
 
