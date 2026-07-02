@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.10] - 2026-07-02
+
+### Fixed
+
+- fix(release): restore staging dependency refs (e3417d91f79f)
+
 ## [0.12.9] - 2026-07-02
 
 ### Fixed
