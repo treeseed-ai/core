@@ -3,7 +3,7 @@ name: Publish TreeSeed Core
 on:
   push:
     tags:
-      - "v*"
+      - "*.*.*"
   workflow_dispatch:
 
 jobs:
