@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.9] - 2026-07-02
+
+### Fixed
+
+- fix(release): refresh SDK staging ref (1fcfc4fa70aa)
+- fix(release): use staging commit refs (cdee286a7db7)
+
 ## [0.12.8] - 2026-07-02
 
 ### Changed
