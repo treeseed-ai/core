@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.20] - 2026-07-03
+
+### Fixed
+
+- fix: bound hosted web deploy step (6f22193f6c29)
+
 ## [0.12.19] - 2026-07-03
 
 ### Changed
