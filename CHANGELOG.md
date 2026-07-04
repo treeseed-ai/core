@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.35] - 2026-07-04
+
+### Dependencies
+
+- build(build): bypass source page edge cache for production release (0d71e40b7a91)
+- build(build): make live hosted env checks provider authoritative (4ae08b384ad8)
+- build(build): fail release on broken production web surface (8a154378454b)
+
 ## [0.12.34] - 2026-07-04
 
 ### Dependencies
