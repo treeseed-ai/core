@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
 import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
-import { AGENT_CLI_ALLOW_TOOLS } from '@treeseed/sdk/types/agents';
+import { AGENT_ACTIVITY_TYPES } from '@treeseed/sdk/types/agents';
 import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { getTreeseedContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
@@ -32,9 +32,9 @@ const decisionTypeValues = ['approved', 'rejected', 'deferred', 'request_changes
 const governanceStatusValues = ['draft', 'open', 'voting', 'accepted', 'rejected', 'no_decision_quorum_failed', 'withdrawn', 'superseded'] as const;
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
-const agentTriggerTypeValues = ['schedule', 'message', 'follow', 'startup'] as const;
-const agentPermissionOperationValues = ['get', 'read', 'search', 'follow', 'pick', 'create', 'update'] as const;
 const commerceOfferModeValues = [...COMMERCE_OFFER_MODES] as [CommerceOfferMode, ...CommerceOfferMode[]];
+const agentActivityTypeValues = AGENT_ACTIVITY_TYPES;
+const agentHandlerValues = ['writer', 'actor', 'estimate', 'releaser', 'reporter'] as const;
 
 type DocsDependencies = {
 	docsLoader: (options: Record<string, unknown>) => unknown;
@@ -205,8 +205,10 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 	};
 	const agentFieldAliases: TreeseedFieldAliasRegistry = {
 		runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
-		systemPrompt: { key: 'systemPrompt', aliases: ['system_prompt'] },
-		triggerPolicy: { key: 'triggerPolicy', aliases: ['trigger_policy'] },
+		agentClass: { key: 'agentClass', aliases: ['agent_class'] },
+		projectAgentClassId: { key: 'projectAgentClassId', aliases: ['project_agent_class_id'] },
+		projectAgentClassSlug: { key: 'projectAgentClassSlug', aliases: ['project_agent_class_slug'] },
+		activityProfiles: { key: 'activityProfiles', aliases: ['activity_profiles'] },
 	};
 	const bookFieldAliases: TreeseedFieldAliasRegistry = {
 		sectionLabel: { key: 'sectionLabel', aliases: ['section_label'] },
@@ -354,23 +356,6 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 	}));
 
 	const profileLinkSchema = z.object({ label: z.string(), href: z.string() });
-	const agentCliSchema = z.object({
-		model: z.string().optional(),
-		allowTools: z.array(z.enum(AGENT_CLI_ALLOW_TOOLS)).default([]),
-		additionalArgs: z.array(z.string()).default([]),
-	});
-	const agentTriggerSchema = z.object({
-		type: z.enum(agentTriggerTypeValues),
-		cron: z.string().optional(),
-		messageTypes: z.array(z.string()).default([]),
-		models: z.array(z.string()).default([]),
-		sinceField: z.string().optional(),
-		runOnStart: z.boolean().default(false),
-	});
-	const agentPermissionSchema = z.object({
-		model: z.string(),
-		operations: z.array(z.enum(agentPermissionOperationValues)).min(1),
-	});
 	const agentWorktreeSchema = z.object({
 		enabled: z.boolean().default(true),
 		root: z.string().optional(),
@@ -393,34 +378,92 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		branchPrefix: z.string().default('agent'),
 		providerProfile: z.record(z.unknown()).optional(),
 	});
-	const agentTriggerPolicySchema = z.object({
-		maxRunsPerCycle: z.number().int().positive().optional(),
-		messageBatchSize: z.number().int().positive().optional(),
-	});
-	const agentOutputSchema = z.object({
+	const agentCapabilitySchema = z.union([
+		z.string(),
+		z.object({
+			id: z.string(),
+			label: z.string().optional(),
+			summary: z.string().optional(),
+			produces: z.array(z.string()).default([]),
+			requires: z.array(z.string()).default([]),
+			reviews: z.array(z.string()).default([]),
+		}).passthrough(),
+	]);
+	const agentIdentitySchema = z.object({
+		purpose: z.string().optional(),
+		instructions: z.string().optional(),
+		traits: z.array(z.string()).default([]),
+	}).passthrough();
+	const agentPromptSchema = z.union([
+		z.string(),
+		z.object({
+			system: z.string(),
+			task: z.string().optional(),
+			templates: z.record(z.string()).optional(),
+		}).passthrough(),
+	]);
+	const agentToolPolicySchema = z.object({
+		allowed: z.array(z.string()).default([]),
+		denied: z.array(z.string()).default([]),
+	}).passthrough();
+	const agentContentScopeSchema = z.object({
+		models: z.array(z.string()).default([]),
+		actions: z.array(z.string()).default([]),
+		books: z.array(z.string()).default([]),
+		paths: z.array(z.string()).default([]),
+		relations: z.array(z.string()).default([]),
+	}).passthrough();
+	const agentContentAccessSchema = z.object({
+		read: agentContentScopeSchema.optional(),
+		write: agentContentScopeSchema.optional(),
+		commit: z.object({ allowed: z.boolean() }).optional(),
+	}).passthrough();
+	const agentBranchPolicySchema = z.object({
+		kind: z.string(),
+		base: z.string().optional(),
+		target: z.string().optional(),
+		prefix: z.string().optional(),
+		branchNameTemplate: z.string().optional(),
+		worktree: z.string().optional(),
+		updateBaseBeforeRun: z.boolean().optional(),
+		mergeTargetBeforeSave: z.boolean().optional(),
+	}).passthrough();
+	const agentQuestionPolicySchema = z.object({
+		blockExecutionWhenCreated: z.boolean().optional(),
+		defaultAnswerPolicy: z.object({
+			kind: z.string(),
+			teamId: z.string().optional(),
+			requiredRoles: z.array(z.string()).default([]),
+			allowedRoles: z.array(z.string()).default([]),
+			allowedAgentClasses: z.array(z.string()).default([]),
+			teamMemberId: z.string().optional(),
+			projectId: z.string().optional(),
+			agentSlug: z.string().optional(),
+		}).passthrough().optional(),
+	}).passthrough();
+	const agentOutputsSchema = z.object({
 		messageTypes: z.array(z.string()).default([]),
 		modelMutations: z.array(z.string()).default([]),
-	});
-	const agentContextQuerySchema = z.object({
-		id: z.string(),
-		purpose: z.string(),
-		query: z.string(),
-		scope: z.string().optional(),
-		relations: z.array(z.string()).optional(),
-		depth: z.number().optional(),
-		budget: z.number().optional(),
-		format: z.string().optional(),
-	});
-	const agentContextSchema = z.object({
-		queries: z.array(agentContextQuerySchema).default([]),
-	});
-	const agentGovernanceSchema = z.object({
-		mutationClass: z.string().optional(),
-		approvalRequiredForCanonicalContent: z.boolean().optional(),
-		approvalRequiredForCode: z.boolean().optional(),
-		requireSourceMap: z.boolean().optional(),
-		requireHumanApproval: z.boolean().optional(),
-		notes: z.array(z.string()).default([]),
+		requiredArtifacts: z.array(z.string()).default([]),
+		schemas: z.array(z.string()).default([]),
+	}).passthrough();
+	const agentActivityExecutionSchema = agentExecutionSchema.partial().extend({
+		providerPreference: z.array(z.string()).default([]),
+		maxRuntimeSeconds: z.number().int().positive().optional(),
+		maxRetries: z.number().int().nonnegative().optional(),
+		verificationRequired: z.boolean().optional(),
+	}).passthrough();
+	const agentActivityProfileSchema = z.object({
+		enabled: z.boolean().default(true),
+		activityType: z.enum(agentActivityTypeValues),
+		handler: z.enum(agentHandlerValues),
+		prompt: agentPromptSchema,
+		contentAccess: agentContentAccessSchema.optional(),
+		tools: agentToolPolicySchema.default({ allowed: [] }),
+		outputs: agentOutputsSchema.default({}),
+		questionPolicy: agentQuestionPolicySchema.optional(),
+		branchPolicy: agentBranchPolicySchema,
+		execution: agentActivityExecutionSchema.optional(),
 	}).passthrough();
 
 	const peopleSchema = z.object({
@@ -437,30 +480,28 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 	});
 
 	const agentSchema = z.preprocess((value) => preprocessAliasedRecord(agentFieldAliases, value), z.object({
+		id: z.string().optional(),
 		name: z.string(),
 		slug: z.string(),
-		handler: z.string(),
+		title: z.string().optional(),
 		enabled: z.boolean().default(true),
 		description: z.string(),
 		summary: z.string(),
-		operator: z.string(),
+		agentClass: z.string(),
+		projectAgentClassId: z.string().optional(),
+		projectAgentClassSlug: z.string().optional(),
+		template: z.string().optional(),
+		identity: agentIdentitySchema.default({}),
 		runtimeStatus: withOptionalDefault(z.enum(runtimeStatusValues), AGENT_MODEL_DEFAULTS.runtimeStatus),
-		capabilities: z.array(z.string()).default([]),
+		capabilities: z.array(agentCapabilitySchema).default([]),
 		tags: z.array(z.string()).default(AGENT_MODEL_DEFAULTS.tags ?? []),
 		links: z.array(profileLinkSchema).default([]),
 		relatedQuestions: z.array(reference('questions')).default([]),
 		relatedObjectives: z.array(reference('objectives')).default([]),
-		systemPrompt: z.string(),
-		persona: z.string(),
-		cli: agentCliSchema.default({ allowTools: [], additionalArgs: [] }),
-		triggers: z.array(agentTriggerSchema).min(1),
-		triggerPolicy: agentTriggerPolicySchema.optional(),
-		permissions: z.array(agentPermissionSchema).min(1),
-		context: agentContextSchema.optional(),
-		execution: agentExecutionSchema.default({}),
-		outputs: agentOutputSchema.default({}),
-		governance: agentGovernanceSchema.optional(),
-	}));
+		activityProfiles: z.record(agentActivityProfileSchema).refine((profiles) => Object.keys(profiles).length > 0, {
+			message: 'activityProfiles must define at least one activity profile',
+		}),
+	}).strict());
 
 	const agentTestSchema = z.object({
 		id: z.string(),
