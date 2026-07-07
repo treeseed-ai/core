@@ -1,10 +1,6 @@
 ---
-import '../../styles/global.css';
-import '@treeseed/ui/styles/theme.css';
-import '@treeseed/ui/styles/ui.css';
-import '@treeseed/ui/styles/forms.css';
-import { ClientRouter } from 'astro:transitions';
-import ThemeScript from '@treeseed/ui/components/astro/theme/ThemeScript.astro';
+import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
+import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import ThemeSelector from '@treeseed/ui/components/astro/theme/ThemeSelector.astro';
 import Button from '@treeseed/ui/components/astro/forms/Button.astro';
 import Field from '@treeseed/ui/components/astro/forms/Field.astro';
@@ -79,17 +75,13 @@ const tableRows = [
 ];
 ---
 
-<!doctype html>
-<html lang="en" data-ts-scheme={selected.scheme} data-ts-mode={selected.mode}>
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>TreeSeed UI Catalog</title>
-		<ThemeScript defaultScheme={selected.scheme} defaultMode={selected.mode} />
-		<ClientRouter />
-	</head>
-	<body>
-		<main class="ts-ui-catalog">
+<CoreStyleScope>
+	<MainLayout
+		title="TreeSeed UI Catalog"
+		description="A focused review surface for the first shared component set."
+		currentPath="/ui/"
+	>
+		<div class="ts-ui-catalog">
 			<PageHeader
 				eyebrow="Core UI"
 				title="TreeSeed primitive catalog"
@@ -213,6 +205,6 @@ const tableRows = [
 			<Panel title="Data table" description="The table collapses into labeled mobile rows without page-specific CSS.">
 				<DataTable columns={tableColumns} rows={tableRows} caption="Review artifacts" />
 			</Panel>
-		</main>
-	</body>
-</html>
+		</div>
+	</MainLayout>
+</CoreStyleScope>

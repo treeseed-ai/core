@@ -37,6 +37,8 @@ plugins:
 
 Core loads site layers, resolves routes, merges plugin hooks, and builds the Astro config used by the host app. The host app still owns deployment, tenant config, content, and branding.
 
+Core public and content routes compose through UI public layouts and public shell behavior. Knowledge Hub, book, documentation, profile-like content, and generated content pages must remain public single-column or reader experiences; they must not adopt authenticated app chrome, team operations, operational market drawers, or admin control surfaces. Authenticated app, operational market, auth/session, and admin view-model behavior belongs in `@treeseed/admin` and the host Market app.
+
 ## Local Development
 
 The installable CLI delegates local web runtime orchestration to Core:
@@ -55,7 +57,7 @@ In the Treeseed market workspace, the web process runs from the root repo, while
 
 - `@treeseed/ui` owns reusable components and styles.
 - `@treeseed/admin` owns admin routes, middleware, view models, and admin behavior.
-- `@treeseed/market` hosts the concrete Treeseed public site, buyer marketplace, and Commons participant pages.
+- `@treeseed/market` hosts the concrete Treeseed public site, authenticated operational marketplace, and Commons participant pages.
 - `@treeseed/api` owns backend API, PostgreSQL, migrations, and operations runner.
 - `@treeseed/sdk` owns reconciliation, config, workflow, graph, and shared platform contracts.
 - `@treeseed/agent` owns capacity-provider runtime, AgentKernel execution, mode scheduling, and provider-local lifecycle.
@@ -116,7 +118,7 @@ The publish workflow expects `NPM_TOKEN` in the package repository GitHub `produ
 - backend API implementation, PostgreSQL, operations runner, or migrations; use `@treeseed/api`
 - capacity provider runtime; use `@treeseed/agent`
 - AgentKernel execution, mode scheduling, and provider assignment runtime; use `@treeseed/agent` with SDK/API contracts
-- checkout, billing, licensing, backend ecommerce state, PostgreSQL migrations, operations-runner behavior, or marketplace policy; use root market for buyer pages and `@treeseed/api` for backend state
+- checkout, billing, licensing, backend ecommerce state, PostgreSQL migrations, operations-runner behavior, or marketplace policy; use root market for authenticated operational marketplace/cart/checkout/service/capacity/Commons surfaces and `@treeseed/api` for backend state
 - TreeDX service implementation
 
 See the root [Package Ownership](../../docs/package-ownership.md) guide for the full package map.
