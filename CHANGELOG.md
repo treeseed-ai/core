@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.12.42] - 2026-07-11
+
+### Fixed
+
+- build(build): fix stage completion and API SMTP routing (81945397f031)
+- build(build): Bind hosted API SMTP settings from root staging registry (2b342c77b895)
+- build(build): fix staging candidate credential handoff (0aa71416e25b)
+- build(build): lock in UI shell architecture and test fixes (84115e40e4be)
+
+### Tests
+
+- build(build): Standardize verify release-gate and deploy workflows (2cfafa7f4dc7)
+- ci(ci): recover reliable save stage release workflow (20e00f32912d)
+
+### Dependencies
+
+- build(build): Exclude verification-only packages from release (2d4c4a7c6e7b)
+- build(build): seed verified login fixture without browser session (3a97ba81c8dc)
+- build(build): preserve dependency graph during artifact hydration (634c4ef5b2cd)
+- build(build): hydrate exact candidate artifacts before staging deploy (516e1447e215)
+- build(build): Propagate API web service secret through staging (92aa102c2ff3)
+- build(build): Propagate control-plane secrets through staging (5ed7d26bd35d)
+- build(build): Expose API surface URLs to strict live staging checks (9b8061480695)
+- build(build): Make hosted apply wait for transient HTTP readiness (a4d65f736952)
+- build(build): inject protected TreeDX secrets into staging (da4742115394)
+- build(build): make staging candidate retries resumable (baa9fc8ec08d)
+- build(build): release guarantee reviewer and coverage updates (bd2990fc6f3b)
+- build(build): release guarantee reviewer and coverage updates (97cf205beb73)
+- build(build): release guarantee reviewer and coverage updates (43478415ef65)
+- build(build): release guarantee reviewer and coverage updates (4910017f5e3a)
+- build(build): guard API workflow entrypoints and staging fanout (546b0053b662)
+- build(build): block dependents on API deploy workflow (a17e226a9a7d)
+- chore(deps): update @treeseed/sdk dependency pointer (0d1e7a9185a0)
+
 ## [0.12.41] - 2026-07-06
 
 ### Changed
