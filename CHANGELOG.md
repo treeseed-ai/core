@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.44] - 2026-07-12
+
+### Dependencies
+
+- build(build): reuse exact staged candidate proof during release (1b8c20d7b8a7)
+- build(build): reuse staged package closure during release verification (d67d4e9809be)
+- build(build): resolve managed release tooling and stale checkout (472816e4ff0d)
+- build(build): resolve managed release tooling and stale checkout (cf7f05459d1a)
+
 ## [0.12.43] - 2026-07-12
 
 ### Tests
