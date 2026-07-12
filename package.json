@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.46",
+  "version": "0.12.47-dev.recovery-hosted-reconcile-env-boundary.20260712T175454Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -71,7 +71,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.12.49",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#ee878b54db7094becab383026986a05d851d7865",
     "@treeseed/ui": "0.12.13",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
