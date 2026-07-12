@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.48] - 2026-07-12
+
+### Dependencies
+
+- chore(deps): update @treeseed/sdk to github commit (c15ddd7439d3)
+
 ## [0.12.47] - 2026-07-12
 
 ### Dependencies
