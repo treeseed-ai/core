@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.47] - 2026-07-12
+
+### Dependencies
+
+- build(core): update @treeseed/sdk dependency and package version (c07c09831e44)
+
 ## [0.12.46] - 2026-07-12
 
 ### Dependencies
