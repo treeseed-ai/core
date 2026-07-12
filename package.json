@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.42-dev.recovery-release-gate-dependency-hydrati.20260712T022059Z",
+  "version": "0.12.43",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -71,8 +71,8 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#de6fe53d8132dd6c1d8b28c9cc333c25ee0e6651",
-    "@treeseed/ui": "github:treeseed-ai/ui#c6b8fb5b0dc052070e33dc782dcb70242df2bcb0",
+    "@treeseed/sdk": "0.12.46",
+    "@treeseed/ui": "0.12.10",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
