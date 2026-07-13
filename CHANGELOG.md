@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.50] - 2026-07-13
+
+### Dependencies
+
+- build(deps): update @treeseed/sdk and bump version (a9187433bf3d)
+
 ## [0.12.49] - 2026-07-12
 
 ### Dependencies
