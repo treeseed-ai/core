@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { prepareFixturePackages } from '@treeseed/sdk/fixture-support';
 import { fixtureRoot, packageRoot } from './paths.ts';
+import { astroBin } from './package-tools.ts';
 
 const [command, ...rest] = process.argv.slice(2);
 
@@ -35,7 +36,7 @@ prepareFixturePackages({
 	],
 });
 
-const result = spawnSync('npx', ['astro', command, '--root', fixtureRoot, ...rest], {
+const result = spawnSync(process.execPath, [astroBin, command, '--root', fixtureRoot, ...rest], {
 	cwd: packageRoot,
 	stdio: 'inherit',
 	env: {
@@ -44,7 +45,6 @@ const result = spawnSync('npx', ['astro', command, '--root', fixtureRoot, ...res
 		TREESEED_TENANT_ROOT: fixtureRoot,
 		XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME ?? resolve(tmpdir(), 'treeseed-core-xdg-config'),
 	},
-	shell: process.platform === 'win32',
 });
 
 if (result.error) {
