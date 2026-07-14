@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.57",
+  "version": "0.12.58-dev.fix-railway-environment-source-isolation.20260714T110023Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -71,7 +71,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "0.12.60",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#00a7552ef61acc32f98469f4d18d195014bdf0a1",
     "@treeseed/ui": "0.12.16",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",

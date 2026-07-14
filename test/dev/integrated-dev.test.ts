@@ -527,6 +527,7 @@ surfaces:
 		const publicRoot = resolve(tenantRoot, 'public');
 
 		expect(shouldIgnoreWatchPath(resolve(sourceRoot, 'services/.ts-run-123.mjs'), sourceRoot)).toBe(true);
+		expect(shouldIgnoreWatchPath(resolve(sourceRoot, '.agent-worktrees/task/src/page.ts'), sourceRoot)).toBe(true);
 		expect(shouldIgnoreWatchPath(resolve(sourceRoot, 'services/manager.ts'), sourceRoot)).toBe(false);
 		expect(shouldIgnoreWatchPath(resolve(publicRoot, '__treeseed/dev-reload.json'), publicRoot)).toBe(true);
 		expect(shouldIgnoreWatchPath(resolve(publicRoot, 'books/example.json'), publicRoot)).toBe(true);

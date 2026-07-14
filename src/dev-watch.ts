@@ -41,7 +41,7 @@ export function shouldIgnoreWatchPath(filePath: string, rootPath: string) {
 	const normalized = rel.split(sep).join('/');
 	const segments = normalized.split('/').filter(Boolean);
 	const basename = segments.at(-1) ?? normalized;
-	const ignoredSegments = new Set(['.git', 'node_modules', '.astro', '.wrangler', '.local', '.treeseed', 'dist', 'coverage']);
+	const ignoredSegments = new Set(['.git', '.agent-worktrees', 'node_modules', '.astro', '.wrangler', '.local', '.treeseed', 'dist', 'coverage']);
 	if (segments.some((segment) => ignoredSegments.has(segment))) {
 		return true;
 	}
