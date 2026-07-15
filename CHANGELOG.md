@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.12.58] - 2026-07-15
+
+### Fixed
+
+- build(build): archive stale stage resumes after repository heads (900201fa3672)
+- build(build): wait for Railway deployments before live hosting (5ad2ad875105)
+- build(build): honor package deployment capabilities during staging (411245b35737)
+- build(build): sync package dependency references (b3f31bddbbe9)
+- build(build): sync package dependency references (594b9e80f61b)
+- build(build): bound remote Git workflow probes (8a47b511ce47)
+- build(build): handle orphaned Railway volume migration (43a2f9dbd70e)
+- build(build): use Railway SDK for environment patch operations (de9187153a48)
+- build(build): classify stale Railway attachments from blocker records (aa194ca13b02)
+- build(build): scope Railway migration cleanup to target environment (bef4ca6690aa)
+- build(build): resolve qualified Railway service from project inventory (e2d5c5fda17e)
+- build(build): unblock exact inactive Railway migration attachment (6db2d656c03e)
+- build(build): detach only known empty Railway migration volumes (d22e348ccbd6)
+- build(build): commit Railway restored volume patch (a975e448cb95)
+- build(build): restore Railway volumes through native source snapshots (2dbbc7dc0a55)
+- build(build): retry Railway backup propagation safely (184586e6a31d)
+- build(build): treat Railway backup workflows as opaque (5b671e9ee446)
+- build(build): support Railway backup workflow identifiers (bfee777364a1)
+- build(build): preserve Railway volume data while splitting environment (a8d27eecd4dd)
+- build(build): isolate Railway staging and production service sources (ef40d7295520)
+- 1 additional change omitted from this summary.
+
+### Dependencies
+
+- chore(deps): update @treeseed/sdk dependency pointer (4126c0c2563f)
+- chore(deps): update @treeseed/sdk dependency pointer (3759d2c4aed1)
+- build(build): enforce SDK-first Railway reconciliation (f31283743c75)
+- build(build): wait for Railway volume detach propagation (0b216fb2514e)
+
 ## [0.12.57] - 2026-07-14
 
 ### Fixed
