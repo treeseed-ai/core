@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.60-dev.fix-local-dev-unhealthy-restart.20260716T025813Z",
+  "version": "0.12.60-dev.staging.20260716T185112Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -71,8 +71,8 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#42d9e8308e1eb7bdb31a6d204e6b0aa7358e775a",
-    "@treeseed/ui": "github:treeseed-ai/ui#0f10f2a452d570eb3d4aa31a246c62f3adf49aa2",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#14cef4cbec20b1224be1d0daa1a798c206c69987",
+    "@treeseed/ui": "github:treeseed-ai/ui#2d626565a8cfce92efa3c7e102d27106d0145039",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
@@ -103,6 +103,10 @@
     "./site": {
       "types": "./dist/site.d.ts",
       "default": "./dist/site.js"
+    },
+    "./routes": {
+      "types": "./dist/routes.d.ts",
+      "default": "./dist/routes.js"
     },
     "./config": {
       "types": "./dist/config.d.ts",
