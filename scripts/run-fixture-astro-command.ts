@@ -23,10 +23,8 @@ prepareFixturePackages({
 		},
 		{
 			packageName: '@treeseed/agent',
-			workspaceDirName: 'agent',
-			entrySpecifier: '@treeseed/agent/runtime-types',
 			contractsShim: 'agent-contracts',
-			modes: ['workspace-link', 'installed-link', 'contracts-only'],
+			modes: ['contracts-only'],
 		},
 		{
 			packageName: '@treeseed/core',
