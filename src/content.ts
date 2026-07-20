@@ -441,6 +441,37 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 			agentSlug: z.string().optional(),
 		}).passthrough().optional(),
 	}).passthrough();
+	const agentContentPermissionSchema = z.object({
+		model: z.string(),
+		operations: z.array(z.string()).default([]),
+		filters: z.record(z.unknown()).optional(),
+	}).strict();
+	const agentModePermissionPolicySchema = z.object({
+		content: z.object({
+			read: z.array(agentContentPermissionSchema).optional(),
+			write: z.array(agentContentPermissionSchema).optional(),
+		}).strict().optional(),
+		repository: z.object({
+			readPaths: z.array(z.string()).optional(),
+			writePaths: z.array(z.string()).optional(),
+			allowCodeMutation: z.boolean().optional(),
+		}).strict().optional(),
+		network: z.object({
+			allowWeb: z.boolean().optional(),
+			allowedDomains: z.array(z.string()).optional(),
+		}).strict().optional(),
+		shell: z.object({
+			allowCommands: z.boolean().optional(),
+			allowedCommands: z.array(z.string()).optional(),
+			deniedCommands: z.array(z.string()).optional(),
+		}).strict().optional(),
+	}).strict();
+	const agentPermissionPolicySchema = z.object({
+		modes: z.object({
+			planning: agentModePermissionPolicySchema.optional(),
+			acting: agentModePermissionPolicySchema.optional(),
+		}).strict().optional(),
+	}).strict();
 	const agentOutputsSchema = z.object({
 		messageTypes: z.array(z.string()).default([]),
 		modelMutations: z.array(z.string()).default([]),
@@ -494,6 +525,7 @@ export function createTreeseedCollections(tenantConfig: TreeseedTenantConfig, { 
 		identity: agentIdentitySchema.default({}),
 		runtimeStatus: withOptionalDefault(z.enum(runtimeStatusValues), AGENT_MODEL_DEFAULTS.runtimeStatus),
 		capabilities: z.array(agentCapabilitySchema).default([]),
+		permissionPolicy: agentPermissionPolicySchema.optional(),
 		tags: z.array(z.string()).default(AGENT_MODEL_DEFAULTS.tags ?? []),
 		links: z.array(profileLinkSchema).default([]),
 		relatedQuestions: z.array(reference('questions')).default([]),
