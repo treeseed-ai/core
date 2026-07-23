@@ -21,8 +21,10 @@ export default defineConfig({
 		}
 		: undefined,
 	test: {
-		include: ['test/**/*.test.ts'],
-		exclude: ['test/utils/agents/e2e/**'],
-		setupFiles: ['test/setup-runtime.ts'],
+		// Managed-dev integration tests coordinate fixed local ports and process state.
+		fileParallelism: false,
+		include: ['tests/{unit,integration,contract}/**/*.test.ts'],
+		exclude: ['tests/e2e/**'],
+		setupFiles: ['tests/support/setup-runtime.ts'],
 	},
 });
