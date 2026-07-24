@@ -101,7 +101,7 @@ export function createSetupSteps(
 	const tenantBuild = usesCloudflareWebRuntime
 		? {
 			command: process.execPath,
-			args: [packageScriptPath('tenant-build')],
+			args: [packageScriptPath('build/tenant-build')],
 		}
 		: null;
 	const dockerReady = dockerIsAvailable(env);
