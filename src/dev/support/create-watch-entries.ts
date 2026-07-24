@@ -94,9 +94,9 @@ export function createSetupSteps(
 	const managedMarketPostgres = env.TREESEED_MARKET_LOCAL_POSTGRES_MANAGED === 'true';
 	const needsCloudflareLocalRuntime = usesCloudflareWebRuntime || hasLocalRuntimeCommand;
 	const coreScripts = [
-		['starlight-patch', 'Patch Starlight content path', 'scripts/patch-starlight-content-path.ts', 'dist/scripts/patch-starlight-content-path.js'],
-		['books', 'Generate book/public artifacts', 'scripts/aggregate-book.ts', 'dist/scripts/aggregate-book.js'],
-		['worker-bundle', 'Generate local worker bundle', 'scripts/build-tenant-worker.ts', 'dist/scripts/build-tenant-worker.js'],
+		['starlight-patch', 'Patch Starlight content path', 'scripts/content/patch-starlight-content-path.ts', 'dist/scripts/content/patch-starlight-content-path.js'],
+		['books', 'Generate book/public artifacts', 'scripts/content/aggregate-book.ts', 'dist/scripts/content/aggregate-book.js'],
+		['worker-bundle', 'Generate local worker bundle', 'scripts/build/build-tenant-worker.ts', 'dist/scripts/build/build-tenant-worker.js'],
 	] as const;
 	const tenantBuild = usesCloudflareWebRuntime
 		? {

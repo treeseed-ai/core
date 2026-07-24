@@ -3,9 +3,9 @@ import { astroBin, createProductionBuildEnv, packageScriptPath, runNodeBinary, r
 process.env.LOCAL_DEV_MODE = process.env.LOCAL_DEV_MODE ?? 'cloudflare';
 const publishedRuntime = process.env.TREESEED_CONTENT_SERVING_MODE === 'published_runtime';
 
-runNodeScript(packageScriptPath('patch-starlight-content-path'), [], { cwd: process.cwd() });
+runNodeScript(packageScriptPath('content/patch-starlight-content-path'), [], { cwd: process.cwd() });
 if (!publishedRuntime) {
-	runNodeScript(packageScriptPath('aggregate-book'), [], { cwd: process.cwd() });
+	runNodeScript(packageScriptPath('content/aggregate-book'), [], { cwd: process.cwd() });
 }
 runNodeBinary(astroBin, ['build'], {
 	cwd: process.cwd(),
@@ -13,7 +13,7 @@ runNodeBinary(astroBin, ['build'], {
 		LOCAL_DEV_MODE: process.env.LOCAL_DEV_MODE,
 	}),
 });
-runNodeScript(packageScriptPath('build-tenant-worker'), [], {
+runNodeScript(packageScriptPath('build/build-tenant-worker'), [], {
 	cwd: process.cwd(),
 	env: createProductionBuildEnv({
 		LOCAL_DEV_MODE: process.env.LOCAL_DEV_MODE,

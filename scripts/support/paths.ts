@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireSharedFixtureRoot } from '../agents/fixture-tools.ts';
 
-const packageCandidate = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const packageCandidate = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 export const packageRoot = packageCandidate.endsWith('/dist')
 	? resolve(packageCandidate, '..')

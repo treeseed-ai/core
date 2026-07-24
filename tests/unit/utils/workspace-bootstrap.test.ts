@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { detectBootstrapMode } from '../../../scripts/treedx/workspaces/workspace-bootstrap.ts';
+import { packageRoot } from '../../../scripts/support/paths.ts';
 
 const packageDirs = ['sdk', 'ui', 'core', 'admin', 'cli', 'agent'];
 
@@ -75,5 +76,9 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 		const state = detectBootstrapMode(root);
 
 		expect(state.mode).toBe('workspace');
+	});
+
+	it('resolves support paths from the package root after functional script grouping', () => {
+		expect(packageRoot).toBe(resolve(process.cwd()));
 	});
 });

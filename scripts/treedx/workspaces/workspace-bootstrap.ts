@@ -120,19 +120,19 @@ function resolveInstalledCoreScript(root, scriptRelativePath) {
 }
 
 function runStarlightPatchFromRegistry(root) {
-	const workspacePatchScript = resolve(root, 'packages', 'core', 'scripts', 'patch-starlight-content-path.ts');
+	const workspacePatchScript = resolve(root, 'packages', 'core', 'scripts', 'content', 'patch-starlight-content-path.ts');
 	if (existsSync(workspacePatchScript)) {
 		run('tsx', [workspacePatchScript], { cwd: root });
 		return;
 	}
 
-	const patchScript = resolveInstalledCoreScript(root, 'dist/scripts/patch-starlight-content-path.js');
+	const patchScript = resolveInstalledCoreScript(root, 'dist/scripts/content/patch-starlight-content-path.js');
 	run(process.execPath, [patchScript], { cwd: root });
 }
 
 function runStarlightPatchFromWorkspace(root, packages) {
 	const corePackage = packages.find((entry) => entry.name === '@treeseed/core');
-	run('tsx', [resolve(corePackage.dir, 'scripts/patch-starlight-content-path.ts')], { cwd: root });
+	run('tsx', [resolve(corePackage.dir, 'scripts', 'content', 'patch-starlight-content-path.ts')], { cwd: root });
 }
 
 function linkWorkspacePackages(root, packages) {

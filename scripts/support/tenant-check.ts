@@ -2,11 +2,11 @@ import { createProductionBuildEnv, packageScriptPath, runNodeScript } from '../p
 
 const publishedRuntime = process.env.TREESEED_CONTENT_SERVING_MODE === 'published_runtime';
 
-runNodeScript(packageScriptPath('patch-starlight-content-path'), [], { cwd: process.cwd() });
+runNodeScript(packageScriptPath('content/patch-starlight-content-path'), [], { cwd: process.cwd() });
 if (!publishedRuntime) {
-	runNodeScript(packageScriptPath('aggregate-book'), [], { cwd: process.cwd() });
+	runNodeScript(packageScriptPath('content/aggregate-book'), [], { cwd: process.cwd() });
 }
-runNodeScript(packageScriptPath('tenant-build'), [], {
+runNodeScript(packageScriptPath('build/tenant-build'), [], {
 	cwd: process.cwd(),
 	env: createProductionBuildEnv(),
 });
