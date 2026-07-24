@@ -2,7 +2,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readSync, statSync, writeFi
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { DEFAULT_KILL_GRACE_MS, DEFAULT_READINESS_TIMEOUT_MS, DEFAULT_SHUTDOWN_GRACE_MS, type TreeseedDevInstanceRecord, type TreeseedManagedDevOptions } from './require.ts';
+import { DEFAULT_KILL_GRACE_MS, DEFAULT_READINESS_TIMEOUT_MS, DEFAULT_SHUTDOWN_GRACE_MS, type TreeseedDevInstanceRecord, type TreeseedManagedDevOptions } from './runtime-configuration.ts';
 import type { ManagedStartDependencies, TreeseedIntegratedDevDependencies } from './treeseed-integrated-dev-dependencies.ts';
 import { createDevInstanceRecord, evaluateDevInstance, listRepoFamilyDevInstances, listWorktreeDevInstances, readDevInstanceFile, removeDevInstanceRecord, renderManagedDevStatus, resolveManagedPortOverrides, writeDevInstance } from './dev-pid-path.ts';
 import { waitForProcessExit } from './dev-runtime-state.ts';

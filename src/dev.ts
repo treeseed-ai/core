@@ -1,4 +1,4 @@
-export * from './dev/require.ts';
+export * from './dev/runtime-configuration.ts';
 export * from './dev/treeseed-integrated-dev-dependencies.ts';
 export * from './dev/parse-surface-value.ts';
 export * from './dev/create-watch-entries.ts';

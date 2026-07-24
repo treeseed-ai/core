@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { packageRoot } from ".././package-tools.ts";
-import { COPY_EXTENSIONS, JS_SOURCE_EXTENSIONS, compileModule, copyAsset, copyPackageAsset, distRoot, require, rewriteDeclarations, scriptsRoot, srcRoot, transpileScript, walkFiles } from './require.ts';
+import { COPY_EXTENSIONS, JS_SOURCE_EXTENSIONS, compileModule, copyAsset, copyPackageAsset, distRoot, require, rewriteDeclarations, scriptsRoot, srcRoot, transpileScript, walkFiles } from './build-runtime.ts';
 import { compileVendorPackage, emitTypeDeclarations, patchTreeseedRuntime, patchVendoredStarlight, rewriteTreeseedStarlightSpecifiers, writeCompatibilityEntrypoint } from './resolve-workspace-sdk-declaration-paths.ts';
 
 export async function main() {

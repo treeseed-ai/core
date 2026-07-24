@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { packageRoot, require, type FetchLike, type ProcessKiller, type ProcessStatusChecker, type SignalRegistrar, type SpawnLike, type SpawnSyncLike, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevFeedbackMode, type TreeseedIntegratedDevOpenMode, type TreeseedIntegratedDevSetupMode, type TreeseedIntegratedDevSurface, type TreeseedLocalRuntimeMode, type TreeseedLocalRuntimeSelection, type WatchStarter } from './require.ts';
+import { packageRoot, require, type FetchLike, type ProcessKiller, type ProcessStatusChecker, type SignalRegistrar, type SpawnLike, type SpawnSyncLike, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevFeedbackMode, type TreeseedIntegratedDevOpenMode, type TreeseedIntegratedDevSetupMode, type TreeseedIntegratedDevSurface, type TreeseedLocalRuntimeMode, type TreeseedLocalRuntimeSelection, type WatchStarter } from './runtime-configuration.ts';
 import { resetMarketPostgres, stopMarketPostgres } from './attach-prefixed-log-reader.ts';
 
 export type TreeseedIntegratedDevDependencies = {

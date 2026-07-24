@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import ts from 'typescript';
 import { packageRoot } from ".././package-tools.ts";
-import { COPY_EXTENSIONS, compileModule, copyAsset, distRoot, ensureDir, relativePathForTsconfig, rewriteAstroAssetSpecifiers, rewriteVendorImportSpecifiers, srcRoot, walkFiles, workspaceSdkDistRoot, writeJsonModule, writeRawTextModule } from './require.ts';
+import { COPY_EXTENSIONS, compileModule, copyAsset, distRoot, ensureDir, relativePathForTsconfig, rewriteAstroAssetSpecifiers, rewriteVendorImportSpecifiers, srcRoot, walkFiles, workspaceSdkDistRoot, writeJsonModule, writeRawTextModule } from './build-runtime.ts';
 
 export function resolveWorkspaceSdkDeclarationPaths() {
 	if (!existsSync(resolve(workspaceSdkDistRoot, 'index.d.ts'))) {

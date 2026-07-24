@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { DEFAULT_KILL_GRACE_MS, DEFAULT_SHUTDOWN_GRACE_MS, DEV_RUNTIME_DIR, DEV_RUNTIME_LEGACY_FILE, type ProcessStatusChecker, type TreeseedDevInstanceStatus, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevPlan } from './require.ts';
+import { DEFAULT_KILL_GRACE_MS, DEFAULT_SHUTDOWN_GRACE_MS, DEV_RUNTIME_DIR, DEV_RUNTIME_LEGACY_FILE, type ProcessStatusChecker, type TreeseedDevInstanceStatus, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevPlan } from './runtime-configuration.ts';
 import { ALL_COMMAND_IDS, CANONICAL_COMMAND_IDS, type TreeseedDevPortOwner, type TreeseedIntegratedDevDependencies } from './treeseed-integrated-dev-dependencies.ts';
 import { createDevInstanceRecord, readDevInstanceFile, removeDevInstanceRecord, writeDevInstance } from './dev-pid-path.ts';
 import { devInstancePath, instanceRuntimeScope } from './default-kill-process.ts';

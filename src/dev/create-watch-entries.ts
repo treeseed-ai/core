@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { packageScriptPath, resolveTreeseedToolBinary } from '@treeseed/sdk/workflow-support';
 import { discoverTreeseedApplications } from '@treeseed/sdk/hosting';
-import { packageRoot, type TreeseedIntegratedDevCommand, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevPlan, type TreeseedIntegratedDevSetupMode, type TreeseedIntegratedDevSetupStep, type TreeseedIntegratedDevWatchEntry } from './require.ts';
+import { packageRoot, type TreeseedIntegratedDevCommand, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevPlan, type TreeseedIntegratedDevSetupMode, type TreeseedIntegratedDevSetupStep, type TreeseedIntegratedDevWatchEntry } from './runtime-configuration.ts';
 import { dockerIsAvailable, nodeLocalRuntime } from './parse-surface-value.ts';
 import { generatedLocalWranglerPath, resolveNodeEntrypoint, resolveOptionalScriptEntrypoint } from './treeseed-integrated-dev-dependencies.ts';
 

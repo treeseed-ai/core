@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { atomicWriteJson, devInstanceDir, devInstancePath, devPidDir, instanceRuntimeScope, repoFamilyIndexPath, repositoryIndexId, resolveGitWorktreeInfo, worktreeInstanceSuffix } from './default-kill-process.ts';
-import { TREESEED_DEFAULT_API_PORT, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, TREESEED_DEFAULT_WEB_PORT, type ProcessStatusChecker, type TreeseedDevIndex, type TreeseedDevIndexEntry, type TreeseedDevInstanceRecord, type TreeseedDevInstanceStatus, type TreeseedIntegratedDevPlan, type TreeseedManagedDevOptions } from './require.ts';
+import { TREESEED_DEFAULT_API_PORT, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, TREESEED_DEFAULT_WEB_PORT, type ProcessStatusChecker, type TreeseedDevIndex, type TreeseedDevIndexEntry, type TreeseedDevInstanceRecord, type TreeseedDevInstanceStatus, type TreeseedIntegratedDevPlan, type TreeseedManagedDevOptions } from './runtime-configuration.ts';
 import { parsePortFromUrl } from './dev-runtime-state.ts';
 import type { TreeseedIntegratedDevDependencies } from './treeseed-integrated-dev-dependencies.ts';
 

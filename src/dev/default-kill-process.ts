@@ -7,7 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { resolveTreeseedMachineEnvironmentValues, runTreeseedGit } from '@treeseed/sdk/workflow-support';
 import type { TreeseedDevPortOwner } from './treeseed-integrated-dev-dependencies.ts';
 import { resetMarketPostgres, stopMarketPostgres } from './attach-prefixed-log-reader.ts';
-import { DEFAULT_KILL_GRACE_MS, DEV_INSTANCE_DIR, DEV_PID_DIR, DEV_RELOAD_FILE, DEV_REPO_INDEX_RELATIVE_PATH, type ProcessKiller, type ProcessLike, type TreeseedIntegratedDevCommand, type TreeseedIntegratedDevPlan } from './require.ts';
+import { DEFAULT_KILL_GRACE_MS, DEV_INSTANCE_DIR, DEV_PID_DIR, DEV_RELOAD_FILE, DEV_REPO_INDEX_RELATIVE_PATH, type ProcessKiller, type ProcessLike, type TreeseedIntegratedDevCommand, type TreeseedIntegratedDevPlan } from './runtime-configuration.ts';
 import { runtimeScopeKey } from './dev-runtime-state.ts';
 
 export function defaultKillProcess(pid: number, signal: NodeJS.Signals) {

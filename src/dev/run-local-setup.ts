@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createPersistentDeployTarget, ensureGeneratedWranglerConfig, ensureLocalWorkspaceLinks, findNearestTreeseedWorkspaceRoot, resolveTreeseedToolBinary } from '@treeseed/sdk/workflow-support';
-import type { FetchLike, TreeseedIntegratedDevOptions, TreeseedIntegratedDevPlan, TreeseedIntegratedDevSetupStep } from './require.ts';
+import type { FetchLike, TreeseedIntegratedDevOptions, TreeseedIntegratedDevPlan, TreeseedIntegratedDevSetupStep } from './runtime-configuration.ts';
 import type { TreeseedIntegratedDevDependencies } from './treeseed-integrated-dev-dependencies.ts';
 import { emitEvent } from './prepare-dev-runtime-slots.ts';
 import { ensureMarketPostgres, runSetupStep } from './attach-prefixed-log-reader.ts';

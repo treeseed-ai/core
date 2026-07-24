@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { resolveTreeseedToolBinary } from '@treeseed/sdk/workflow-support';
-import { DEV_RELOAD_FILE, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevResetAction, type TreeseedIntegratedDevResetPlan, type TreeseedIntegratedDevSurface, type TreeseedLocalRuntimeSelection } from './require.ts';
+import { DEV_RELOAD_FILE, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, type TreeseedIntegratedDevCommandId, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevResetAction, type TreeseedIntegratedDevResetPlan, type TreeseedIntegratedDevSurface, type TreeseedLocalRuntimeSelection } from './runtime-configuration.ts';
 import { CANONICAL_COMMAND_IDS, isMarketWorkspace, surfaceCommandIds } from './treeseed-integrated-dev-dependencies.ts';
 
 export function parseSurfaceValue(value: string): TreeseedIntegratedDevSurface | null {

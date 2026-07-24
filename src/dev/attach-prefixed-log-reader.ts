@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { resolveTreeseedToolBinary } from '@treeseed/sdk/workflow-support';
-import { DEFAULT_SETUP_STEP_TIMEOUT_MS, TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME, type ProcessLike, type SpawnSyncLike, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevPlan, type TreeseedIntegratedDevSetupStep } from './require.ts';
+import { DEFAULT_SETUP_STEP_TIMEOUT_MS, TREESEED_DEFAULT_MARKET_POSTGRES_CONTAINER, TREESEED_DEFAULT_MARKET_POSTGRES_PORT, TREESEED_DEFAULT_MARKET_POSTGRES_VOLUME, type ProcessLike, type SpawnSyncLike, type TreeseedIntegratedDevOptions, type TreeseedIntegratedDevPlan, type TreeseedIntegratedDevSetupStep } from './runtime-configuration.ts';
 import type { TreeseedIntegratedDevDependencies } from './treeseed-integrated-dev-dependencies.ts';
 import { emitEvent } from './prepare-dev-runtime-slots.ts';
 
