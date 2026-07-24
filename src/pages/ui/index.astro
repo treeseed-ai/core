@@ -2,14 +2,14 @@
 import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import ThemeSelector from '@treeseed/ui/components/astro/theme/ThemeSelector.astro';
-import Button from '@treeseed/ui/components/astro/forms/Button.astro';
-import Field from '@treeseed/ui/components/astro/forms/Field.astro';
-import TextInput from '@treeseed/ui/components/astro/forms/TextInput.astro';
-import Select from '@treeseed/ui/components/astro/forms/Select.astro';
-import Textarea from '@treeseed/ui/components/astro/forms/Textarea.astro';
-import RadioGroup from '@treeseed/ui/components/astro/forms/RadioGroup.astro';
-import FormActions from '@treeseed/ui/components/astro/forms/FormActions.astro';
-import PasswordMeter from '@treeseed/ui/components/astro/forms/PasswordMeter.astro';
+import Button from '@treeseed/ui/components/astro/forms/actions/Button.astro';
+import Field from '@treeseed/ui/components/astro/forms/fields/Field.astro';
+import TextInput from '@treeseed/ui/components/astro/forms/fields/TextInput.astro';
+import Select from '@treeseed/ui/components/astro/forms/fields/Select.astro';
+import Textarea from '@treeseed/ui/components/astro/forms/fields/Textarea.astro';
+import RadioGroup from '@treeseed/ui/components/astro/forms/fields/RadioGroup.astro';
+import FormActions from '@treeseed/ui/components/astro/forms/actions/FormActions.astro';
+import PasswordMeter from '@treeseed/ui/components/astro/forms/fields/PasswordMeter.astro';
 import Panel from '@treeseed/ui/components/astro/surface/Panel.astro';
 import Card from '@treeseed/ui/components/astro/surface/Card.astro';
 import EmptyState from '@treeseed/ui/components/astro/surface/EmptyState.astro';
@@ -20,7 +20,7 @@ import ActionList from '@treeseed/ui/components/astro/data/ActionList.astro';
 import KeyValueList from '@treeseed/ui/components/astro/data/KeyValueList.astro';
 import DataTable from '@treeseed/ui/components/astro/data/DataTable.astro';
 import PageHeader from '@treeseed/ui/components/astro/layout/PageHeader.astro';
-import { getBuiltInColorSchemes, normalizeThemePreference } from '../../utils/theme.ts';
+import { getBuiltInColorSchemes, normalizeThemePreference } from '../../utils/support/theme.ts';
 
 const selected = normalizeThemePreference({
 	scheme: Astro.url.searchParams.get('scheme'),

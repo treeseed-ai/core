@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -129,7 +129,7 @@ function writeLocalD1Project(root: string, id: string, slug = 'market') {
 
 it('emits a structured plan and exits without spawning services', async () => {
 		const output: string[] = [];
-		const exitCode = await runTreeseedIntegratedDev(
+		const exitCode = await runIntegratedDev(
 			{
 				cwd: tenantRoot,
 				plan: true,
@@ -179,7 +179,7 @@ surfaces:
 
 		try {
 			process.env.XDG_CACHE_HOME = resolve(tempRoot, '.cache');
-			const exitCode = await runTreeseedManagedDev(
+			const exitCode = await runManagedDev(
 				{
 					action: 'start',
 					cwd: tempRoot,

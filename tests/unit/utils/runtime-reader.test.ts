@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resetTreeseedDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
-import { buildPrivateKnowledgeReaderViewModel, buildPublicKnowledgeReaderViewModel } from '../../../src/utils/runtime-reader';
+import { resetDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
+import { buildPrivateKnowledgeReaderViewModel, buildPublicKnowledgeReaderViewModel } from '../../../src/utils/runtime/runtime-reader';
 
-const originalDeployConfig = (globalThis as { __TREESEED_DEPLOY_CONFIG__?: unknown }).__TREESEED_DEPLOY_CONFIG__;
+const originalDeployConfig = (globalThis as { DEPLOY_CONFIG?: unknown }).DEPLOY_CONFIG;
 
 class MemoryR2Object {
 	constructor(private readonly value: unknown) {}
@@ -36,7 +36,7 @@ class MemoryR2Bucket {
 afterEach(() => {
 	vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', originalDeployConfig);
 	vi.unstubAllEnvs();
-	resetTreeseedDeployConfigForTests();
+	resetDeployConfigForTests();
 });
 
 function configurePublishedRuntime(bucket?: MemoryR2Bucket) {
@@ -68,7 +68,7 @@ function configurePublishedRuntime(bucket?: MemoryR2Bucket) {
 		smtp: { enabled: false },
 		turnstile: { enabled: false },
 	});
-	resetTreeseedDeployConfigForTests();
+	resetDeployConfigForTests();
 	return {
 		runtime: {
 			env: {
@@ -128,8 +128,8 @@ function publishedBucket() {
 			sidebarItems: [{ label: 'Operations', link: '/knowledge/operations/' }],
 		}],
 		BOOKS_LINK: { label: 'Books', link: '/books/' },
-		TREESEED_LINKS: { home: '/knowledge/' },
-		TREESEED_LIBRARY_DOWNLOAD: {
+		LINKS: { home: '/knowledge/' },
+		LIBRARY_DOWNLOAD: {
 			downloadFileName: 'treeseed-knowledge.md',
 			downloadHref: '/books/treeseed-knowledge.md',
 			downloadTitle: 'Download Library',
@@ -194,7 +194,7 @@ function privateBucket() {
 			sidebarItems: [{ label: 'Private Operations', link: '/app/projects/project-1/knowledge/private-ops/' }],
 		}],
 		BOOKS_LINK: { label: 'Books', link: '/app/projects/project-1/knowledge/' },
-		TREESEED_LINKS: { home: '/app/projects/project-1/knowledge/' },
+		LINKS: { home: '/app/projects/project-1/knowledge/' },
 	});
 	bucket.set('private/docs-tree.json', [{
 		id: 'knowledge/private-ops',
@@ -252,7 +252,7 @@ describe('public knowledge runtime reader', () => {
 
 	it('uses local docs only outside published runtime', async () => {
 		vi.stubEnv('TREESEED_CONTENT_SERVING_MODE', 'local_collections');
-		resetTreeseedDeployConfigForTests();
+		resetDeployConfigForTests();
 		const vm = await buildPublicKnowledgeReaderViewModel({
 			locals: {},
 			slug: 'operations',
@@ -343,7 +343,7 @@ describe('private project knowledge runtime reader', () => {
 
 	it('never uses local collection data for private reader resolution', async () => {
 		vi.stubEnv('TREESEED_CONTENT_SERVING_MODE', 'local_collections');
-		resetTreeseedDeployConfigForTests();
+		resetDeployConfigForTests();
 		const vm = await buildPrivateKnowledgeReaderViewModel({
 			locals: configurePublishedRuntime(),
 			projectId: 'project-1',

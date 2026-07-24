@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@treeseed/sdk/platform/plugins', () => ({
-	getTreeseedDeployConfig() {
+	getDeployConfig() {
 		return {
 			name: 'Test Site',
 			slug: 'test-site',
@@ -57,17 +57,17 @@ vi.mock('@treeseed/sdk/platform/plugins', () => ({
 	},
 }));
 
-import { applyTreeseedWebCacheHeaders, classifyTreeseedWebRequest } from '../../../src/utils/web-cache.js';
+import { applyWebCacheHeaders, classifyWebRequest } from '../../../src/utils/support/web-cache.js';
 
 describe('web cache policy', () => {
 	it('classifies public content routes as cacheable html requests', () => {
 		const request = new Request('https://example.com/books/test-book');
-		expect(classifyTreeseedWebRequest(request, new URL(request.url))).toEqual({ kind: 'content_page_html' });
+		expect(classifyWebRequest(request, new URL(request.url))).toEqual({ kind: 'content_page_html' });
 	});
 
 	it('classifies source-only pages separately', () => {
 		const request = new Request('https://example.com/contact');
-		expect(classifyTreeseedWebRequest(request, new URL(request.url))).toEqual({ kind: 'source_page_html' });
+		expect(classifyWebRequest(request, new URL(request.url))).toEqual({ kind: 'source_page_html' });
 	});
 
 	it('classifies preview-cookie requests as preview-sensitive', () => {
@@ -76,7 +76,7 @@ describe('web cache policy', () => {
 				cookie: 'treeseed-content-preview=preview-token',
 			},
 		});
-		expect(classifyTreeseedWebRequest(request, new URL(request.url))).toEqual({
+		expect(classifyWebRequest(request, new URL(request.url))).toEqual({
 			kind: 'preview_no_cache',
 			reason: 'preview_cookie',
 		});
@@ -84,7 +84,7 @@ describe('web cache policy', () => {
 
 	it('classifies form endpoints as dynamic non-cacheable', () => {
 		const request = new Request('https://example.com/api/form/submit');
-		expect(classifyTreeseedWebRequest(request, new URL(request.url))).toEqual({
+		expect(classifyWebRequest(request, new URL(request.url))).toEqual({
 			kind: 'api_no_cache',
 			reason: 'api_path',
 		});
@@ -99,7 +99,7 @@ describe('web cache policy', () => {
 			},
 		});
 
-		const updated = applyTreeseedWebCacheHeaders(request, new URL(request.url), response);
+		const updated = applyWebCacheHeaders(request, new URL(request.url), response);
 		expect(updated.headers.get('Cache-Control')).toBe('public, max-age=0, must-revalidate');
 		expect(updated.headers.get('CDN-Cache-Control')).toBe(
 			'public, s-maxage=31536000, stale-while-revalidate=86400, stale-if-error=86400',
@@ -116,7 +116,7 @@ describe('web cache policy', () => {
 			},
 		});
 
-		const updated = applyTreeseedWebCacheHeaders(request, new URL(request.url), response);
+		const updated = applyWebCacheHeaders(request, new URL(request.url), response);
 		expect(updated.headers.get('CDN-Cache-Control')).toBeNull();
 	});
 
@@ -129,7 +129,7 @@ describe('web cache policy', () => {
 			},
 		});
 
-		const updated = applyTreeseedWebCacheHeaders(request, new URL(request.url), response);
+		const updated = applyWebCacheHeaders(request, new URL(request.url), response);
 		expect(updated.headers.get('Cache-Control')).toBe('no-store');
 		expect(updated.headers.get('CDN-Cache-Control')).toBe('no-store');
 	});

@@ -1,15 +1,15 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
-import type { LoadedTreeseedPluginEntry } from '@treeseed/sdk/platform/plugins';
+import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { LoadedPluginRegistration } from '@treeseed/sdk/platform/plugins';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-	buildTreeseedSiteLayers,
-	resolveTreeseedPageEntrypoint,
-	resolveTreeseedSiteResource,
-	resolveTreeseedStyleEntrypoint,
-} from '../../../src/site-resources';
+	buildSiteLayers,
+	resolvePageEntrypoint,
+	resolveSiteResource,
+	resolveStyleEntrypoint,
+} from '../../../src/support/site-resources';
 
 const tempRoots: string[] = [];
 
@@ -30,7 +30,7 @@ async function writeFixtureFile(root: string, relativePath: string, contents: st
 	return fullPath;
 }
 
-function createTenantConfig(overrides?: TreeseedTenantConfig['overrides']): TreeseedTenantConfig {
+function createTenantConfig(overrides?: TenantConfig['overrides']): TenantConfig {
 	return {
 		id: 'test-site',
 		siteConfigPath: '/tmp/site-config.yaml',
@@ -92,17 +92,17 @@ describe('site resources', () => {
 					},
 				},
 			],
-		} satisfies { plugins: LoadedTreeseedPluginEntry[] };
+		} satisfies { plugins: LoadedPluginRegistration[] };
 
-		const layers = buildTreeseedSiteLayers(pluginRuntime, {
+		const layers = buildSiteLayers(pluginRuntime, {
 			coreRoot,
 			projectRoot: coreRoot,
 			tenantConfig: createTenantConfig(),
 		});
 
-		expect(resolveTreeseedPageEntrypoint(layers, 'pages/contact.astro')).toBe(join(teamRoot, 'layers/pages/contact.astro'));
-		expect(resolveTreeseedStyleEntrypoint(layers, 'styles/tokens.css')).toBe(join(userRoot, 'layers/styles/tokens.css'));
-		expect(resolveTreeseedStyleEntrypoint(layers, 'styles/global.css')).toBe(join(coreRoot, 'styles/global.css'));
+		expect(resolvePageEntrypoint(layers, 'pages/contact.astro')).toBe(join(teamRoot, 'layers/pages/contact.astro'));
+		expect(resolveStyleEntrypoint(layers, 'styles/tokens.css')).toBe(join(userRoot, 'layers/styles/tokens.css'));
+		expect(resolveStyleEntrypoint(layers, 'styles/global.css')).toBe(join(coreRoot, 'styles/global.css'));
 	});
 
 	it('lets tenant overrides beat package layers for pages and styles', async () => {
@@ -135,23 +135,23 @@ describe('site resources', () => {
 					},
 				},
 			],
-		} satisfies { plugins: LoadedTreeseedPluginEntry[] };
+		} satisfies { plugins: LoadedPluginRegistration[] };
 
-		const layers = buildTreeseedSiteLayers(pluginRuntime, {
+		const layers = buildSiteLayers(pluginRuntime, {
 			coreRoot,
 			projectRoot: tenantRoot,
 			tenantConfig,
 		});
 
-		expect(resolveTreeseedPageEntrypoint(layers, 'pages/index.astro')).toBe(join(tenantRoot, 'src/overrides/pages/index.astro'));
-		expect(resolveTreeseedStyleEntrypoint(layers, 'styles/global.css')).toBe(join(tenantRoot, 'src/overrides/styles/global.css'));
+		expect(resolvePageEntrypoint(layers, 'pages/index.astro')).toBe(join(tenantRoot, 'src/overrides/pages/index.astro'));
+		expect(resolveStyleEntrypoint(layers, 'styles/global.css')).toBe(join(tenantRoot, 'src/overrides/styles/global.css'));
 	});
 
 	it('returns null for missing resources and throws for required page or style entrypoints', async () => {
 		const coreRoot = await createFixtureRoot('treeseed-site-core-');
 		await writeFixtureFile(coreRoot, 'styles/global.css', 'core global');
 
-		const layers = buildTreeseedSiteLayers(
+		const layers = buildSiteLayers(
 			{ plugins: [] },
 			{
 				coreRoot,
@@ -160,8 +160,8 @@ describe('site resources', () => {
 			},
 		);
 
-		expect(resolveTreeseedSiteResource(layers, 'pages', 'pages/contact.astro')).toBeNull();
-		expect(() => resolveTreeseedPageEntrypoint(layers, 'pages/contact.astro')).toThrow(/pages\/contact\.astro/);
-		expect(() => resolveTreeseedStyleEntrypoint(layers, 'styles/tokens.css')).toThrow(/styles\/tokens\.css/);
+		expect(resolveSiteResource(layers, 'pages', 'pages/contact.astro')).toBeNull();
+		expect(() => resolvePageEntrypoint(layers, 'pages/contact.astro')).toThrow(/pages\/contact\.astro/);
+		expect(() => resolveStyleEntrypoint(layers, 'styles/tokens.css')).toThrow(/styles\/tokens\.css/);
 	});
 });

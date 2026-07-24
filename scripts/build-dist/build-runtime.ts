@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
 import ts from 'typescript';
-import { packageRoot } from ".././package-tools.ts";
+import { packageRoot } from "../packages/package-tools.ts";
 
 
 export const require = createRequire(import.meta.url);
@@ -166,7 +166,7 @@ export function writeJsonModule(sourceFile, sourceRoot, outputRoot) {
 
 export function rewriteScriptRuntimeSpecifiers(contents) {
 	return rewriteRuntimeSpecifiers(contents)
-		.replace(/(['"`])\.\.\/src\//g, '$1../')
+		.replace(/(['"`])((?:\.\.\/)+)src\//g, '$1$2')
 		.replace(/(['"`])\.\/src\//g, '$1./dist/')
 		.replaceAll("'src/worker/forms-worker.ts'", "'dist/worker/forms-worker.js'")
 		.replaceAll('"src/worker/forms-worker.ts"', '"dist/worker/forms-worker.js"');

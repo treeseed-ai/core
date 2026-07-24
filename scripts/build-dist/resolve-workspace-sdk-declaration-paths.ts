@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import ts from 'typescript';
-import { packageRoot } from ".././package-tools.ts";
+import { packageRoot } from "../packages/package-tools.ts";
 import { COPY_EXTENSIONS, compileModule, copyAsset, distRoot, ensureDir, relativePathForTsconfig, rewriteAstroAssetSpecifiers, rewriteVendorImportSpecifiers, srcRoot, walkFiles, workspaceSdkDistRoot, writeJsonModule, writeRawTextModule } from './build-runtime.ts';
 
 export function resolveWorkspaceSdkDeclarationPaths() {
@@ -78,7 +78,7 @@ export function toPosixRelative(fromFile, toFile) {
 	return relative(dirname(fromFile), toFile).replaceAll('\\', '/');
 }
 
-export function rewriteTreeseedStarlightSpecifiers(contents, filePath) {
+export function rewriteStarlightSpecifiers(contents, filePath) {
 	const componentsIndex = toPosixRelative(filePath, resolve(distRoot, 'vendor', 'starlight', 'components.js'));
 	const routeData = toPosixRelative(filePath, resolve(distRoot, 'vendor', 'starlight', 'route-data.js'));
 
@@ -179,7 +179,7 @@ export function patchVendoredStarlight(distVendorRoot) {
 	}
 }
 
-export function patchTreeseedRuntime(distRuntimeRoot) {
+export function patchRuntime(distRuntimeRoot) {
 	const middlewareFile = resolve(distRuntimeRoot, 'middleware', 'starlightRouteData.js');
 	if (existsSync(middlewareFile)) {
 		const source = readFileSync(middlewareFile, 'utf8').replaceAll(

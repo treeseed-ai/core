@@ -18,15 +18,15 @@ import {
 	applyPageModelDefaults,
 	applyProposalModelDefaults,
 	applyQuestionModelDefaults,
-} from '../../../src/utils/site-config';
+} from '../../../src/utils/configuration/site-config';
 
-import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
 
 import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 
-import { parseSiteConfig } from '../../../src/utils/site-config-schema.js';
+import { parseSiteConfig } from '../../../src/utils/configuration/site-config-schema.js';
 
-import { buildTreeseedThemeCss, getBuiltInColorSchemes, normalizeThemePreference, resolveTreeseedThemeConfig } from '../../../src/utils/theme.ts';
+import { buildThemeCss, getBuiltInColorSchemes, normalizeThemePreference, resolveThemeConfig } from '../../../src/utils/support/theme.ts';
 describe('site config parsing', () => {
 it('rejects invalid theme mode, scheme ids, and token names', () => {
 		const baseConfig = `
@@ -196,7 +196,7 @@ features:
 		const previousRoot = process.env.TREESEED_TENANT_ROOT;
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		try {
-			const manifest = loadTreeseedManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
+			const manifest = loadManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
 			expect(manifest.siteConfigPath).toBe(resolve(tenantRoot, 'src', 'config.yaml'));
 			expect(manifest.content.pages).toBe(resolve(tenantRoot, 'src', 'content', 'pages'));
 			expect(manifest.content.docs).toBe(resolve(tenantRoot, 'src', 'content', 'knowledge'));
@@ -248,7 +248,7 @@ site:
 		const previousRoot = process.env.TREESEED_TENANT_ROOT;
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		try {
-			const manifest = loadTreeseedManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
+			const manifest = loadManifest(resolve(tenantRoot, 'src', 'manifest.yaml'));
 			expect(manifest.site?.models?.workdays?.rendered).toBe(false);
 			expect(tenantModelRendered(manifest, 'workdays')).toBe(false);
 			expect(tenantModelRendered(manifest, 'notes')).toBe(false);

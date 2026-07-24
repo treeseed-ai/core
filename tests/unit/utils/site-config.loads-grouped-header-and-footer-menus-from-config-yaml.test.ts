@@ -18,15 +18,15 @@ import {
 	applyPageModelDefaults,
 	applyProposalModelDefaults,
 	applyQuestionModelDefaults,
-} from '../../../src/utils/site-config';
+} from '../../../src/utils/configuration/site-config';
 
-import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
 
 import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
 
-import { parseSiteConfig } from '../../../src/utils/site-config-schema.js';
+import { parseSiteConfig } from '../../../src/utils/configuration/site-config-schema.js';
 
-import { buildTreeseedThemeCss, getBuiltInColorSchemes, normalizeThemePreference, resolveTreeseedThemeConfig } from '../../../src/utils/theme.ts';
+import { buildThemeCss, getBuiltInColorSchemes, normalizeThemePreference, resolveThemeConfig } from '../../../src/utils/support/theme.ts';
 describe('site config parsing', () => {
 it('loads grouped header and footer menus from config.yaml', () => {
 		expect(SITE_CONFIG.site.headerMenu.length).toBeGreaterThan(0);
@@ -189,7 +189,7 @@ models: {}
 	});
 
 it('builds tenant theme css from palette overrides', () => {
-		const css = buildTreeseedThemeCss({
+		const css = buildThemeCss({
 			defaultScheme: 'cedar',
 			defaultMode: 'system',
 			schemes: {
@@ -216,7 +216,7 @@ it('builds tenant theme css from palette overrides', () => {
 
 it('keeps built-in color schemes modular and complete', () => {
 		const summaries = getBuiltInColorSchemes();
-		const resolved = resolveTreeseedThemeConfig();
+		const resolved = resolveThemeConfig();
 		const requiredTokens = [
 			'canvas',
 			'canvasSubtle',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePayload, validatePayload } from '../../../../src/utils/forms/validation';
+import { parsePayload, validatePayload } from '../../../../src/utils/forms/security/validation';
 
 describe('form payload validation', () => {
 	it('parses and validates a contact submission', () => {

@@ -1,5 +1,5 @@
 import type { APIContext } from 'astro';
-import { handleFormSubmission, handleTokenRequest } from '../../../utils/forms/service';
+import { handleFormSubmission, handleTokenRequest } from '../../../utils/forms/service/service';
 
 export async function GET(context: APIContext) {
 	return handleTokenRequest(context);

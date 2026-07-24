@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -131,10 +131,10 @@ it('uses the seeded local market project id for node services', () => {
 		const root = writeTempTenant('title: Test Site\n');
 		writeLocalD1Project(root, 'project-market-local');
 		try {
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: root,
 				env: withAgentPackageEnv({
-					TREESEED_LOCAL_DEV_MODE: 'cloudflare',
+					LOCAL_DEV_MODE: 'cloudflare',
 					TREESEED_API_D1_LOCAL_PERSIST_TO: resolve(root, '.treeseed/generated/environments/local/.wrangler/state/v3/d1'),
 				}),
 			});
@@ -148,7 +148,7 @@ it('uses the seeded local market project id for node services', () => {
 	});
 
 it('keeps generated Wrangler D1 sqlite scoped to the web knowledge hub by default', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			setupMode: 'off',
 			env: withAgentPackageEnv({
@@ -162,7 +162,7 @@ it('keeps generated Wrangler D1 sqlite scoped to the web knowledge hub by defaul
 	});
 
 it('does not pass explicit D1 overrides to local agent services', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			setupMode: 'off',
 			env: withAgentPackageEnv({
@@ -188,7 +188,7 @@ surfaces:
       runtime: provider
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
+			const plan = createIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
 
 			expect(plan.localRuntimes.web).toMatchObject({
 				requested: 'provider',
@@ -221,7 +221,7 @@ surfaces:
       runtime: local
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
+			const plan = createIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} });
 
 			expect(plan.localRuntimes.web.selected).toBe('astro-local');
 			expect(plan.commands[0]?.label).toBe('Astro UI');
@@ -245,13 +245,13 @@ surfaces:
       runtime: provider
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: tempRoot,
 				surface: 'web',
 				setupMode: 'off',
 				webRuntime: 'local',
 				env: {
-					TREESEED_LOCAL_DEV_MODE: 'cloudflare',
+					LOCAL_DEV_MODE: 'cloudflare',
 				},
 			});
 
@@ -262,7 +262,7 @@ surfaces:
 			});
 			expect(plan.commands[0]?.label).toBe('Astro UI');
 			expect(plan.commands[0]?.args).toEqual(expect.arrayContaining(['dev', '--host', '127.0.0.1', '--port', '4321']));
-			expect(plan.commands[0]?.env.TREESEED_LOCAL_DEV_MODE).toBeUndefined();
+			expect(plan.commands[0]?.env.LOCAL_DEV_MODE).toBeUndefined();
 			expect(plan.commands[0]?.env.TREESEED_API_D1_LOCAL_PERSIST_TO).toBe(
 				resolve(tempRoot, '.treeseed/generated/environments/local/.wrangler/state/v3/d1'),
 			);
@@ -285,7 +285,7 @@ services:
       runtime: auto
 `);
 		try {
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: tempRoot,
 				surface: 'integrated',
 				setupMode: 'off',

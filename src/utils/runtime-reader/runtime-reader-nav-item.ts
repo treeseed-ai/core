@@ -1,7 +1,7 @@
-import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
+import type { BookRuntime } from '@treeseed/sdk/platform/books-data';
 import type { FeedbackContext, HelpContext, HelpTopic, HelpTopicLink, ResolvedAction } from '@treeseed/ui/lib/foundation';
-import { type HostedDocsTreeEntry } from ".././published-content.ts";
-import { type RuntimeHubEntry } from ".././site-content-runtime.ts";
+import { type HostedDocsTreeEntry } from "../packages/published-content.ts";
+import { type RuntimeHubEntry } from "../content/site-content-runtime.ts";
 
 
 export interface RuntimeReaderNavItem {
@@ -178,13 +178,13 @@ export function summaryForDocument(document: LocalRuntimeReaderDocument | Runtim
 	return fallback;
 }
 
-export function downloadActions(runtime: TreeseedBookRuntime | null, currentPath: string): ResolvedAction[] {
+export function downloadActions(runtime: BookRuntime | null, currentPath: string): ResolvedAction[] {
 	const normalized = normalizePath(currentPath);
 	const activeBook = runtime?.BOOKS.find((book) => normalized.startsWith(normalizePath(book.basePath))) ?? null;
 	const download = activeBook
 		? { href: activeBook.downloadHref, label: activeBook.downloadTitle }
-		: runtime?.TREESEED_LIBRARY_DOWNLOAD
-			? { href: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadHref, label: runtime.TREESEED_LIBRARY_DOWNLOAD.downloadTitle }
+		: runtime?.LIBRARY_DOWNLOAD
+			? { href: runtime.LIBRARY_DOWNLOAD.downloadHref, label: runtime.LIBRARY_DOWNLOAD.downloadTitle }
 			: null;
 	return download?.href ? [{
 		id: 'knowledge.download',
@@ -197,7 +197,7 @@ export function downloadActions(runtime: TreeseedBookRuntime | null, currentPath
 	}] : [];
 }
 
-export function privateDownloadActions(runtime: TreeseedBookRuntime | null, currentPath: string): ResolvedAction[] {
+export function privateDownloadActions(runtime: BookRuntime | null, currentPath: string): ResolvedAction[] {
 	return downloadActions(runtime, currentPath).map((action) => ({
 		...action,
 		state: 'disabledWithReason',
@@ -207,7 +207,7 @@ export function privateDownloadActions(runtime: TreeseedBookRuntime | null, curr
 	}));
 }
 
-export function runtimeNavGroups(runtime: TreeseedBookRuntime | null, docsTree: HostedDocsTreeEntry[] | null, currentPath: string): RuntimeReaderNavGroup[] {
+export function runtimeNavGroups(runtime: BookRuntime | null, docsTree: HostedDocsTreeEntry[] | null, currentPath: string): RuntimeReaderNavGroup[] {
 	const entries = docsTree ?? [];
 	if (!runtime?.BOOKS.length) {
 		return [{ label: 'Knowledge', items: entries.map((entry) => navItem(entry.title ?? entry.slug, entry.path, currentPath)) }];

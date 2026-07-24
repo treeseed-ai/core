@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveFormRuntimeCapabilities } from '../../../../src/utils/forms/runtime-core';
+import { deriveFormRuntimeCapabilities } from '../../../../src/utils/forms/runtime/runtime-core';
 
 describe('form runtime capabilities', () => {
 	it('always bypasses Turnstile in Cloudflare local mode', () => {

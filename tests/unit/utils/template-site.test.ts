@@ -58,7 +58,7 @@ describe('template site resolution', () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		vi.resetModules();
-		const { listSiteTemplates } = await import('../../../src/templates.ts');
+		const { listSiteTemplates } = await import('../../../src/support/templates.ts');
 
 		const listing = await listSiteTemplates({
 			catalogProvider: {
@@ -138,7 +138,7 @@ describe('template site resolution', () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		vi.resetModules();
-		const { resolveSiteTemplate } = await import('../../../src/templates.ts');
+		const { resolveSiteTemplate } = await import('../../../src/support/templates.ts');
 
 		const resolved = await resolveSiteTemplate('starter', {
 			listLocalEntries: async () => [
@@ -192,14 +192,14 @@ describe('template site resolution', () => {
 		const tenantRoot = await createTenantRoot('');
 		process.env.TREESEED_TENANT_ROOT = tenantRoot;
 		vi.resetModules();
-		vi.doMock('../../../src/utils/site-models.ts', async () => {
-			const actual = await vi.importActual<typeof import('../../../src/utils/site-models.ts')>('../../../src/utils/site-models.ts');
+		vi.doMock('../../../src/utils/support/site-models.ts', async () => {
+			const actual = await vi.importActual<typeof import('../../../src/utils/support/site-models.ts')>('../../../src/utils/support/site-models.ts');
 			return {
 				...actual,
 				siteModelRendered: () => false,
 			};
 		});
-		const { listSiteTemplates } = await import('../../../src/templates.ts');
+		const { listSiteTemplates } = await import('../../../src/support/templates.ts');
 
 		const listing = await listSiteTemplates();
 		expect(listing.rendered).toBe(false);

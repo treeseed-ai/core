@@ -20,7 +20,7 @@
   "files": [
     "README.md",
     "dist",
-    "scripts/verify-driver.ts",
+    "scripts/support/verify-driver.ts",
     "tsconfigs",
     "templates",
     "style",
@@ -30,39 +30,39 @@
     "access": "public"
   },
   "bin": {
-    "treeseed-workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js"
+    "treeseed-workspace-bootstrap": "./dist/scripts/treedx/workspaces/workspace-bootstrap.js"
   },
   "scripts": {
     "setup": "npm install",
     "setup:ci": "npm ci",
-    "build:dist": "node --import tsx ./scripts/build-dist.ts",
-    "check:file-lengths": "node --import tsx ./scripts/check-file-lengths.ts && npm run check:file-architecture",
-    "check:file-architecture": "node --import tsx ./scripts/check-file-architecture.ts",
-    "prepare": "node --import tsx ./scripts/prepare.ts",
+    "build:dist": "node --import tsx ./scripts/build/build-dist.ts",
+    "check:file-lengths": "node --import tsx ./scripts/support/check-file-lengths.ts && npm run check:file-architecture",
+    "check:file-architecture": "node --import tsx ./scripts/support/check-file-architecture.ts",
+    "prepare": "node --import tsx ./scripts/support/prepare.ts",
     "prepack": "npm run build:dist",
-    "dev": "node --import tsx ./scripts/dev-platform.ts",
-    "dev:web": "node --import tsx ./scripts/dev-platform.ts --surface web",
-    "dev:watch": "node --import tsx ./scripts/dev-platform.ts --watch",
-    "starlight:patch": "node --import tsx ./scripts/patch-starlight-content-path.ts",
+    "dev": "node --import tsx ./scripts/runtime/dev-platform.ts",
+    "dev:web": "node --import tsx ./scripts/runtime/dev-platform.ts --surface web",
+    "dev:watch": "node --import tsx ./scripts/runtime/dev-platform.ts --watch",
+    "starlight:patch": "node --import tsx ./scripts/content/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
-    "check": "npm run check:file-lengths && node --import tsx ./scripts/run-fixture-astro-command.ts check",
-    "prebuild": "npm run starlight:patch && node --import tsx ./scripts/aggregate-book.ts",
-    "build": "TREESEED_LOCAL_DEV_MODE=cloudflare node --import tsx ./scripts/run-fixture-astro-command.ts build",
-    "preview": "node --import tsx ./scripts/run-fixture-astro-command.ts preview",
+    "check": "npm run check:file-lengths && node --import tsx ./scripts/testing/run-fixture-astro-command.ts check",
+    "prebuild": "npm run starlight:patch && node --import tsx ./scripts/content/aggregate-book.ts",
+    "build": "TREESEED_LOCAL_DEV_MODE=cloudflare node --import tsx ./scripts/testing/run-fixture-astro-command.ts build",
+    "preview": "node --import tsx ./scripts/testing/run-fixture-astro-command.ts preview",
     "test:unit": "vitest run --config ./vitest.config.ts",
     "test": "npm run test:unit",
     "lint": "npm run fixtures:check && npm run starlight:patch && npm run build:dist",
     "verify:direct": "npm run release:verify",
-    "verify:local": "TREESEED_VERIFY_DRIVER=direct TMPDIR=/tmp node --import tsx ./scripts/verify-driver.ts",
-    "verify:action": "TREESEED_VERIFY_DRIVER=act TMPDIR=/tmp node --import tsx ./scripts/verify-driver.ts",
-    "verify": "TMPDIR=/tmp node --import tsx ./scripts/verify-driver.ts",
-    "test:smoke": "node --import tsx ./scripts/test-smoke.ts",
-    "fixtures:resolve": "node --import tsx ./scripts/fixture-tools.ts resolve",
-    "fixtures:check": "node --import tsx ./scripts/fixture-tools.ts check",
+    "verify:local": "TREESEED_VERIFY_DRIVER=direct TMPDIR=/tmp node --import tsx ./scripts/support/verify-driver.ts",
+    "verify:action": "TREESEED_VERIFY_DRIVER=act TMPDIR=/tmp node --import tsx ./scripts/support/verify-driver.ts",
+    "verify": "TMPDIR=/tmp node --import tsx ./scripts/support/verify-driver.ts",
+    "test:smoke": "node --import tsx ./scripts/testing/test-smoke.ts",
+    "fixtures:resolve": "node --import tsx ./scripts/agents/fixture-tools.ts resolve",
+    "fixtures:check": "node --import tsx ./scripts/agents/fixture-tools.ts check",
     "release:setup": "npm run setup:ci",
-    "release:check-tag": "node --import tsx ./scripts/assert-release-tag-version.ts",
-    "release:verify": "npm run check:file-lengths && node --import tsx ./scripts/release-verify.ts",
-    "release:publish": "node --import tsx ./scripts/publish-package.ts"
+    "release:check-tag": "node --import tsx ./scripts/packages/assert-release-tag-version.ts",
+    "release:verify": "npm run check:file-lengths && node --import tsx ./scripts/packages/release-verify.ts",
+    "release:publish": "node --import tsx ./scripts/packages/publish-package.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.8",
@@ -73,8 +73,8 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#363356034d2717f401f4cdd0c54b22c16dffc60c",
-    "@treeseed/ui": "github:treeseed-ai/ui#84b54513a13691dc55a5868ab2e97b3f14f83fd6",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#084ab250c7eb60a0e1eddfb1c4d275128e82e55a",
+    "@treeseed/ui": "github:treeseed-ai/ui#3703cb057472895d224cf99def95066aa9ea399c",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
@@ -104,64 +104,64 @@
     },
     "./site": {
       "types": "./dist/site.d.ts",
-      "default": "./dist/site.js"
+      "default": "./dist/support/site.js"
     },
     "./routes": {
       "types": "./dist/routes.d.ts",
-      "default": "./dist/routes.js"
+      "default": "./dist/support/routes.js"
     },
     "./config": {
       "types": "./dist/config.d.ts",
-      "default": "./dist/config.js"
+      "default": "./dist/configuration/config.js"
     },
     "./platform": {
       "types": "./dist/platform.d.ts",
-      "default": "./dist/platform.js"
+      "default": "./dist/support/platform.js"
     },
     "./dev": {
-      "types": "./dist/dev.d.ts",
-      "default": "./dist/dev.js"
+      "types": "./dist/runtime/dev.d.ts",
+      "default": "./dist/runtime/dev.js"
     },
     "./plugin-default": {
       "types": "./dist/plugin-default.d.ts",
-      "default": "./dist/plugin-default.js"
+      "default": "./dist/support/plugin-default.js"
     },
     "./content": {
       "types": "./dist/content.d.ts",
-      "default": "./dist/content.js"
+      "default": "./dist/content/content.js"
     },
     "./content-config": {
       "types": "./dist/content-config.d.ts",
-      "default": "./dist/content-config.js"
+      "default": "./dist/configuration/content-config.js"
     },
     "./templates": {
       "types": "./dist/templates.d.ts",
-      "default": "./dist/templates.js"
+      "default": "./dist/support/templates.js"
     },
     "./middleware/editorial-preview": {
       "types": "./dist/middleware/editorial-preview.d.ts",
       "default": "./dist/middleware/editorial-preview.js"
     },
     "./tenant": "./dist/tenant/bridge.js",
-    "./scripts/dev-platform": "./dist/scripts/dev-platform.js",
-    "./scripts/workspace-bootstrap": "./dist/scripts/workspace-bootstrap.js",
+    "./scripts/runtime/dev-platform": "./dist/scripts/runtime/dev-platform.js",
+    "./scripts/treedx/workspaces/workspace-bootstrap": "./dist/scripts/treedx/workspaces/workspace-bootstrap.js",
     "./launch": {
-      "types": "./dist/launch.d.ts",
-      "default": "./dist/launch.js"
+      "types": "./dist/support/launch.d.ts",
+      "default": "./dist/support/launch.js"
     },
     "./site-resources": {
-      "types": "./dist/site-resources.d.ts",
-      "default": "./dist/site-resources.js"
+      "types": "./dist/support/site-resources.d.ts",
+      "default": "./dist/support/site-resources.js"
     },
     "./types/cloudflare": {
       "types": "./dist/types/cloudflare.d.ts",
       "default": "./dist/types/cloudflare.js"
     },
-    "./utils/seo": "./dist/utils/seo.js",
-    "./utils/site-config-schema": "./dist/utils/site-config-schema.js",
+    "./utils/seo": "./dist/utils/support/seo.js",
+    "./utils/site-config-schema": "./dist/utils/configuration/site-config-schema.js",
     "./utils/forms/service": {
       "types": "./dist/utils/forms/service.d.ts",
-      "default": "./dist/utils/forms/service.js"
+      "default": "./dist/utils/forms/service/service.js"
     },
     "./tsconfigs/strict": "./dist/tsconfigs/strict.json"
   }

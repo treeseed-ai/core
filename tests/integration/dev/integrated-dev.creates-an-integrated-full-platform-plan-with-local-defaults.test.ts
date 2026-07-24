@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -128,13 +128,13 @@ function writeLocalD1Project(root: string, id: string, slug = 'market') {
 	}
 
 it('creates an integrated full platform plan with local defaults', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			env: withAgentPackageEnv({
-				TREESEED_SMTP_HOST: 'smtp.mailgun.org',
-				TREESEED_SMTP_PORT: '587',
-				TREESEED_SMTP_USERNAME: 'hosted-user',
-				TREESEED_SMTP_PASSWORD: 'hosted-password',
+				SMTP_HOST: 'smtp.mailgun.org',
+				SMTP_PORT: '587',
+				SMTP_USERNAME: 'hosted-user',
+				SMTP_PASSWORD: 'hosted-password',
 			}),
 		});
 
@@ -168,10 +168,10 @@ it('creates an integrated full platform plan with local defaults', () => {
 		expect(plan.commands[0]?.env.TREESEED_API_WEB_SERVICE_ID).toBe('web');
 		expect(plan.commands[0]?.env.TREESEED_API_WEB_SERVICE_SECRET).toBe('treeseed-web-service-dev-secret');
 		expect(plan.commands[0]?.env.TREESEED_PLATFORM_RUNNER_SECRET).toBe('treeseed-platform-runner-dev-secret');
-		expect(plan.commands[0]?.env.TREESEED_SMTP_HOST).toBe('127.0.0.1');
-		expect(plan.commands[0]?.env.TREESEED_SMTP_PORT).toBe('1025');
-		expect(plan.commands[0]?.env.TREESEED_SMTP_USERNAME).toBe('');
-		expect(plan.commands[0]?.env.TREESEED_SMTP_PASSWORD).toBe('');
+		expect(plan.commands[0]?.env.SMTP_HOST).toBe('127.0.0.1');
+		expect(plan.commands[0]?.env.SMTP_PORT).toBe('1025');
+		expect(plan.commands[0]?.env.SMTP_USERNAME).toBe('');
+		expect(plan.commands[0]?.env.SMTP_PASSWORD).toBe('');
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_HOST).toBe('127.0.0.1');
 		expect(plan.commands[0]?.env.TREESEED_MAILPIT_SMTP_PORT).toBe('1025');
 		expect(plan.commands[1]?.label).toBe('Treeseed API');
@@ -191,7 +191,7 @@ it('turns the Market repo root dev plan into web API runner orchestration with m
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
 			const apiRoot = writeApiPackage(root);
 
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: root,
 				surfaces: 'web,api',
 				webRuntime: 'local',
@@ -237,7 +237,7 @@ it('treats the default Market PostgreSQL URL as managed local reset state', () =
 			writeFileSync(resolve(root, 'package.json'), JSON.stringify({ name: '@treeseed/market', type: 'module' }, null, 2));
 			writeApiPackage(root);
 
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: root,
 				surfaces: 'web,api',
 				webRuntime: 'local',
@@ -269,7 +269,7 @@ it('hides idle Market runner poll JSON from human dev logs', async () => {
 			writeFileSync(resolve(root, 'treeseed.site.yaml'), 'name: Market\nslug: market\n');
 			writeApiPackage(root);
 
-			const promise = runTreeseedIntegratedDev(
+			const promise = runIntegratedDev(
 				{
 					cwd: root,
 					surfaces: 'api',

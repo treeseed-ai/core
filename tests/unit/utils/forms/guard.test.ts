@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySubmissionRateLimit, assertNonceUnused } from '../../../../src/utils/forms/guard';
+import { applySubmissionRateLimit, assertNonceUnused } from '../../../../src/utils/forms/security/guard';
 import type { KvNamespaceLike } from '../../../../src/types/cloudflare';
 
 class MemoryKv implements KvNamespaceLike {

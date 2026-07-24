@@ -1,9 +1,9 @@
 import { defineRouteMiddleware } from '@astrojs/starlight/route-data';
 import type { StarlightRouteData } from '@astrojs/starlight/route-data';
-import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
-import type { TreeseedContentCollection } from '@treeseed/sdk/platform/contracts';
-import { TREESEED_LINKS, buildStarlightSidebarEntriesFromRuntime, normalizeHref } from '../utils/starlight-nav';
-import { loadHostedBookRuntime } from '../utils/published-content';
+import type { BookRuntime } from '@treeseed/sdk/platform/books-data';
+import type { ContentCollection } from '@treeseed/sdk/platform/contracts';
+import { LINKS, buildStarlightSidebarEntriesFromRuntime, normalizeHref } from '../utils/support/starlight-nav';
+import { loadHostedBookRuntime } from '../utils/packages/published-content';
 import { RUNTIME_TENANT } from '../tenant/runtime-config';
 
 type SidebarEntry = StarlightRouteData['sidebar'][number];
@@ -58,7 +58,7 @@ const setRouteSidebar = (
 	route.pagination = paginationSource ? buildPagination(paginationSource, currentPath) : { prev: undefined, next: undefined };
 };
 
-function runtimeTenantModelRendered(modelName: TreeseedContentCollection) {
+function runtimeTenantModelRendered(modelName: ContentCollection) {
 	const featureValue = RUNTIME_TENANT.features?.[modelName as keyof typeof RUNTIME_TENANT.features];
 	const siteValue = RUNTIME_TENANT.site?.[modelName as keyof typeof RUNTIME_TENANT.site];
 
@@ -72,7 +72,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 		setRouteSidebar(route, currentPath, [], null);
 		return;
 	}
-	let runtime: TreeseedBookRuntime | null = null;
+	let runtime: BookRuntime | null = null;
 	try {
 		runtime = await loadHostedBookRuntime(context.locals);
 	} catch {
@@ -86,7 +86,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 			return;
 		}
 
-		if (currentPath === normalizeHref(TREESEED_LINKS.home)) {
+		if (currentPath === normalizeHref(LINKS.home)) {
 			setRouteSidebar(route, currentPath, [], null);
 		}
 		return;
@@ -105,7 +105,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 		return;
 	}
 
-	if (currentPath === normalizeHref(runtime.TREESEED_LINKS.home)) {
+	if (currentPath === normalizeHref(runtime.LINKS.home)) {
 		setRouteSidebar(route, currentPath, [], null);
 		return;
 	}

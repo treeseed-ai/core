@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -162,7 +162,7 @@ surfaces:
 				startedAt: '2026-05-06T00:01:00.000Z',
 			}, null, 2)}\n`);
 
-			const promise = runTreeseedIntegratedDev(
+			const promise = runIntegratedDev(
 				{
 					cwd: tempRoot,
 					surfaces: 'manager,worker',
@@ -226,7 +226,7 @@ it('plans dev reset against runtime state while preserving configuration paths',
 			writeFileSync(resolve(tempRoot, '.treeseed/generated/worker/index.js'), 'export {};\n');
 			writeFileSync(resolve(tempRoot, 'treeseed.site.yaml'), 'site: test\n');
 
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: tempRoot,
 				reset: true,
 				surface: 'web',
@@ -266,7 +266,7 @@ it('does not mutate reset targets when reset is only planned', async () => {
 			writeFileSync(resolve(workerPath, 'index.js'), 'export {};\n');
 
 			const output: string[] = [];
-			const exitCode = await runTreeseedIntegratedDev(
+			const exitCode = await runIntegratedDev(
 				{ cwd: tempRoot, reset: true, plan: true, json: true, setupMode: 'off', surface: 'web' },
 				{
 					spawn() {

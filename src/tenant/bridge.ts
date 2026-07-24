@@ -1,3 +1,3 @@
-import { loadTreeseedManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
 
-export const PROJECT_TENANT = loadTreeseedManifest();
+export const PROJECT_TENANT = loadManifest();

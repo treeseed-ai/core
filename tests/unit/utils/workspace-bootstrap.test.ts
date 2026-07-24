@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { detectTreeseedBootstrapMode } from '../../../scripts/workspace-bootstrap.ts';
+import { detectBootstrapMode } from '../../../scripts/treedx/workspaces/workspace-bootstrap.ts';
 
 const packageDirs = ['sdk', 'ui', 'core', 'admin', 'cli', 'agent'];
 
@@ -27,7 +27,7 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 
 	it('uses registry mode when no package submodules are checked out', () => {
 		const root = makeRoot();
-		const state = detectTreeseedBootstrapMode(root);
+		const state = detectBootstrapMode(root);
 
 		expect(state.mode).toBe('registry');
 		expect(state.missing.map((entry) => entry.relativeDir)).toEqual([
@@ -46,7 +46,7 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 			writePackage(root, dirName);
 		}
 
-		const state = detectTreeseedBootstrapMode(root);
+		const state = detectBootstrapMode(root);
 
 		expect(state.mode).toBe('workspace');
 		expect(state.missing).toEqual([]);
@@ -57,7 +57,7 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 		writePackage(root, 'sdk');
 		writePackage(root, 'core');
 
-		const state = detectTreeseedBootstrapMode(root);
+		const state = detectBootstrapMode(root);
 
 		expect(state.mode).toBe('partial');
 		expect(state.missing.map((entry) => entry.relativeDir)).toContain('packages/cli');
@@ -72,7 +72,7 @@ describe('Treeseed workspace bootstrap mode detection', () => {
 		}
 		vi.stubEnv('TREESEED_BOOTSTRAP_MODE', 'auto');
 
-		const state = detectTreeseedBootstrapMode(root);
+		const state = detectBootstrapMode(root);
 
 		expect(state.mode).toBe('workspace');
 	});

@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -143,7 +143,7 @@ surfaces:
 		try {
 			process.env.XDG_CACHE_HOME = resolve(tempRoot, '.cache');
 			const startOutput: string[] = [];
-			await runTreeseedManagedDev(
+			await runManagedDev(
 				{
 					action: 'start',
 					cwd: tempRoot,
@@ -174,7 +174,7 @@ surfaces:
 			);
 
 			const statusOutput: string[] = [];
-			const statusExit = await runTreeseedManagedDev(
+			const statusExit = await runManagedDev(
 				{ action: 'status', cwd: tempRoot, json: true },
 				{
 					processIsAlive() {
@@ -197,7 +197,7 @@ surfaces:
 			const livePids = new Set([childPid]);
 			const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
 			const stopOutput: string[] = [];
-			const stopExit = await runTreeseedManagedDev(
+			const stopExit = await runManagedDev(
 				{ action: 'stop', cwd: tempRoot, json: true, shutdownGraceMs: 0 },
 				{
 					processIsAlive(pid) {
@@ -257,7 +257,7 @@ surfaces:
 				startedAt: '2026-05-06T00:00:00.000Z',
 			}, null, 2)}\n`);
 
-			const promise = runTreeseedIntegratedDev(
+			const promise = runIntegratedDev(
 				{
 					cwd: tempRoot,
 					surface: 'web',

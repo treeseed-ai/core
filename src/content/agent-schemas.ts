@@ -1,9 +1,9 @@
 import { reference } from 'astro:content';
 import { z } from 'astro/zod';
-import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
+import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { AGENT_ACTIVITY_TYPES } from '@treeseed/sdk/types/agents';
-import { AGENT_MODEL_DEFAULTS, PEOPLE_MODEL_DEFAULTS } from '../utils/site-config.ts';
+import { AGENT_MODEL_DEFAULTS, PEOPLE_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
@@ -14,7 +14,7 @@ function withOptionalDefault<TSchema extends { default: (value: unknown) => TSch
 }
 
 export function createAgentCollectionSchemas() {
-	const agentFieldAliases: TreeseedFieldAliasRegistry = {
+	const agentFieldAliases: FieldAliasRegistry = {
 			runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
 			agentClass: { key: 'agentClass', aliases: ['agent_class'] },
 			projectAgentClassId: { key: 'projectAgentClassId', aliases: ['project_agent_class_id'] },

@@ -1,10 +1,10 @@
 ---
 import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
-import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
-import ChronicleList from '@treeseed/ui/components/astro/site/ChronicleList.astro';
-import { getPublishedDecisions, resolveContributorsForEntries } from '../../utils/hub-content';
-import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
+import SectionIntro from '@treeseed/ui/components/astro/site/sections/SectionIntro.astro';
+import ChronicleList from '@treeseed/ui/components/astro/site/content/ChronicleList.astro';
+import { getPublishedDecisions, resolveContributorsForEntries } from '../../utils/content/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/content/site-content-runtime';
 
 const publishedRuntime = isPublishedRuntimeContentMode();
 const decisions = publishedRuntime

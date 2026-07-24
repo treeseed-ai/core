@@ -1,6 +1,6 @@
-import type { TreeseedDeployConfig, TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
-import { parseSiteConfig } from ".././utils/site-config-schema.js";
-import { loadTreeseedPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import type { DeployConfig, TenantConfig } from '@treeseed/sdk/platform/contracts';
+import { parseSiteConfig } from "../utils/configuration/site-config-schema.js";
+import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
 import {
 	RESOLVED_TENANT_THEME_VIRTUAL_ID,
 	TENANT_THEME_VIRTUAL_ID,
@@ -9,12 +9,12 @@ import {
 import type { SiteExtensionContribution } from './tenant-theme-virtual-id.ts';
 
 export function resolveSitePluginExtensions(
-	pluginRuntime: ReturnType<typeof loadTreeseedPluginRuntime>,
+	pluginRuntime: ReturnType<typeof loadPluginRuntime>,
 	context: {
 		projectRoot: string;
-		tenantConfig: TreeseedTenantConfig;
+		tenantConfig: TenantConfig;
 		siteConfig: ReturnType<typeof parseSiteConfig>;
-		deployConfig: TreeseedDeployConfig;
+		deployConfig: DeployConfig;
 	},
 ) {
 	const selectedSiteProvider = pluginRuntime.config.providers.site;

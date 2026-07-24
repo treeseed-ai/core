@@ -1,10 +1,10 @@
 import type {
-	TreeseedColorSchemeId,
-	TreeseedSchemeTokens,
-	TreeseedSemanticColorTokens,
+	ColorSchemeId,
+	SchemeTokens,
+	SemanticColorTokens,
 } from '@treeseed/sdk/platform/contracts';
 
-export type RequiredSchemeTokenInput = Pick<TreeseedSemanticColorTokens,
+export type RequiredSchemeTokenInput = Pick<SemanticColorTokens,
 	| 'canvas'
 	| 'canvasSubtle'
 	| 'surface'
@@ -25,20 +25,20 @@ export type RequiredSchemeTokenInput = Pick<TreeseedSemanticColorTokens,
 >;
 
 export type BuiltInColorSchemeDefinition = {
-	id: TreeseedColorSchemeId;
+	id: ColorSchemeId;
 	name: string;
 	swatches: string[];
 	modeSwatches: {
 		light: string[];
 		dark: string[];
 	};
-	tokens: TreeseedSchemeTokens;
+	tokens: SchemeTokens;
 };
 
 export function completeTokens(
 	tokens: RequiredSchemeTokenInput,
 	mode: 'light' | 'dark',
-): TreeseedSemanticColorTokens {
+): SemanticColorTokens {
 	return {
 		...tokens,
 		surfaceOverlay: mode === 'dark' ? 'rgba(7, 12, 8, 0.72)' : 'rgba(255, 255, 255, 0.88)',

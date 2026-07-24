@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -154,7 +154,7 @@ it('clears disposable reset targets and leaves configuration paths intact', () =
 			writeFileSync(legacySqlitePath, 'sqlite\n');
 			writeFileSync(reloadPath, '{}\n');
 			writeFileSync(resolve(tempRoot, 'treeseed.site.yaml'), 'site: test\n');
-			const plan = createTreeseedIntegratedDevPlan({
+			const plan = createIntegratedDevPlan({
 				cwd: tempRoot,
 				reset: true,
 				surface: 'web',
@@ -162,7 +162,7 @@ it('clears disposable reset targets and leaves configuration paths intact', () =
 				env: {},
 			});
 			const events: string[] = [];
-			const result = runTreeseedIntegratedDevReset(plan.reset, { json: true }, {
+			const result = runIntegratedDevReset(plan.reset, { json: true }, {
 				write(line) {
 					events.push(line);
 				},
@@ -201,7 +201,7 @@ it('restarts a crashed required child process instead of exiting', async () => {
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 		let settled = false;
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
 			{
 				spawn(command, args, options) {
@@ -240,7 +240,7 @@ it('prints the ready URL without opening a browser by default', async () => {
 		const output: string[] = [];
 		let openCalls = 0;
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', shutdownGraceMs: 0 },
 			{
 				spawn() {
@@ -285,7 +285,7 @@ it('shuts down children on parent signals', async () => {
 		let spawnCount = 0;
 		const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{ cwd: tenantRoot, surface: 'web', setupMode: 'off', feedbackMode: 'off', openMode: 'off', shutdownGraceMs: 0 },
 			{
 				spawn() {

@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -151,7 +151,7 @@ surfaces:
 				startedAt: '2026-05-06T00:00:00.000Z',
 			}, null, 2)}\n`);
 
-			const exitCode = await runTreeseedIntegratedDev(
+			const exitCode = await runIntegratedDev(
 				{
 					cwd: tempRoot,
 					surface: 'web',
@@ -201,7 +201,7 @@ surfaces:
 		const output: string[] = [];
 
 		try {
-			const exitCode = await runTreeseedIntegratedDev(
+			const exitCode = await runIntegratedDev(
 				{
 					cwd: tempRoot,
 					surface: 'web',
@@ -253,7 +253,7 @@ surfaces:
 		let inspectCount = 0;
 
 		try {
-			const promise = runTreeseedIntegratedDev(
+			const promise = runIntegratedDev(
 				{
 					cwd: tempRoot,
 					surface: 'web',

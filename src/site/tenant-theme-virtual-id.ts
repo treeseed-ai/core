@@ -3,12 +3,12 @@ import { createRequire } from 'node:module';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import type { TreeseedTenantConfig } from '@treeseed/sdk/platform/contracts';
-import type { TreeseedSiteExtensionContribution, TreeseedSiteRouteContribution } from '@treeseed/sdk/platform/plugin';
+import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { SiteExtensionContribution, SiteRouteContribution } from '@treeseed/sdk/platform/plugin';
 import { getTenantContentRoot } from '@treeseed/sdk/platform/tenant-config';
-import type { TreeseedContentCollection } from '@treeseed/sdk/platform/contracts';
-import { buildTreeseedSiteLayers, resolveTreeseedPageEntrypoint, resolveTreeseedSiteResource } from ".././site-resources";
-import { isSiteRenderedModel } from ".././utils/site-models";
+import type { ContentCollection } from '@treeseed/sdk/platform/contracts';
+import { buildSiteLayers, resolvePageEntrypoint, resolveSiteResource } from "../support/site-resources";
+import { isSiteRenderedModel } from "../utils/support/site-models";
 
 
 export const TENANT_THEME_VIRTUAL_ID = 'virtual:treeseed/tenant-theme.css';
@@ -25,10 +25,10 @@ export type SiteRoute = {
 	pattern: string;
 	entrypoint: string;
 	resourcePath?: string;
-	model?: TreeseedContentCollection;
+	model?: ContentCollection;
 };
 
-export type SiteExtensionContribution = TreeseedSiteExtensionContribution;
+export type SiteExtensionContribution = SiteExtensionContribution;
 
 const PACKAGE_ROOT_URL = new URL('../', import.meta.url);
 
@@ -51,7 +51,7 @@ export function packageModuleFile(relativeStem: string) {
 	throw new Error(`Unable to resolve package module for ${relativeStem}`);
 }
 
-export const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resourcePath?: string; model?: TreeseedContentCollection }> = [
+export const PACKAGE_ROUTE_ENTRIES: Array<{ pattern: string; entrypoint?: string; resourcePath?: string; model?: ContentCollection }> = [
 	{ pattern: '/', resourcePath: 'pages/index.astro' },
 	{ pattern: '/404', resourcePath: 'pages/404.astro' },
 	{ pattern: '/contact', resourcePath: 'pages/contact.astro' },
@@ -108,7 +108,7 @@ export function readFrontmatter(filePath: string): Record<string, unknown> | nul
 	return parseYaml(match[1]) as Record<string, unknown>;
 }
 
-export function collectLocalPageRouteEntries(tenantConfig: TreeseedTenantConfig, projectRoot: string) {
+export function collectLocalPageRouteEntries(tenantConfig: TenantConfig, projectRoot: string) {
 	const pagesRoot = resolve(projectRoot, getTenantContentRoot(tenantConfig, 'pages'));
 	const slugs = new Set<string>();
 
@@ -139,7 +139,7 @@ export function tenantPageRouteExists(projectRoot: string, pattern: string) {
 	);
 }
 
-export function createTreeseedRoutesIntegration(tenantConfig: TreeseedTenantConfig, projectRoot: string, routes: SiteRoute[] = []) {
+export function createRoutesIntegration(tenantConfig: TenantConfig, projectRoot: string, routes: SiteRoute[] = []) {
 	return {
 		name: 'treeseed-routes',
 		hooks: {
@@ -162,8 +162,8 @@ export function normalizeSiteHookContribution(contribution: unknown): SiteExtens
 }
 
 export function resolveRouteEntry(
-	route: TreeseedSiteRouteContribution,
-	siteLayers: ReturnType<typeof buildTreeseedSiteLayers>,
+	route: SiteRouteContribution,
+	siteLayers: ReturnType<typeof buildSiteLayers>,
 ): SiteRoute {
 	if (route.entrypoint) {
 		return {
@@ -177,7 +177,7 @@ export function resolveRouteEntry(
 	if (route.resourcePath) {
 		return {
 			pattern: route.pattern,
-			entrypoint: resolveTreeseedPageEntrypoint(siteLayers, route.resourcePath),
+			entrypoint: resolvePageEntrypoint(siteLayers, route.resourcePath),
 			resourcePath: route.resourcePath,
 			model: route.model,
 		};
@@ -187,12 +187,12 @@ export function resolveRouteEntry(
 }
 
 export function resolveUiComponentEntrypoint(
-	siteLayers: ReturnType<typeof buildTreeseedSiteLayers>,
+	siteLayers: ReturnType<typeof buildSiteLayers>,
 	resourcePath: string,
 	uiEntrypoint: string,
 	projectRoot?: string,
 ) {
-	const tenantEntrypoint = resolveTreeseedSiteResource(siteLayers, 'components', resourcePath);
+	const tenantEntrypoint = resolveSiteResource(siteLayers, 'components', resourcePath);
 	if (tenantEntrypoint) return tenantEntrypoint;
 
 	if (projectRoot) {

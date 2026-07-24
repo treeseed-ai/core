@@ -2,13 +2,13 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resetTreeseedDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
-import { loadTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { buildStarlightSidebarEntriesFromRuntime } from '../../../src/utils/starlight-nav';
-import { loadHostedBookRuntime } from '../../../src/utils/published-content';
+import { resetDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
+import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { buildStarlightSidebarEntriesFromRuntime } from '../../../src/utils/support/starlight-nav';
+import { loadHostedBookRuntime } from '../../../src/utils/packages/published-content';
 
 const originalCwd = process.cwd();
-const originalDeployConfig = (globalThis as { __TREESEED_DEPLOY_CONFIG__?: unknown }).__TREESEED_DEPLOY_CONFIG__;
+const originalDeployConfig = (globalThis as { DEPLOY_CONFIG?: unknown }).DEPLOY_CONFIG;
 
 class MemoryR2Object {
 	constructor(private readonly value: unknown) {}
@@ -47,7 +47,7 @@ afterEach(() => {
 	process.chdir(originalCwd);
 	vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', originalDeployConfig);
 	vi.unstubAllEnvs();
-	resetTreeseedDeployConfigForTests();
+	resetDeployConfigForTests();
 });
 
 async function createTenantFixture() {
@@ -141,10 +141,10 @@ describe('published content helpers', () => {
 				label: 'Books',
 				link: '/books/',
 			},
-			TREESEED_LINKS: {
+			LINKS: {
 				home: '/books/',
 			},
-			TREESEED_LIBRARY_DOWNLOAD: {
+			LIBRARY_DOWNLOAD: {
 				downloadFileName: 'treeseed-knowledge.md',
 				downloadHref: '/books/treeseed-knowledge.md',
 				downloadTitle: 'Knowledge Library',
@@ -153,8 +153,8 @@ describe('published content helpers', () => {
 
 		process.chdir(tenantRoot);
 		vi.stubEnv('TREESEED_CONTENT_BUCKET_BINDING', 'TREESEED_CONTENT_BUCKET');
-		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadTreeseedDeployConfig('treeseed.site.yaml'));
-		resetTreeseedDeployConfigForTests();
+		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadDeployConfig('treeseed.site.yaml'));
+		resetDeployConfigForTests();
 
 		const runtime = await loadHostedBookRuntime({
 			runtime: {

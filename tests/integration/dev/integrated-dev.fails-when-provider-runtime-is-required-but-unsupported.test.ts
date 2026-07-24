@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -141,7 +141,7 @@ surfaces:
       runtime: provider
 `);
 		try {
-			expect(() => createTreeseedIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} }))
+			expect(() => createIntegratedDevPlan({ cwd: tempRoot, surface: 'web', setupMode: 'off', env: {} }))
 				.toThrow(/Local provider runtime is not supported/u);
 		} finally {
 			rmSync(tempRoot, { recursive: true, force: true });
@@ -149,7 +149,7 @@ surfaces:
 	});
 
 it('preserves explicit env values and lets the supervisor own live feedback', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			watch: true,
 			env: withAgentPackageEnv({
@@ -218,7 +218,7 @@ it('classifies dev changes by restart scope', () => {
 	});
 
 it('lets explicit API port override the shared web environment value', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			apiPort: 4401,
 			env: withAgentPackageEnv({
@@ -234,7 +234,7 @@ it('lets explicit API port override the shared web environment value', () => {
 	});
 
 it('plans comma-separated surfaces in canonical order without duplicates', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			surfaces: 'worker,web,integrated,agents,api',
 			setupMode: 'off',
@@ -246,7 +246,7 @@ it('plans comma-separated surfaces in canonical order without duplicates', () =>
 	});
 
 it('plans the all surface as the full task runtime without the legacy agents loop', () => {
-		const plan = createTreeseedIntegratedDevPlan({
+		const plan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			surface: 'all',
 			setupMode: 'off',
@@ -263,7 +263,7 @@ it('plans the all surface as the full task runtime without the legacy agents loo
 	});
 
 it('plans explicit API and service surfaces with Node runtimes', () => {
-		const apiPlan = createTreeseedIntegratedDevPlan({
+		const apiPlan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			surface: 'api',
 			setupMode: 'off',
@@ -274,7 +274,7 @@ it('plans explicit API and service surfaces with Node runtimes', () => {
 		expect(apiPlan.localRuntimes).not.toHaveProperty('web');
 		expect(apiPlan.readyChecks.map((check) => check.id)).toEqual(['api']);
 
-		const servicesPlan = createTreeseedIntegratedDevPlan({
+		const servicesPlan = createIntegratedDevPlan({
 			cwd: tenantRoot,
 			surface: 'services',
 			setupMode: 'off',

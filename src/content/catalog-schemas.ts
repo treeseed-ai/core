@@ -1,13 +1,13 @@
 import { z } from 'astro/zod';
-import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
+import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
-import { BOOK_MODEL_DEFAULTS } from '../utils/site-config.ts';
+import { BOOK_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
 
 const commerceOfferModeValues = [...COMMERCE_OFFER_MODES] as [CommerceOfferMode, ...CommerceOfferMode[]];
 
 export function createCatalogCollectionSchemas() {
-	const bookFieldAliases: TreeseedFieldAliasRegistry = {
+	const bookFieldAliases: FieldAliasRegistry = {
 			sectionLabel: { key: 'sectionLabel', aliases: ['section_label'] },
 			basePath: { key: 'basePath', aliases: ['base_path'] },
 			landingPath: { key: 'landingPath', aliases: ['landing_path'] },

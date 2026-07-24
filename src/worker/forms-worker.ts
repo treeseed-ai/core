@@ -1,11 +1,11 @@
-import { deriveFormRuntimeCapabilities } from '../utils/forms/runtime-core';
-import { resolveBuiltinFormsProvider } from '../utils/forms/provider-core';
-import { handleFormSubmissionWithConfig, handleTokenRequestWithConfig } from '../utils/forms/service-core';
-import type { TreeseedDeployConfig } from '@treeseed/sdk/platform/contracts';
+import { deriveFormRuntimeCapabilities } from '../utils/forms/runtime/runtime-core';
+import { resolveBuiltinFormsProvider } from '../utils/forms/capacity/providers/provider-core';
+import { handleFormSubmissionWithConfig, handleTokenRequestWithConfig } from '../utils/forms/service/service-core';
+import type { DeployConfig } from '@treeseed/sdk/platform/contracts';
 import type { CloudflareRuntimeAssets, D1DatabaseLike, KvNamespaceLike } from '../types/cloudflare';
 
-declare const __TREESEED_DEPLOY_CONFIG__: TreeseedDeployConfig;
-declare const __TREESEED_SITE_CONFIG__: {
+declare const DEPLOY_CONFIG: DeployConfig;
+declare const SITE_CONFIG: {
 	site: {
 		siteUrl: string;
 		emailNotifications: {
@@ -19,16 +19,16 @@ interface WorkerEnv {
 	FORM_GUARD_KV: KvNamespaceLike;
 	SITE_DATA_DB: D1DatabaseLike;
 	ASSETS: CloudflareRuntimeAssets;
-	TREESEED_FORM_TOKEN_SECRET?: string;
-	TREESEED_TURNSTILE_SECRET_KEY?: string;
-	TREESEED_SMTP_HOST?: string;
-	TREESEED_SMTP_PORT?: string;
-	TREESEED_SMTP_USERNAME?: string;
-	TREESEED_SMTP_PASSWORD?: string;
-	TREESEED_SMTP_FROM?: string;
-	TREESEED_SMTP_REPLY_TO?: string;
-	TREESEED_LOCAL_DEV_MODE?: string;
-	TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS?: string;
+	FORM_TOKEN_SECRET?: string;
+	TURNSTILE_SECRET_KEY?: string;
+	SMTP_HOST?: string;
+	SMTP_PORT?: string;
+	SMTP_USERNAME?: string;
+	SMTP_PASSWORD?: string;
+	SMTP_FROM?: string;
+	SMTP_REPLY_TO?: string;
+	LOCAL_DEV_MODE?: string;
+	FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS?: string;
 }
 
 function envBoolean(value: unknown) {
@@ -80,31 +80,31 @@ function serializeCookie(cookie: { name: string; value: string; options: Record<
 
 function buildSmtpConfig(env: WorkerEnv) {
 	return {
-		host: env.TREESEED_SMTP_HOST ?? '',
-		port: Number(env.TREESEED_SMTP_PORT ?? '465'),
-		username: env.TREESEED_SMTP_USERNAME ?? '',
-		password: env.TREESEED_SMTP_PASSWORD ?? '',
-		from: env.TREESEED_SMTP_FROM ?? '',
-		replyTo: env.TREESEED_SMTP_REPLY_TO ?? '',
+		host: env.SMTP_HOST ?? '',
+		port: Number(env.SMTP_PORT ?? '465'),
+		username: env.SMTP_USERNAME ?? '',
+		password: env.SMTP_PASSWORD ?? '',
+		from: env.SMTP_FROM ?? '',
+		replyTo: env.SMTP_REPLY_TO ?? '',
 	};
 }
 
 function isSmtpEnabled(env: WorkerEnv) {
 	const smtp = buildSmtpConfig(env);
-	return Boolean(__TREESEED_DEPLOY_CONFIG__.smtp?.enabled && smtp.host && smtp.port && smtp.from);
+	return Boolean(DEPLOY_CONFIG.smtp?.enabled && smtp.host && smtp.port && smtp.from);
 }
 
 function isTurnstileEnabled(env: WorkerEnv) {
-	return Boolean(env.TREESEED_TURNSTILE_SECRET_KEY);
+	return Boolean(env.TURNSTILE_SECRET_KEY);
 }
 
 function buildRuntime(env: WorkerEnv) {
 	return deriveFormRuntimeCapabilities({
 		isCloudflareRuntime: true,
-		localDevMode: env.TREESEED_LOCAL_DEV_MODE === 'cloudflare' ? 'cloudflare' : null,
+		localDevMode: env.LOCAL_DEV_MODE === 'cloudflare' ? 'cloudflare' : null,
 		isDevServer: false,
-		bypassCloudflareGuards: envBoolean(env.TREESEED_FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS),
-		formsMode: __TREESEED_DEPLOY_CONFIG__.providers?.forms ?? 'store_only',
+		bypassCloudflareGuards: envBoolean(env.FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS),
+		formsMode: DEPLOY_CONFIG.providers?.forms ?? 'store_only',
 		smtpEnabled: isSmtpEnabled(env),
 		turnstileEnabled: isTurnstileEnabled(env),
 	});
@@ -113,17 +113,17 @@ function buildRuntime(env: WorkerEnv) {
 function buildFormConfig(env: WorkerEnv) {
 	return {
 		runtime: buildRuntime(env),
-		formsProvider: resolveBuiltinFormsProvider(__TREESEED_DEPLOY_CONFIG__.providers?.forms ?? 'store_only'),
+		formsProvider: resolveBuiltinFormsProvider(DEPLOY_CONFIG.providers?.forms ?? 'store_only'),
 		bindings: {
 			FORM_GUARD_KV: env.FORM_GUARD_KV,
 			SITE_DATA_DB: env.SITE_DATA_DB,
 		},
-		formSecret: env.TREESEED_FORM_TOKEN_SECRET ?? '',
-		turnstileSecret: env.TREESEED_TURNSTILE_SECRET_KEY ?? '',
-		contactRouting: __TREESEED_SITE_CONFIG__.site.emailNotifications.contactRouting,
-		subscribeRecipients: __TREESEED_SITE_CONFIG__.site.emailNotifications.subscribeRecipients,
+		formSecret: env.FORM_TOKEN_SECRET ?? '',
+		turnstileSecret: env.TURNSTILE_SECRET_KEY ?? '',
+		contactRouting: SITE_CONFIG.site.emailNotifications.contactRouting,
+		subscribeRecipients: SITE_CONFIG.site.emailNotifications.subscribeRecipients,
 		smtpConfig: buildSmtpConfig(env),
-		siteUrl: __TREESEED_SITE_CONFIG__.site.siteUrl,
+		siteUrl: SITE_CONFIG.site.siteUrl,
 	};
 }
 

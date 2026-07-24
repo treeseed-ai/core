@@ -1,39 +1,39 @@
 export {
-	buildTreeseedSiteLayers,
-	resolveTreeseedPageEntrypoint,
-	resolveTreeseedSiteResource,
-	resolveTreeseedStyleEntrypoint,
-	TREESEED_SITE_RESOURCE_KINDS,
-} from './site-resources';
+	buildSiteLayers,
+	resolvePageEntrypoint,
+	resolveSiteResource,
+	resolveStyleEntrypoint,
+	SITE_RESOURCE_KINDS,
+} from './support/site-resources';
 export {
-	buildTreeseedPlatformLayers,
-	resolveTreeseedPlatformResource,
-	TREESEED_PLATFORM_RESOURCE_KINDS,
-} from './platform-resources';
-export { parseSiteConfig } from './utils/site-config-schema.js';
+	buildPlatformLayers,
+	resolvePlatformResource,
+	PLATFORM_RESOURCE_KINDS,
+} from './support/platform-resources';
+export { parseSiteConfig } from './utils/configuration/site-config-schema.js';
 export {
 	executeKnowledgeHubProviderLaunch,
 	validateKnowledgeHubProviderLaunchPrerequisites,
-} from './launch';
+} from './support/launch';
 export {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	type TreeseedIntegratedDevCommand,
-	type TreeseedIntegratedDevOptions,
-	type TreeseedIntegratedDevPlan,
-	type TreeseedIntegratedDevSurface,
-	type TreeseedManagedDevOptions,
-	type TreeseedDevInstanceRecord,
-} from './dev';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	type IntegratedDevCommand,
+	type IntegratedDevOptions,
+	type IntegratedDevPlan,
+	type IntegratedDevSurface,
+	type ManagedDevOptions,
+	type DevInstanceRecord,
+} from './runtime/dev';
 export {
 	filterSiteRenderedModels,
 	isSiteRenderedModel,
 	siteModelRendered,
-} from './utils/site-models.ts';
+} from './utils/support/site-models.ts';
 export {
 	buildPrivateKnowledgeReaderViewModel,
 	type RuntimeReaderNavGroup,
 	type RuntimeReaderNavItem,
 	type RuntimeReaderViewModel,
-} from './utils/runtime-reader.ts';
+} from './utils/runtime/runtime-reader.ts';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { D1DatabaseLike, D1PreparedStatementLike } from '../../../../src/types/cloudflare';
-import { createContactSubmission } from '../../../../src/utils/forms/contact-submissions';
-import { upsertSubscriber } from '../../../../src/utils/forms/subscribers';
+import { createContactSubmission } from '../../../../src/utils/forms/persistence/contact-submissions';
+import { upsertSubscriber } from '../../../../src/utils/forms/persistence/subscribers';
 
 interface RecordedStatement {
 	query: string;

@@ -1,8 +1,8 @@
-import type { TreeseedBookRuntime } from '@treeseed/sdk/platform/books-data';
-import { getTreeseedContentServingMode, getTreeseedDeployConfig } from '@treeseed/sdk/platform/deploy-runtime';
+import type { BookRuntime } from '@treeseed/sdk/platform/books-data';
+import { getContentServingMode, getDeployConfig } from '@treeseed/sdk/platform/deploy-runtime';
 import { createTeamScopedR2OverlayContentRuntimeProvider, resolveCloudflareR2Bucket, resolvePublishedContentBucketBinding, type ContentRuntimeProvider } from '@treeseed/sdk/platform/published-content';
-import { loadHostedBookRuntime, loadHostedDocsTree, resolveHostedContentRuntimeProvider, type HostedDocsTreeEntry } from ".././published-content.ts";
-import { loadPublishedEntry, normalizePublishedEntry, renderPublishedMarkdown, type PublishedContentSourcePayload } from ".././site-content-runtime.ts";
+import { loadHostedBookRuntime, loadHostedDocsTree, resolveHostedContentRuntimeProvider, type HostedDocsTreeEntry } from "../packages/published-content.ts";
+import { loadPublishedEntry, normalizePublishedEntry, renderPublishedMarkdown, type PublishedContentSourcePayload } from "../content/site-content-runtime.ts";
 import type { CloudflareRuntime } from "../../types/cloudflare";
 import { cleanSlug, currentPathFor, downloadActions, localDocumentFor, localNavGroups, privateCurrentPathFor, privateDownloadActions, privateSlugCandidates, publicFeedbackContext, publicHelpContext, publishedSlugFor, runtimeNavGroups, summaryForDocument, titleForDocument, type PrivateRuntimeReaderInput, type RuntimeReaderInput, type RuntimeReaderViewModel } from './runtime-reader-nav-item.ts';
 
@@ -90,7 +90,7 @@ export function privateManifestKey(teamId: string, projectId: string) {
 }
 
 export function resolvePrivateContentRuntimeProvider(input: Pick<PrivateRuntimeReaderInput, 'locals' | 'teamId' | 'projectId'>): ContentRuntimeProvider | null {
-	const deployConfig = getTreeseedDeployConfig();
+	const deployConfig = getDeployConfig();
 	const runtime = runtimeFromLocals(input.locals);
 	const bucket = resolveCloudflareR2Bucket(runtime, resolvePublishedContentBucketBinding(deployConfig));
 	if (!bucket) return null;
@@ -105,10 +105,10 @@ export function resolvePrivateContentRuntimeProvider(input: Pick<PrivateRuntimeR
 	});
 }
 
-export async function loadPrivateBookRuntime(provider: ContentRuntimeProvider): Promise<TreeseedBookRuntime | null> {
+export async function loadPrivateBookRuntime(provider: ContentRuntimeProvider): Promise<BookRuntime | null> {
 	const manifest = await provider.getManifest();
 	const pointer = manifest.runtime?.booksRuntime;
-	return pointer ? provider.getObject<TreeseedBookRuntime>(pointer) : null;
+	return pointer ? provider.getObject<BookRuntime>(pointer) : null;
 }
 
 export async function loadPrivateDocsTree(provider: ContentRuntimeProvider): Promise<HostedDocsTreeEntry[] | null> {
@@ -135,7 +135,7 @@ export async function loadPrivateEntry(provider: ContentRuntimeProvider, slug: s
 export async function buildPublicKnowledgeReaderViewModel(input: RuntimeReaderInput): Promise<RuntimeReaderViewModel> {
 	const slug = cleanSlug(input.slug);
 	const currentPath = currentPathFor(slug);
-	const publishedRuntime = getTreeseedContentServingMode() === 'published_runtime';
+	const publishedRuntime = getContentServingMode() === 'published_runtime';
 	if (publishedRuntime) {
 		const provider = resolveHostedContentRuntimeProvider(input.locals);
 		if (!provider) return unavailable('r2_published_manifest', currentPath);

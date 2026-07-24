@@ -1,8 +1,8 @@
 import { reference } from 'astro:content';
 import { z } from 'astro/zod';
-import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
+import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
-import { DECISION_MODEL_DEFAULTS, NOTE_MODEL_DEFAULTS, OBJECTIVE_MODEL_DEFAULTS, PAGE_MODEL_DEFAULTS, PROPOSAL_MODEL_DEFAULTS, QUESTION_MODEL_DEFAULTS } from '../utils/site-config.ts';
+import { DECISION_MODEL_DEFAULTS, NOTE_MODEL_DEFAULTS, OBJECTIVE_MODEL_DEFAULTS, PAGE_MODEL_DEFAULTS, PROPOSAL_MODEL_DEFAULTS, QUESTION_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
@@ -16,27 +16,27 @@ function withOptionalDefault<TSchema extends { default: (value: unknown) => TSch
 }
 
 export function createGovernanceCollectionSchemas() {
-	const pageFieldAliases: TreeseedFieldAliasRegistry = {
+	const pageFieldAliases: FieldAliasRegistry = {
 			pageLayout: { key: 'pageLayout', aliases: ['page_layout'] },
 			seoTitle: { key: 'seoTitle', aliases: ['seo_title'] },
 			seoDescription: { key: 'seoDescription', aliases: ['seo_description'] },
 		};
 
-	const questionFieldAliases: TreeseedFieldAliasRegistry = {
+	const questionFieldAliases: FieldAliasRegistry = {
 			questionType: { key: 'questionType', aliases: ['question_type'] },
 			primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
 			relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },
 			relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
 		};
 
-	const objectiveFieldAliases: TreeseedFieldAliasRegistry = {
+	const objectiveFieldAliases: FieldAliasRegistry = {
 			timeHorizon: { key: 'timeHorizon', aliases: ['time_horizon'] },
 			primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
 			relatedQuestions: { key: 'relatedQuestions', aliases: ['related_questions'] },
 			relatedBooks: { key: 'relatedBooks', aliases: ['related_books'] },
 		};
 
-	const proposalFieldAliases: TreeseedFieldAliasRegistry = {
+	const proposalFieldAliases: FieldAliasRegistry = {
 			proposalType: { key: 'proposalType', aliases: ['proposal_type'] },
 			primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
 			relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },
@@ -54,7 +54,7 @@ export function createGovernanceCollectionSchemas() {
 			canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
 		};
 
-	const decisionFieldAliases: TreeseedFieldAliasRegistry = {
+	const decisionFieldAliases: FieldAliasRegistry = {
 			decisionType: { key: 'decisionType', aliases: ['decision_type'] },
 			primaryContributor: { key: 'primaryContributor', aliases: ['primary_contributor'] },
 			relatedObjectives: { key: 'relatedObjectives', aliases: ['related_objectives'] },

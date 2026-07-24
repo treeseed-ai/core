@@ -1,16 +1,16 @@
 ---
 import CoreStyleScope from '../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
-import Hero from '@treeseed/ui/components/astro/site/Hero.astro';
-import StageBanner from '@treeseed/ui/components/astro/site/StageBanner.astro';
-import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
-import PathCard from '@treeseed/ui/components/astro/site/PathCard.astro';
-import CTASection from '@treeseed/ui/components/astro/site/CTASection.astro';
-import TrustCallout from '@treeseed/ui/components/astro/site/TrustCallout.astro';
-import NotesList from '@treeseed/ui/components/astro/site/NotesList.astro';
-import ChronicleList from '@treeseed/ui/components/astro/site/ChronicleList.astro';
-import ProfileList from '@treeseed/ui/components/astro/site/ProfileList.astro';
-import BookList from '@treeseed/ui/components/astro/site/BookList.astro';
+import Hero from '@treeseed/ui/components/astro/site/marketing/Hero.astro';
+import StageBanner from '@treeseed/ui/components/astro/site/marketing/StageBanner.astro';
+import SectionIntro from '@treeseed/ui/components/astro/site/sections/SectionIntro.astro';
+import PathCard from '@treeseed/ui/components/astro/site/navigation/PathCard.astro';
+import CTASection from '@treeseed/ui/components/astro/site/marketing/CTASection.astro';
+import TrustCallout from '@treeseed/ui/components/astro/site/marketing/TrustCallout.astro';
+import NotesList from '@treeseed/ui/components/astro/site/content/NotesList.astro';
+import ChronicleList from '@treeseed/ui/components/astro/site/content/ChronicleList.astro';
+import ProfileList from '@treeseed/ui/components/astro/site/content/ProfileList.astro';
+import BookList from '@treeseed/ui/components/astro/site/content/BookList.astro';
 import {
 	getPublishedAgents,
 	getPublishedBooks,
@@ -21,15 +21,15 @@ import {
 	getPublishedProposals,
 	getPublishedQuestions,
 	resolveContributorsForEntries,
-} from '../utils/hub-content';
+} from '../utils/content/hub-content';
 import {
 	isPublishedRuntimeContentMode,
 	loadPublishedCollection,
 	loadPublishedEntry,
 	metadataFromPublishedContent,
 	resolvePublishedContributor,
-} from '../utils/site-content-runtime';
-import { siteModelRendered } from '../utils/site-models.ts';
+} from '../utils/content/site-content-runtime';
+import { siteModelRendered } from '../utils/support/site-models.ts';
 
 const notesRendered = siteModelRendered('notes');
 const questionsRendered = siteModelRendered('questions');

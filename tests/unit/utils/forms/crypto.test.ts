@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signFormToken, verifyFormToken } from '../../../../src/utils/forms/crypto';
+import { signFormToken, verifyFormToken } from '../../../../src/utils/forms/security/crypto';
 
 describe('form token signing', () => {
 	it('round-trips a signed token payload', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveContactRecipientsFromMap } from '../../../../src/utils/forms/routing-core';
-import { SITE_EMAIL_NOTIFICATIONS } from '../../../../src/utils/site-config';
+import { resolveContactRecipientsFromMap } from '../../../../src/utils/forms/routing/routing-core';
+import { SITE_EMAIL_NOTIFICATIONS } from '../../../../src/utils/configuration/site-config';
 
 describe('contact routing resolution', () => {
 	it('prefers a specific route over the default recipients', () => {

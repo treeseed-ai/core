@@ -1,9 +1,9 @@
 ---
 import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
-import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
-import ProfileList from '@treeseed/ui/components/astro/site/ProfileList.astro';
-import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/site-content-runtime';
+import SectionIntro from '@treeseed/ui/components/astro/site/sections/SectionIntro.astro';
+import ProfileList from '@treeseed/ui/components/astro/site/content/ProfileList.astro';
+import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/content/site-content-runtime';
 
 const publishedRuntime = isPublishedRuntimeContentMode();
 const agents = publishedRuntime

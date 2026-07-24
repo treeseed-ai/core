@@ -13,13 +13,13 @@ import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-	createTreeseedIntegratedDevPlan,
-	runTreeseedManagedDev,
-	runTreeseedIntegratedDev,
-	runTreeseedIntegratedDevReset,
-} from '../../../src/dev.ts';
+	createIntegratedDevPlan,
+	runManagedDev,
+	runIntegratedDev,
+	runIntegratedDevReset,
+} from '../../../src/runtime/dev.ts';
 
-import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/dev-watch.ts';
+import { classifyChanges, shouldIgnoreWatchPath } from '../../../src/runtime/dev-watch.ts';
 
 type FakeExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 
@@ -132,7 +132,7 @@ it('keeps supervising after readiness until a parent signal arrives', async () =
 		let spawnCount = 0;
 		let settled = false;
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{
 				cwd: tenantRoot,
 				surface: 'web',
@@ -175,7 +175,7 @@ it('suppresses transient local workerd broken pipe log blocks', async () => {
 		child.stderr = new PassThrough();
 		const output: string[] = [];
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{
 				cwd: tenantRoot,
 				surface: 'web',
@@ -224,7 +224,7 @@ it('starts the watcher immediately and rebaselines before observing changes', as
 		let startWatchCount = 0;
 		let rebaselineCount = 0;
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{
 				cwd: tenantRoot,
 				surface: 'web',
@@ -276,7 +276,7 @@ it('sends shutdown signals to child process groups when pids are available', asy
 		const killCalls: Array<{ pid: number; signal: NodeJS.Signals }> = [];
 		const child = new FakeChildProcess(12345);
 
-		const promise = runTreeseedIntegratedDev(
+		const promise = runIntegratedDev(
 			{
 				cwd: tenantRoot,
 				surface: 'web',

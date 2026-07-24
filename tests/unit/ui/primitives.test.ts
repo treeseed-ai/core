@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { basename, dirname, extname, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -8,11 +8,17 @@ const packageRoot = resolve(testDir, '../../..');
 
 function source(path: string) {
 	const entry = resolve(packageRoot, path);
-	const implementationDirectory = resolve(dirname(entry), basename(entry, extname(entry)));
-	const implementation = existsSync(implementationDirectory)
-		? readdirSync(implementationDirectory).sort().map((file) => readFileSync(resolve(implementationDirectory, file), 'utf8'))
-		: [];
-	return [readFileSync(entry, 'utf8'), ...implementation].join('\n');
+	const visited = new Set<string>();
+	const readModule = (modulePath: string): string[] => {
+		if (visited.has(modulePath)) return [];
+		visited.add(modulePath);
+		const contents = readFileSync(modulePath, 'utf8');
+		const dependencies = [...contents.matchAll(/export\s+(?:\*|\{[^}]*\})\s+from\s+['"](\.{1,2}\/[^'"]+)['"]/gu)]
+			.map((match) => resolve(dirname(modulePath), match[1]!.replace(/\.js$/u, '.ts')))
+			.filter(existsSync);
+		return [contents, ...dependencies.flatMap(readModule)];
+	};
+	return readModule(entry).join('\n');
 }
 
 function packageJson() {
@@ -36,8 +42,8 @@ describe('core UI ownership boundary', () => {
 	});
 
 	it('resolves default docs chrome from @treeseed/ui while preserving tenant overrides', () => {
-		const site = source('src/site.ts');
-		expect(site).toContain('resolveTreeseedSiteResource(siteLayers, \'components\', resourcePath)');
+		const site = source('src/support/site.ts');
+		expect(site).toContain('resolveSiteResource(siteLayers, \'components\', resourcePath)');
 		expect(site).toContain('@treeseed/ui/components/astro/docs/Header.astro');
 		expect(site).toContain('@treeseed/ui/components/astro/docs/Footer.astro');
 		expect(site).toContain('@treeseed/ui/components/astro/core/SiteTitle.astro');
@@ -73,7 +79,7 @@ describe('core UI ownership boundary', () => {
 	});
 
 	it('contributes the /knowledge reader routes whenever docs are rendered', () => {
-		const site = source('src/site.ts');
+		const site = source('src/support/site.ts');
 		expect(site).toContain("{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro'");
 		expect(site).toContain("{ pattern: '/knowledge/[...slug]', resourcePath: 'pages/docs-runtime/[...slug].astro'");
 		expect(site).toContain("{ pattern: '/api/feedback/submit', resourcePath: 'pages/api/feedback/submit.ts'");
@@ -81,7 +87,7 @@ describe('core UI ownership boundary', () => {
 	});
 
 	it('routes Core Knowledge Hub feedback to Market/API without local persistence', () => {
-		const helper = source('src/utils/runtime-reader.ts');
+		const helper = source('src/utils/runtime/runtime-reader.ts');
 		const endpoint = source('src/pages/api/feedback/submit.ts');
 		expect(helper).toContain("submissionEndpoint: '/api/feedback/submit'");
 		expect(helper).toContain("capabilityId: 'core.public-knowledge-reader'");
@@ -93,7 +99,7 @@ describe('core UI ownership boundary', () => {
 	});
 
 	it('keeps private reader helper server-only and no-leak', () => {
-		const helper = source('src/utils/runtime-reader.ts');
+		const helper = source('src/utils/runtime/runtime-reader.ts');
 		expect(helper).toContain('buildPrivateKnowledgeReaderViewModel');
 		expect(helper).toContain('r2_private_manifest');
 		expect(helper).toContain('private, no-store');
