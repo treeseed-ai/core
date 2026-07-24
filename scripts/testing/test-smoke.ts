@@ -256,6 +256,8 @@ try {
 	run(
 		process.execPath,
 		[
+			'--import',
+			'tsx',
 			'--input-type=module',
 			'-e',
 			[
