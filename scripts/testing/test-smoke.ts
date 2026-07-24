@@ -256,14 +256,16 @@ try {
 	run(
 		process.execPath,
 		[
-			'--import',
-			'tsx',
 			'--input-type=module',
 			'-e',
 			[
-				'await import("@treeseed/core");',
-				'await import("@treeseed/core/site");',
-				'await import("@treeseed/core/config");',
+				'import { createServer } from "vite";',
+				'const server = await createServer({ server: { middlewareMode: true }, appType: "custom", logLevel: "silent" });',
+				'try {',
+				'await server.ssrLoadModule("@treeseed/core");',
+				'await server.ssrLoadModule("@treeseed/core/site");',
+				'await server.ssrLoadModule("@treeseed/core/config");',
+				'} finally { await server.close(); }',
 			].join(' '),
 		],
 		installRoot,
