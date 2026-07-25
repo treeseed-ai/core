@@ -115,8 +115,8 @@ export function createIntegratedDevPlan(options: IntegratedDevOptions = {}): Int
 	const mailpitUiPort = mergedEnv.TREESEED_MAILPIT_UI_PORT ?? String(DEFAULT_MAILPIT_UI_PORT);
 	const webEntrypoint = resolveNodeEntrypoint(
 		sdkPackageRoot,
-		'scripts/tenant-astro-command.ts',
-		'dist/scripts/tenant-astro-command.js',
+		'scripts/tenant/tenant-astro-command.ts',
+		'dist/scripts/tenant/tenant-astro-command.js',
 	);
 	const wranglerEntrypoint = {
 		command: process.execPath,
