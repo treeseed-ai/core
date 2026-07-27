@@ -55,7 +55,7 @@ function resultFor(formType: FormSubmitPayload['formType'], redirectTo: string, 
 		ok,
 		code,
 		message,
-		redirectTo: buildRedirectTarget(formType, redirectTo, ok, code),
+		redirectTo: buildRedirectTarget(formType, redirectTo),
 	};
 }
 

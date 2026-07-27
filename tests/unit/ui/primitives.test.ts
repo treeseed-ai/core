@@ -98,6 +98,19 @@ describe('core UI ownership boundary', () => {
 		expect(endpoint).not.toMatch(/recordAuditEvent|upsertTeamInboxItem|new MarketControlPlaneStore/iu);
 	});
 
+	it('negotiates enhanced form JSON and progressive POST/303 responses identically in Astro and Worker runtimes', () => {
+		const astroEndpoint = source('src/pages/api/form/submit.ts');
+		const workerEndpoint = source('src/worker/forms-worker.ts');
+		for (const contents of [astroEndpoint, workerEndpoint]) {
+			expect(contents).toContain("from '@treeseed/ui/forms'");
+			expect(contents).toContain('formSubmissionResponse');
+			expect(contents).toContain('reset: result.ok');
+			expect(contents).toContain('fallbackRedirect: result.redirectTo');
+		}
+		expect(astroEndpoint).not.toContain('Astro.redirect');
+		expect(workerEndpoint).not.toMatch(/request\.method === 'POST'[\s\S]*new Response\(null,\s*\{\s*status:\s*303/u);
+	});
+
 	it('keeps private reader helper server-only and no-leak', () => {
 		const helper = source('src/utils/runtime/runtime-reader.ts');
 		expect(helper).toContain('buildPrivateKnowledgeReaderViewModel');

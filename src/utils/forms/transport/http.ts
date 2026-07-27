@@ -1,4 +1,4 @@
-import { FORM_CODE_PARAM, FORM_SUCCESS_PARAM, SUBSCRIBE_ANCHOR_ID } from '../service/constants';
+import { SUBSCRIBE_ANCHOR_ID } from '../service/constants';
 
 export function getRemoteIp(request: Request) {
 	return request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? '';
@@ -27,14 +27,10 @@ function resolveRedirectBase(requestUrl?: URL | string) {
 export function buildRedirectTarget(
 	formType: 'contact' | 'subscribe',
 	rawRedirectTo: string,
-	isSuccess: boolean,
-	code: string,
 	requestUrl?: URL | string,
 ) {
 	const fallback = fallbackPath(formType);
 	const url = new URL(rawRedirectTo || fallback, resolveRedirectBase(requestUrl));
-	url.searchParams.set(FORM_SUCCESS_PARAM, isSuccess ? 'success' : 'error');
-	url.searchParams.set(FORM_CODE_PARAM, code);
 
 	if (formType === 'subscribe') {
 		url.hash = SUBSCRIBE_ANCHOR_ID;

@@ -1,6 +1,7 @@
 import { deriveFormRuntimeCapabilities } from '../utils/forms/runtime/runtime-core';
 import { resolveBuiltinFormsProvider } from '../utils/forms/capacity/providers/provider-core';
 import { handleFormSubmissionWithConfig, handleTokenRequestWithConfig } from '../utils/forms/service/service-core';
+import { formSubmissionResponse } from '@treeseed/ui/forms';
 import type { DeployConfig } from '@treeseed/sdk/platform/contracts';
 import type { CloudflareRuntimeAssets, D1DatabaseLike, KvNamespaceLike } from '../types/cloudflare';
 
@@ -155,7 +156,12 @@ async function handleApiRequest(request: Request, env: WorkerEnv) {
 
 	if (request.method === 'POST') {
 		const result = await handleFormSubmissionWithConfig(context, config);
-		return context.redirect(result.redirectTo, 303);
+		return formSubmissionResponse(request, {
+			ok: result.ok,
+			code: result.code,
+			message: result.message,
+			reset: result.ok,
+		}, { fallbackRedirect: result.redirectTo, headers: responseHeaders });
 	}
 
 	return new Response('Method Not Allowed', {
