@@ -95,7 +95,6 @@ export function createSetupSteps(
 	const needsCloudflareLocalRuntime = usesCloudflareWebRuntime || hasLocalRuntimeCommand;
 	const coreScripts = [
 		['starlight-patch', 'Patch Starlight content path', 'scripts/content/patch-starlight-content-path.ts', 'dist/scripts/content/patch-starlight-content-path.js'],
-		['books', 'Generate book/public artifacts', 'scripts/content/aggregate-book.ts', 'dist/scripts/content/aggregate-book.js'],
 		['worker-bundle', 'Generate local worker bundle', 'scripts/build/build-tenant-worker.ts', 'dist/scripts/build/build-tenant-worker.js'],
 	] as const;
 	const tenantBuild = usesCloudflareWebRuntime

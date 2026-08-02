@@ -10,8 +10,6 @@ import remarkMath from 'remark-math';
 import tailwindcss from '@tailwindcss/vite';
 import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
 import { parseSiteConfig } from "../utils/configuration/site-config-schema.js";
-import { buildTenantBookRuntime } from '@treeseed/sdk/platform/books-data';
-import { getStarlightSidebarConfigFromRuntime } from "../utils/support/starlight-nav";
 import { buildThemeCss } from "../utils/support/theme.ts";
 import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { getContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
@@ -26,7 +24,6 @@ import {
 	collectLocalPageRouteEntries,
 	createRoutesIntegration,
 	createUiPackageAliases,
-	packageModuleFile,
 	resolveRouteEntry,
 	resolveUiComponentEntrypoint,
 } from './tenant-theme-virtual-id.ts';
@@ -41,9 +38,7 @@ export function createSite(
 	const siteConfig = parseSiteConfig(readFileSync(resolve(projectRoot, tenantConfig.siteConfigPath), 'utf8'));
 	const deployConfig = loadDeployConfig();
 	const pluginRuntime = loadPluginRuntime(deployConfig);
-	const bookRuntime = buildTenantBookRuntime(tenantConfig, { projectRoot });
 	const docsRendered = isSiteRenderedModel(tenantConfig, 'docs');
-	const booksRendered = isSiteRenderedModel(tenantConfig, 'books');
 	const tenantThemeCss = buildThemeCss(siteConfig.site.theme);
 	const siteLayers = buildSiteLayers(pluginRuntime, {
 		coreRoot: fileURLToPath(new URL('..', import.meta.url)),
@@ -62,7 +57,6 @@ export function createSite(
 	const injectedProjectRoot = JSON.stringify(projectRoot);
 	const injectedSiteConfig = JSON.stringify(siteConfig);
 	const injectedDeployConfig = JSON.stringify(deployConfig);
-	const injectedBookRuntime = JSON.stringify(bookRuntime);
 	const resolvedGlobalCss = resolveStyleEntrypoint(siteLayers, 'styles/global.css');
 	const serverRendered =
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
@@ -72,15 +66,10 @@ export function createSite(
 	const packageRoutes = [
 		...PACKAGE_ROUTE_ENTRIES,
 		...pageRoutes,
-		...(docsRendered
-			? [
-				{ pattern: '/knowledge', resourcePath: 'pages/docs-runtime/index.astro', model: 'docs' as const },
-				{ pattern: '/knowledge/[...slug]', resourcePath: 'pages/docs-runtime/[...slug].astro', model: 'docs' as const },
-			]
-			: []),
 	];
 
 	return defineConfig({
+		legacy: { collections: false },
 		adapter: serverRendered
 			? cloudflare({ imageService: 'compile' })
 			: undefined,
@@ -103,16 +92,16 @@ export function createSite(
 		vite: {
 			resolve: {
 				alias: createUiPackageAliases(projectRoot),
+				dedupe: ['react', 'react-dom'],
 			},
 			define: {
 				TENANT_CONFIG: injectedTenantConfig,
 				PROJECT_ROOT: injectedProjectRoot,
 				SITE_CONFIG: injectedSiteConfig,
 				DEPLOY_CONFIG: injectedDeployConfig,
-				BOOK_RUNTIME: injectedBookRuntime,
 			},
 			optimizeDeps: {
-				exclude: ['libsodium-wrappers-sumo'],
+				include: ['libsodium-wrappers-sumo'],
 			},
 			plugins: [
 				createTenantThemeVitePlugin(tenantThemeCss),
@@ -184,8 +173,8 @@ export function createSite(
 					ThemeSelect: resolveUiComponentEntrypoint(siteLayers, 'components/docs/ThemeSelect.astro', '@treeseed/ui/components/astro/docs/ThemeSelect.astro', projectRoot),
 					...siteExtensions.starlightComponents,
 				},
-				sidebar: booksRendered ? getStarlightSidebarConfigFromRuntime(bookRuntime) : [],
-				routeMiddleware: [packageModuleFile('./middleware/starlightRouteData'), ...siteExtensions.routeMiddleware],
+				sidebar: [],
+				routeMiddleware: siteExtensions.routeMiddleware,
 			} as any)] : []),
 			...siteExtensions.integrations,
 		],

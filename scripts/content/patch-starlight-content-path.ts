@@ -132,6 +132,15 @@ async function patchStarlightPackageRoot(starlightRoot) {
 	const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
 	const coreVendorRoot = path.join(path.dirname(path.dirname(starlightRoot)), '@treeseed/core/dist/vendor/starlight');
 	await copyVendoredTree(coreVendorRoot, starlightRoot);
+	const virtualConfigPath = path.join(starlightRoot, 'integrations/virtual-user-config.js');
+	const virtualConfig = await fs.readFile(virtualConfigPath, 'utf8');
+	const correctedVirtualConfig = virtualConfig
+		.replaceAll('"./content/config.js"', '"./content/config.ts"')
+		.replaceAll('"./content.config.js"', '"./content.config.ts"');
+	if (correctedVirtualConfig.includes('./content/config.js') || correctedVirtualConfig.includes('./content.config.js')) {
+		throw new Error(`Unexpected Starlight virtual collection config format in ${virtualConfigPath}`);
+	}
+	await fs.writeFile(virtualConfigPath, correctedVirtualConfig, 'utf8');
 
 	packageJson.exports = {
 		...packageJson.exports,

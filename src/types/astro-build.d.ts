@@ -16,5 +16,6 @@ declare namespace App {
 		starlightRoute?: any;
 		runtime?: import('@treeseed/sdk/types/cloudflare').CloudflareRuntime;
 		contentPreview?: import('@treeseed/sdk/platform/published-content').EditorialPreviewTokenPayload | null;
+		auth?: { principal: import('@treeseed/sdk/remote').ApiPrincipal } | null;
 	}
 }

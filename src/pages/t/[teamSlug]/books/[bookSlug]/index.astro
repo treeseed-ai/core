@@ -1,0 +1,40 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import RouteNotFound from '@treeseed/ui/components/astro/site/navigation/RouteNotFound.astro';
+import { bookSidebar, canReadKnowledge, loadFederatedReader, loadReaderLibrary, pagesForBook, starlightKnowledgeFrontmatter } from '../../../../../utils/knowledge/reader-library.ts';
+
+export const prerender = false;
+
+const teamSlug = String(Astro.params.teamSlug ?? '');
+const bookSlug = String(Astro.params.bookSlug ?? '');
+const federated = await loadFederatedReader(Astro.locals, { teamSlug, bookSlug }).catch(() => ({ unavailable: true }));
+const useLocalLibrary = federated === null;
+const library = federated?.book ? federated : useLocalLibrary ? await loadReaderLibrary(Astro.locals) : { books: [], pages: [] };
+const book = federated?.book ?? library.books.find((candidate) => candidate.data.slug === bookSlug && candidate.data.status === 'published'
+	&& canReadKnowledge(Astro.locals, String(candidate.data.visibility))) ?? null;
+const pages = federated?.book ? federated.pages : book ? pagesForBook(library.pages, String(book.data.id)).filter((page) => canReadKnowledge(Astro.locals, String(page.data.visibility))) : [];
+if ((federated as any)?.unavailable) Astro.response.status = 503;
+else if (!book || (!federated?.book && teamSlug !== 'treeseed')) Astro.response.status = 404;
+const overview = book ? {
+	schemaVersion: 'treeseed.knowledge-page/v1', id: `${book.data.id}.overview`, bookId: book.data.id,
+	slug: 'overview', title: book.data.title, summary: book.data.summary, status: 'published',
+	visibility: book.data.visibility, order: 0, tags: book.data.topics ?? [], contributors: [],
+	relatedBookIds: book.data.relatedBookIds ?? [], relatedKnowledgeIds: [], capabilityIds: [],
+	guaranteeIds: [],
+	routePatterns: [], resourceTypes: ['book'], actionIds: [], keywords: book.data.topics ?? [], documentationUrls: [],
+} : null;
+---
+
+{!book || !overview ? (
+	<RouteNotFound title={(federated as any)?.unavailable ? 'Knowledge unavailable' : 'Book not found'} description={(federated as any)?.unavailable ? 'The published knowledge runtime could not be loaded. Retry after it recovers.' : 'This book is unavailable or you do not have access to it.'} currentPath="/books/" />
+) : (
+	<StarlightPage frontmatter={starlightKnowledgeFrontmatter(overview)} sidebar={bookSidebar(teamSlug, book, pages)}>
+		<p class="sl-lead">{book.data.description}</p>
+		<h2>In this book</h2>
+		{pages.length ? (
+			<ol>
+				{pages.map((page) => <li><a href={`/t/${encodeURIComponent(teamSlug)}/books/${encodeURIComponent(bookSlug)}/${String(page.data.slug).split('/').map(encodeURIComponent).join('/')}`}>{page.data.title}</a><p>{page.data.summary}</p></li>)}
+			</ol>
+		) : <p>This book does not have any published pages yet.</p>}
+	</StarlightPage>
+)}

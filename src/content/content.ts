@@ -23,6 +23,7 @@ import {
 	DECISION_MODEL_DEFAULTS,
 } from '../utils/configuration/site-config';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
+import { KNOWLEDGE_PAGE_SCHEMA_VERSION, KNOWLEDGE_STATUSES, KNOWLEDGE_VISIBILITIES } from '@treeseed/sdk/knowledge';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
@@ -67,18 +68,18 @@ function optionalMarkdownGlob(
 		generateId?: (args: { entry: string; data: Record<string, unknown> }) => string;
 	} = {},
 ): Loader {
-	const delegate = glob({
-		pattern: options.pattern ?? '**/*.{md,mdx}',
-		base,
-		generateId: options.generateId,
-	});
 	return {
-		name: `treeseed-optional-markdown-glob:${base}`,
+	name: `treeseed-optional-markdown-glob:${base}`,
 		async load(context) {
+			context.store.clear();
 			if (!hasMarkdownContent(base)) {
-				context.store.clear();
 				return;
 			}
+			const delegate = glob({
+				pattern: options.pattern ?? '**/*.{md,mdx}',
+				base,
+				generateId: options.generateId,
+			});
 			await delegate.load(context);
 		},
 	};
@@ -121,7 +122,31 @@ function resolveDocsCollectionProvider(
 			}),
 			schema: dependencies.docsSchema({
 				extend: z.object({
+					schemaVersion: z.literal(KNOWLEDGE_PAGE_SCHEMA_VERSION),
+					id: z.string(),
+					bookId: z.string(),
+					slug: z.string(),
+					summary: z.string(),
+					status: z.enum(KNOWLEDGE_STATUSES),
+					visibility: z.enum(KNOWLEDGE_VISIBILITIES),
+					order: z.number().int().nonnegative().default(0),
+					parentId: z.string().optional(),
 					tags: z.array(z.string()).default(MODEL_DEFAULTS.tags ?? []),
+					contributors: z.array(z.string()).default([]),
+					relatedBookIds: z.array(z.string()).default([]),
+					relatedKnowledgeIds: z.array(z.string()).default([]),
+					guaranteeIds: z.array(z.string()).default([]),
+					audiences: z.object({
+						primary: z.array(z.string()).default([]),
+						secondary: z.array(z.string()).default([]),
+						excluded: z.array(z.string()).default([]),
+					}).default({ primary: [], secondary: [], excluded: [] }),
+					capabilityIds: z.array(z.string()).default([]),
+					routePatterns: z.array(z.string()).default([]),
+					resourceTypes: z.array(z.string()).default([]),
+					actionIds: z.array(z.string()).default([]),
+					keywords: z.array(z.string()).default([]),
+					documentationUrls: z.array(z.string()).default([]),
 				}),
 			}),
 		};
@@ -154,7 +179,7 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 	const publishedRuntime = getContentServingMode() === 'published_runtime';
 	const { pageSchema, noteSchema, questionSchema, objectiveSchema, proposalSchema, decisionSchema } = createGovernanceCollectionSchemas();
 	const { peopleSchema, agentSchema, agentTestSchema } = createAgentCollectionSchemas();
-	const { bookSchema, templateProductSchema, knowledgePackSchema } = createCatalogCollectionSchemas();
+	const { bookSchema, templateProductSchema } = createCatalogCollectionSchemas();
 	const { workdaySchema } = createWorkdayCollectionSchemas();
 	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
 	const markdownLoader = (base: string) => publishedRuntime
@@ -195,13 +220,6 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 		collections.templates = defineCollection({
 			loader: optionalMarkdownGlob(tenantConfig.content.templates),
 			schema: templateProductSchema,
-		});
-	}
-
-	if (tenantConfig.content.knowledge_packs) {
-		collections.knowledge_packs = defineCollection({
-			loader: optionalMarkdownGlob(tenantConfig.content.knowledge_packs),
-			schema: knowledgePackSchema,
 		});
 	}
 

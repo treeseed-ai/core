@@ -3,48 +3,28 @@ import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
 import { BOOK_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
+import { BOOK_SCHEMA_VERSION, KNOWLEDGE_STATUSES, KNOWLEDGE_VISIBILITIES } from '@treeseed/sdk/knowledge';
 
 const commerceOfferModeValues = [...COMMERCE_OFFER_MODES] as [CommerceOfferMode, ...CommerceOfferMode[]];
 
 export function createCatalogCollectionSchemas() {
-	const bookFieldAliases: FieldAliasRegistry = {
-			sectionLabel: { key: 'sectionLabel', aliases: ['section_label'] },
-			basePath: { key: 'basePath', aliases: ['base_path'] },
-			landingPath: { key: 'landingPath', aliases: ['landing_path'] },
-			outlinePath: { key: 'outlinePath', aliases: ['outline_path'] },
-			downloadFileName: { key: 'downloadFileName', aliases: ['download_file_name'] },
-			downloadHref: { key: 'downloadHref', aliases: ['download_href'] },
-			downloadTitle: { key: 'downloadTitle', aliases: ['download_title'] },
-			exportRoots: { key: 'exportRoots', aliases: ['export_roots'] },
-			sidebarItems: { key: 'sidebarItems', aliases: ['sidebar_items'] },
-		};
-
-	const sidebarItemSchema: z.ZodTypeAny = z.lazy(() =>
-			z.object({
-				label: z.string(),
-				link: z.string().optional(),
-				autogenerate: z.object({ directory: z.string() }).optional(),
-				items: z.array(sidebarItemSchema).optional(),
-			}),
-		);
-
-	const bookSchema = z.preprocess((value) => preprocessAliasedRecord(bookFieldAliases, value), z.object({
+	const bookSchema = z.object({
+			schemaVersion: z.literal(BOOK_SCHEMA_VERSION),
+			id: z.string().min(1),
 			order: z.number().int().nonnegative(),
-			slug: z.string(),
-			title: z.string(),
-			description: z.string(),
-			summary: z.string(),
-			sectionLabel: z.string(),
-			basePath: z.string(),
-			landingPath: z.string(),
-			outlinePath: z.string().optional(),
-			downloadFileName: z.string(),
-			downloadHref: z.string(),
-			downloadTitle: z.string(),
-			exportRoots: z.array(z.string()).min(1).optional(),
-			sidebarItems: z.array(sidebarItemSchema).min(1),
-			tags: z.array(z.string()).default(BOOK_MODEL_DEFAULTS.tags ?? []),
-		}));
+			slug: z.string().min(1),
+			title: z.string().min(1),
+			description: z.string().min(1),
+			summary: z.string().min(1),
+			status: z.enum(KNOWLEDGE_STATUSES),
+			visibility: z.enum(KNOWLEDGE_VISIBILITIES),
+			topics: z.array(z.string()).default(BOOK_MODEL_DEFAULTS.tags ?? []),
+			audience: z.array(z.string()).default([]),
+			relatedBookIds: z.array(z.string()).default([]),
+			editorialCoreNoteId: z.string().optional(),
+			packPolicy: z.enum(['allowed', 'restricted', 'disabled']).default('allowed'),
+			cover: z.object({ image: z.string().optional(), alt: z.string().optional() }).optional(),
+		});
 
 	const publisherSchema = z.object({
 			id: z.string(),
@@ -104,12 +84,5 @@ export function createCatalogCollectionSchemas() {
 			relatedObjectives: z.array(z.string()).default([]),
 		});
 
-	const knowledgePackSchema = z.object({
-			slug: z.string(),
-			title: z.string(),
-			description: z.string(),
-			status: z.enum(['draft', 'live', 'archived']).default('draft'),
-		});
-
-	return { sidebarItemSchema, bookSchema, publisherSchema, templateGitSourceSchema, templateR2SourceSchema, templateProductSchema, knowledgePackSchema };
+	return { bookSchema, publisherSchema, templateGitSourceSchema, templateR2SourceSchema, templateProductSchema };
 }

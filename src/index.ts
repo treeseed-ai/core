@@ -12,10 +12,6 @@ export {
 } from './support/platform-resources';
 export { parseSiteConfig } from './utils/configuration/site-config-schema.js';
 export {
-	executeKnowledgeHubProviderLaunch,
-	validateKnowledgeHubProviderLaunchPrerequisites,
-} from './support/launch';
-export {
 	createIntegratedDevPlan,
 	runManagedDev,
 	runIntegratedDev,
@@ -31,9 +27,3 @@ export {
 	isSiteRenderedModel,
 	siteModelRendered,
 } from './utils/support/site-models.ts';
-export {
-	buildPrivateKnowledgeReaderViewModel,
-	type RuntimeReaderNavGroup,
-	type RuntimeReaderNavItem,
-	type RuntimeReaderViewModel,
-} from './utils/runtime/runtime-reader.ts';

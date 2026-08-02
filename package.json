@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.60-dev.staging.20260716T185112Z",
+  "version": "0.12.60-dev.feature-treeseed-guide-editorial-agents.20260802T155724Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -46,7 +46,7 @@
     "starlight:patch": "node --import tsx ./scripts/content/patch-starlight-content-path.ts",
     "precheck": "npm run starlight:patch",
     "check": "npm run check:file-lengths && node --import tsx ./scripts/testing/run-fixture-astro-command.ts check",
-    "prebuild": "npm run starlight:patch && node --import tsx ./scripts/content/aggregate-book.ts",
+    "prebuild": "npm run starlight:patch",
     "build": "TREESEED_LOCAL_DEV_MODE=cloudflare node --import tsx ./scripts/testing/run-fixture-astro-command.ts build",
     "preview": "node --import tsx ./scripts/testing/run-fixture-astro-command.ts preview",
     "test:unit": "vitest run --config ./vitest.config.ts",
@@ -73,8 +73,8 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#062bdabb6038a98c56f90e3bbf774817f27db2f7",
-    "@treeseed/ui": "github:treeseed-ai/ui#8f850b33e8b0a64c047cd787c87dd1e12e8a3e5b",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#b16d4476d5482807dacb290065cfd6d8bdc8fd87",
+    "@treeseed/ui": "github:treeseed-ai/ui#ba0d45bde60841b2f4575ffda7d5acd113853df6",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",

@@ -93,6 +93,7 @@ export function createGovernanceCollectionSchemas() {
 		}));
 
 	const noteSchema = z.object({
+			id: z.string().optional(),
 			title: z.string(),
 			description: z.string(),
 			date: z.coerce.date(),
@@ -108,6 +109,11 @@ export function createGovernanceCollectionSchemas() {
 			relatedProposals: z.array(z.string()).default([]),
 			relatedDecisions: z.array(z.string()).default([]),
 			relatedBooks: z.array(z.string()).default([]),
+			audiences: z.object({
+				primary: z.array(z.string()).default([]),
+				secondary: z.array(z.string()).default([]),
+				excluded: z.array(z.string()).default([]),
+			}).optional(),
 		});
 
 	const questionSchema = z.preprocess((value) => preprocessAliasedRecord(questionFieldAliases, value), z.object({

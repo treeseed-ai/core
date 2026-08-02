@@ -440,12 +440,15 @@ const ctaSecondaryLabel = booksRendered ? 'Explore books' : notesRendered ? 'Rea
 					/>
 					<BookList
 						items={books.map((book) => ({
-							href: `/books/${book.id}/`,
+							id: book.data.id,
+							slug: book.data.slug,
 							title: book.data.title,
 							summary: book.data.summary,
-							meta: book.data.sectionLabel,
-							landingPath: book.data.landingPath,
-							downloadHref: book.data.downloadHref,
+							status: book.data.status,
+							visibility: book.data.visibility,
+							topics: book.data.topics,
+							audience: book.data.audience,
+							teamSlug: 'treeseed',
 						}))}
 					/>
 				</div>

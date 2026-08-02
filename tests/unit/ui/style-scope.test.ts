@@ -41,7 +41,7 @@ describe('core public style scope', () => {
 	});
 
 	it('wraps core public pages that render UI package public layouts or site components', () => {
-		const uiPublicImports = /@treeseed\/ui\/components\/astro\/(?:layouts\/(?:MainLayout|BookLayout|ContentLayout|BridgeLayout|AuthoredEntryLayout|ProfileLayout)|site\/(?:Hero|SectionIntro|BookList|ChronicleList|ProfileList|NotesList|PathCard|CTASection|TrustCallout|RouteNotFound)|forms\/ContactForm)\.astro/u;
+		const uiPublicImports = /@treeseed\/ui\/components\/astro\/(?:layouts\/(?:MainLayout|ContentLayout|BridgeLayout|AuthoredEntryLayout|ProfileLayout)|site\/(?:Hero|SectionIntro|BookList|ChronicleList|ProfileList|NotesList|PathCard|CTASection|TrustCallout|RouteNotFound)|forms\/ContactForm)\.astro/u;
 		const offenders = filesUnder('src/pages')
 			.filter((path) => extname(path) === '.astro')
 			.filter((path) => path !== 'src/pages/ui/index.astro')

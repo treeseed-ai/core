@@ -1,4 +1,3 @@
-import type { BookRuntime } from '@treeseed/sdk/platform/books-data';
 import { getDeployConfig } from '@treeseed/sdk/platform/deploy-runtime';
 import {
 	createTeamScopedR2OverlayContentRuntimeProvider,
@@ -57,23 +56,6 @@ export function resolveHostedContentRuntimeProvider(
 		bucket,
 		locator,
 	});
-}
-
-export async function loadHostedBookRuntime(
-	locals: App.Locals | Record<string, unknown> | undefined | null,
-): Promise<BookRuntime | null> {
-	const provider = resolveHostedContentRuntimeProvider(locals);
-	if (!provider) {
-		return null;
-	}
-
-	const manifest = await provider.getManifest();
-	const pointer = manifest.runtime?.booksRuntime;
-	if (!pointer) {
-		return null;
-	}
-
-	return provider.getObject<BookRuntime>(pointer);
 }
 
 export type HostedDocsTreeEntry = {

@@ -4,32 +4,48 @@ import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import SectionIntro from '@treeseed/ui/components/astro/site/sections/SectionIntro.astro';
 import BookList from '@treeseed/ui/components/astro/site/content/BookList.astro';
 import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../../utils/content/site-content-runtime';
+import { loadFederatedBookLibrary } from '../../utils/knowledge/reader-library';
 
 const publishedRuntime = isPublishedRuntimeContentMode();
-const books = publishedRuntime
+const federation = await loadFederatedBookLibrary(Astro.locals).catch(() => ({ available: false, unavailable: true, books: [] }));
+const unavailable = 'unavailable' in federation && federation.unavailable;
+if (unavailable) Astro.response.status = 503;
+const books = unavailable ? [] : federation.available ? federation.books : publishedRuntime
 	? (await loadPublishedCollection(Astro.locals, 'books')).sort((a, b) => Number(a.data.order ?? 0) - Number(b.data.order ?? 0))
 	: (await (await import('astro:content')).getCollection('books')).sort((a, b) => a.data.order - b.data.order);
+const knowledge = federation.available || unavailable ? [] : publishedRuntime
+	? await loadPublishedCollection(Astro.locals, 'docs')
+	: await (await import('astro:content')).getCollection('docs').catch(() => []);
 ---
 
 <CoreStyleScope>
 
-<MainLayout title="Books" description="Queryable book metadata for the TreeSeed working site." currentPath="/books/">
+<MainLayout title="Books" description="Search the accessible TreeSeed knowledge library." currentPath="/books/">
 	<div class="space-y-10">
 		<SectionIntro
-			eyebrow="Books"
-			title="Books as first-class treeseed records"
-			description="Books hold the longer-form accumulated knowledge of the platform. This index exposes them as queryable metadata entries instead of burying them inside navigation code."
+			eyebrow="Knowledge library"
+			title="Follow knowledge across TreeSeed"
+			description="Search books by subject and audience, then read their ordered pages through the same accessible reader used by every Knowledge Hub."
 		/>
-		<BookList
+		{unavailable ? (
+			<section class="ts-panel" aria-labelledby="knowledge-unavailable-title">
+				<h2 id="knowledge-unavailable-title">Knowledge is temporarily unavailable</h2>
+				<p>The published library could not be loaded. Retry this page after the knowledge runtime recovers.</p>
+			</section>
+		) : <BookList
 			items={books.map((book) => ({
-				href: `/books/${book.id}/`,
+				id: book.data.id,
+				slug: book.data.slug,
 				title: book.data.title,
 				summary: book.data.summary,
-				meta: book.data.sectionLabel,
-				landingPath: book.data.landingPath,
-				downloadHref: book.data.downloadHref,
+				status: book.data.status,
+				visibility: book.data.visibility,
+				topics: book.data.topics,
+				audience: book.data.audience,
+				pageCount: Number(book.data.pageCount ?? knowledge.filter((page: any) => page.data.bookId === book.data.id).length),
+				teamSlug: book.data.source?.teamSlug ?? 'treeseed',
 			}))}
-		/>
+		/>}
 	</div>
 </MainLayout>
 </CoreStyleScope>

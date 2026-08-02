@@ -4,8 +4,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resetDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
 import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { buildStarlightSidebarEntriesFromRuntime } from '../../../src/utils/support/starlight-nav';
-import { loadHostedBookRuntime } from '../../../src/utils/packages/published-content';
+import { loadHostedDocsTree } from '../../../src/utils/packages/published-content';
 
 const originalCwd = process.cwd();
 const originalDeployConfig = (globalThis as { DEPLOY_CONFIG?: unknown }).DEPLOY_CONFIG;
@@ -98,7 +97,7 @@ turnstile:
 }
 
 describe('published content helpers', () => {
-	it('loads a hosted book runtime from the team production manifest and converts it to Starlight sidebar entries', async () => {
+	it('loads the canonical published knowledge tree without a duplicate book runtime', async () => {
 		const tenantRoot = await createTenantFixture();
 		const bucket = new MemoryR2Bucket();
 		bucket.set('teams/example-site/published/common.json', {
@@ -109,54 +108,23 @@ describe('published content helpers', () => {
 			generatedAt: '2026-04-15T00:00:00.000Z',
 			entries: [],
 			runtime: {
-				booksRuntime: {
-					objectKey: 'teams/example-site/objects/books-runtime.json',
-					sha256: 'books-runtime-sha',
+				docsTree: {
+					objectKey: 'teams/example-site/objects/docs-tree.json',
+					sha256: 'docs-tree-sha',
 				},
 			},
 		});
-		bucket.set('teams/example-site/objects/books-runtime.json', {
-			BOOKS: [
-				{
-					order: 1,
-					slug: 'operations',
-					title: 'Operations',
-					description: 'Operations book',
-					summary: 'Operations summary',
-					sectionLabel: 'Operations',
-					basePath: '/knowledge/operations/',
-					landingPath: '/books/operations/',
-					downloadFileName: 'operations.md',
-					downloadHref: '/books/operations.md',
-					downloadTitle: 'Operations',
-					sidebarItems: [
-						{
-							label: 'Overview',
-							link: '/knowledge/operations/',
-						},
-					],
-				},
-			],
-			BOOKS_LINK: {
-				label: 'Books',
-				link: '/books/',
-			},
-			LINKS: {
-				home: '/books/',
-			},
-			LIBRARY_DOWNLOAD: {
-				downloadFileName: 'treeseed-knowledge.md',
-				downloadHref: '/books/treeseed-knowledge.md',
-				downloadTitle: 'Knowledge Library',
-			},
-		});
+		bucket.set('teams/example-site/objects/docs-tree.json', [{
+			id: 'operations.start', slug: 'operations/start', title: 'Start', summary: 'Begin here.',
+			path: '/t/example-site/books/operations/start',
+		}]);
 
 		process.chdir(tenantRoot);
 		vi.stubEnv('TREESEED_CONTENT_BUCKET_BINDING', 'TREESEED_CONTENT_BUCKET');
 		vi.stubGlobal('__TREESEED_DEPLOY_CONFIG__', loadDeployConfig('treeseed.site.yaml'));
 		resetDeployConfigForTests();
 
-		const runtime = await loadHostedBookRuntime({
+		const tree = await loadHostedDocsTree({
 			runtime: {
 				env: {
 					TREESEED_CONTENT_BUCKET: bucket,
@@ -164,19 +132,8 @@ describe('published content helpers', () => {
 				},
 			},
 		} as App.Locals);
-		expect(runtime).not.toBeNull();
-		const sidebar = buildStarlightSidebarEntriesFromRuntime(runtime!, '/knowledge/operations/');
-
-		expect(runtime?.BOOKS[0]?.title).toBe('Operations');
-		expect(sidebar[0]).toMatchObject({
-			type: 'link',
-			label: 'Books',
-			href: '/books/',
-		});
-		expect(sidebar[1]).toMatchObject({
-			type: 'group',
-			label: 'Operations',
-		});
+		expect(tree).toEqual([{ id: 'operations.start', slug: 'operations/start', title: 'Start',
+			summary: 'Begin here.', path: '/t/example-site/books/operations/start' }]);
 
 		await rm(tenantRoot, { recursive: true, force: true });
 	});

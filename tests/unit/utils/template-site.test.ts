@@ -28,7 +28,6 @@ content:
   books: ./src/content/books
   docs: ./src/content/knowledge
   templates: ./src/content/templates
-  knowledge_packs: ./src/content/knowledge-packs
   workdays: ./src/content/workdays
 features:
   docs: true

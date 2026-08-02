@@ -1,0 +1,24 @@
+schemaVersion: treeseed.guarantee/v1
+id: guarantee.book.knowledge.production-readiness.567
+type: book
+subtype: knowledge
+journey: Book Knowledge Reader Production Readiness
+ownerPackage: "@treeseed/core"
+surface: scene
+summary: Require one Starlight reader for public, authenticated, private, preview, local, and atomically published book knowledge.
+status: active
+dependencies:
+  journeys: [68, 69, 90, 91]
+  guarantees: []
+actors: { allowed: [anonymous_user, authenticated_user, team_member], forbidden: [unauthorized_user] }
+devices: { required: [desktop_chromium, tablet_chromium, mobile_chromium] }
+gates: [core, security, release]
+preconditions: { fixtures: [integrated_treeseed_project] }
+api: { required: true, verifierRefs: [api.knowledge.contextual-policy, api.knowledge.run-correlated] }
+content: { required: true, verifierRefs: [core.knowledge.starlight-reader, sdk.knowledge.safe-content] }
+audit: { required: false, verifierRefs: [] }
+negativeCases:
+  - { id: unauthorized-private-reader-hidden, actor: unauthorized_user, verifierRefs: [api.knowledge.contextual-policy, core.knowledge.starlight-reader] }
+evidence: { required: [execution_graph, playwright_trace, api_verification_log, treedx_content_ref] }
+notes: [No-index release aggregate; the shared browser execution proves the exact atomic Starlight revision on every required real device.]
+run: { requiredForRelease: true }
