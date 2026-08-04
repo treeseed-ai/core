@@ -156,6 +156,8 @@ export function createAgentCollectionSchemas() {
 	const agentOutputsSchema = z.object({
 			messageTypes: z.array(z.string()).default([]),
 			modelMutations: z.array(z.string()).default([]),
+			artifactContracts: z.array(z.string()).default([]),
+			signalContracts: z.array(z.string()).default([]),
 			requiredArtifacts: z.array(z.string()).default([]),
 			schemas: z.array(z.string()).default([]),
 		}).passthrough();
@@ -174,6 +176,7 @@ export function createAgentCollectionSchemas() {
 			prompt: agentPromptSchema,
 			contentAccess: agentContentAccessSchema.optional(),
 			tools: agentToolPolicySchema.default({ allowed: [] }),
+			inputs: z.object({ artifactContracts: z.array(z.string()).default([]), signalContracts: z.array(z.string()).default([]) }).strict().optional(),
 			outputs: agentOutputsSchema.default({}),
 			questionPolicy: agentQuestionPolicySchema.optional(),
 			branchPolicy: agentBranchPolicySchema,

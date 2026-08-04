@@ -29,6 +29,7 @@ import {
 } from './tenant-theme-virtual-id.ts';
 import type { SiteCreateDependencies } from './tenant-theme-virtual-id.ts';
 import { createTenantThemeVitePlugin, rehypeNormalizeEscapedMath, remarkNormalizeEscapedMath, resolveSitePluginExtensions, toStarlightLogoSrc } from './resolve-site-plugin-extensions.ts';
+import { createWorkspacePackageReloadPlugin } from './workspace-package-reload.ts';
 
 export function createSite(
 	tenantConfig: TenantConfig,
@@ -102,8 +103,10 @@ export function createSite(
 			},
 			optimizeDeps: {
 				include: ['libsodium-wrappers-sumo'],
+				exclude: ['@treeseed/sdk', '@treeseed/ui', '@treeseed/core', '@treeseed/admin'],
 			},
 			plugins: [
+				createWorkspacePackageReloadPlugin(projectRoot),
 				createTenantThemeVitePlugin(tenantThemeCss),
 				tailwindcss() as any,
 				...siteExtensions.vitePlugins,
