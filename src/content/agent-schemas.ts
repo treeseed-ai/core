@@ -156,11 +156,19 @@ export function createAgentCollectionSchemas() {
 	const agentOutputsSchema = z.object({
 			messageTypes: z.array(z.string()).default([]),
 			modelMutations: z.array(z.string()).default([]),
-			artifactContracts: z.array(z.string()).default([]),
-			signalContracts: z.array(z.string()).default([]),
 			requiredArtifacts: z.array(z.string()).default([]),
 			schemas: z.array(z.string()).default([]),
 		}).passthrough();
+	const agentSignalsSchema = z.object({
+		subscribesTo: z.array(z.object({
+			contract: z.string().min(1),
+			filters: z.record(z.unknown()).optional(),
+			cardinality: z.enum(['single', 'each']).optional(),
+			producerPolicy: z.enum(['any', 'all', 'quorum']).optional(),
+			quorum: z.number().int().positive().optional(),
+		}).strict()).default([]),
+		publishes: z.array(z.string().min(1)).default([]),
+	}).strict();
 
 	const agentActivityExecutionSchema = agentExecutionSchema.partial().extend({
 			providerPreference: z.array(z.string()).default([]),
@@ -176,7 +184,7 @@ export function createAgentCollectionSchemas() {
 			prompt: agentPromptSchema,
 			contentAccess: agentContentAccessSchema.optional(),
 			tools: agentToolPolicySchema.default({ allowed: [] }),
-			inputs: z.object({ artifactContracts: z.array(z.string()).default([]), signalContracts: z.array(z.string()).default([]) }).strict().optional(),
+			signals: agentSignalsSchema.optional(),
 			outputs: agentOutputsSchema.default({}),
 			questionPolicy: agentQuestionPolicySchema.optional(),
 			branchPolicy: agentBranchPolicySchema,
