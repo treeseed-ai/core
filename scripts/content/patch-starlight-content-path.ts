@@ -2,18 +2,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { packageRoot } from '../packages/package-tools.ts';
+import { resolveStarlightRoot } from './resolve-starlight-root.ts';
 
 const legacyDocsRoot = path.resolve(packageRoot, '../..');
-const candidateStarlightRoots = [
+const candidateStarlightRoots = [...new Set([
+	resolveStarlightRoot(),
 	path.join(process.cwd(), 'node_modules/@astrojs/starlight'),
 	path.join(packageRoot, 'node_modules/@astrojs/starlight'),
 	path.join(legacyDocsRoot, 'node_modules/@astrojs/starlight'),
-];
-const candidateCollectionFiles = [
-	path.join(process.cwd(), 'node_modules/@astrojs/starlight/utils/collection.ts'),
-	path.join(packageRoot, 'node_modules/@astrojs/starlight/utils/collection.ts'),
-	path.join(legacyDocsRoot, 'node_modules/@astrojs/starlight/utils/collection.ts'),
-];
+].filter((root): root is string => Boolean(root)))];
+const candidateCollectionFiles = candidateStarlightRoots.map((root) =>
+	path.join(root, 'utils/collection.ts')
+);
 
 const originalSource = `export type StarlightCollection = 'docs' | 'i18n';
 
@@ -130,7 +130,7 @@ async function copyVendoredTree(sourceRoot, targetRoot) {
 async function patchStarlightPackageRoot(starlightRoot) {
 	const packageJsonPath = path.join(starlightRoot, 'package.json');
 	const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-	const coreVendorRoot = path.join(path.dirname(path.dirname(starlightRoot)), '@treeseed/core/dist/vendor/starlight');
+	const coreVendorRoot = path.join(packageRoot, 'dist/vendor/starlight');
 	await copyVendoredTree(coreVendorRoot, starlightRoot);
 	const virtualConfigPath = path.join(starlightRoot, 'integrations/virtual-user-config.js');
 	const virtualConfig = await fs.readFile(virtualConfigPath, 'utf8');
