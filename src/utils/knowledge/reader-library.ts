@@ -5,11 +5,26 @@ import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../conte
 
 export type RuntimeBookEntry = { id: string; data: Record<string, any> };
 export type RuntimeKnowledgeEntry = { id: string; slug?: string; data: Record<string, any> };
+type PublicKnowledgeCacheEntry = { loadedAt: number; etag?: string; payload: any; pending?: Promise<any> };
+
+const publicKnowledgeCache = new Map<string, PublicKnowledgeCacheEntry>();
+const PUBLIC_KNOWLEDGE_CACHE_TTL_MS = 5_000;
+const PUBLIC_KNOWLEDGE_CACHE_MAX_ENTRIES = 128;
 
 function apiBaseUrl(locals: App.Locals | Record<string, any>) {
 	const runtime = (locals as any)?.runtime?.env ?? {};
 	return String(runtime.TREESEED_MARKET_API_BASE_URL ?? runtime.TREESEED_CENTRAL_MARKET_API_BASE_URL
 		?? process.env.TREESEED_MARKET_API_BASE_URL ?? process.env.TREESEED_CENTRAL_MARKET_API_BASE_URL ?? '').replace(/\/+$/u, '');
+}
+
+async function fetchKnowledge(baseUrl: string, path: string, headers: Headers, cached?: PublicKnowledgeCacheEntry) {
+	if (cached?.etag) headers.set('if-none-match', cached.etag);
+	const response = await fetch(`${baseUrl}${path}`, { headers });
+	if (response.status === 304 && cached) return cached.payload;
+	if (response.status === 404) return { missing: true };
+	if (!response.ok) throw new Error(`Knowledge API request failed with status ${response.status}.`);
+	const envelope = await response.json();
+	return { payload: envelope.payload ?? envelope, etag: response.headers.get('etag') ?? undefined };
 }
 
 async function knowledgeRequest(locals: App.Locals | Record<string, any>, path: string) {
@@ -32,11 +47,30 @@ async function knowledgeRequest(locals: App.Locals | Record<string, any>, path: 
 			userId: principal.id, sessionId: session.id, identityId: session.identityId ?? null,
 			authTime: session.authenticatedAt ?? new Date().toISOString() }));
 	}
-	const response = await fetch(`${baseUrl}${path}`, { headers });
-	if (response.status === 404) return { missing: true };
-	if (!response.ok) throw new Error(`Knowledge API request failed with status ${response.status}.`);
-	const envelope = await response.json();
-	return envelope.payload ?? envelope;
+	if (principal?.id) {
+		const result = await fetchKnowledge(baseUrl, path, headers);
+		return result?.payload ?? result;
+	}
+	const key = `${baseUrl}${path}`;
+	const cached = publicKnowledgeCache.get(key);
+	if (cached && Date.now() - cached.loadedAt <= PUBLIC_KNOWLEDGE_CACHE_TTL_MS) return cached.payload;
+	if (cached?.pending) return cached.pending;
+	const pending = fetchKnowledge(baseUrl, path, headers, cached).then((result) => {
+		const entry = result?.payload === undefined
+			? { loadedAt: Date.now(), payload: result }
+			: { loadedAt: Date.now(), payload: result.payload, etag: result.etag };
+		publicKnowledgeCache.set(key, entry);
+		while (publicKnowledgeCache.size > PUBLIC_KNOWLEDGE_CACHE_MAX_ENTRIES) {
+			publicKnowledgeCache.delete(publicKnowledgeCache.keys().next().value!);
+		}
+		return entry.payload;
+	}).catch((error) => {
+		publicKnowledgeCache.delete(key);
+		throw error;
+	});
+	publicKnowledgeCache.set(key, { loadedAt: cached?.loadedAt ?? 0, etag: cached?.etag,
+		payload: cached?.payload, pending });
+	return pending;
 }
 
 const runtimeBook = (book: any): RuntimeBookEntry => ({ id: book.id, data: book });
@@ -54,7 +88,7 @@ export async function loadFederatedReader(locals: App.Locals | Record<string, an
 		...(input.pageSlug ? { pageSlug: input.pageSlug } : {}) });
 	const result = await knowledgeRequest(locals, `/v1/knowledge/reader?${query}`);
 	if (!result || result.missing) return result;
-	return { book: runtimeBook(result.book), pages: (result.pages ?? []).map(runtimePage),
+	return { book: runtimeBook(result.book), pages: (result.navigation ?? []).map(runtimePage),
 		page: result.page ? runtimePage(result.page) : null, published: true };
 }
 
