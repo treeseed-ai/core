@@ -238,6 +238,7 @@ export function createAgentCollectionSchemas() {
 			template: z.string().optional(),
 			identity: agentIdentitySchema.default({}),
 			runtimeStatus: withOptionalDefault(z.enum(runtimeStatusValues), AGENT_MODEL_DEFAULTS.runtimeStatus),
+			designMaturity: z.enum(['draft', 'validated', 'simulated', 'proven']).default('draft'),
 			capabilities: z.array(agentCapabilitySchema).default([]),
 			permissionPolicy: agentPermissionPolicySchema.optional(),
 			tags: z.array(z.string()).default(AGENT_MODEL_DEFAULTS.tags ?? []),
