@@ -174,7 +174,14 @@ export function createAgentCollectionSchemas() {
 			providerPreference: z.array(z.string()).default([]),
 			maxRuntimeSeconds: z.number().int().positive().optional(),
 			maxRetries: z.number().int().nonnegative().optional(),
-			verificationRequired: z.boolean().optional(),
+		verificationRequired: z.boolean().optional(),
+		maxTotalTokens: z.number().int().positive().optional(),
+		warningTokens: z.number().int().positive().optional(),
+		maxCostAmount: z.number().nonnegative().optional(),
+		costCurrency: z.string().min(3).max(3).optional(),
+		nativeLimits: z.array(z.object({ unit: z.string().min(1), amount: z.number().nonnegative(), enforceable: z.boolean().optional() }).strict()).optional(),
+		pricingGeneration: z.string().optional(),
+		enforcementConfidence: z.enum(['exact', 'bounded', 'estimated', 'opaque']).optional(),
 		}).passthrough();
 
 	const agentActivityProfileSchema = z.object({
@@ -189,7 +196,20 @@ export function createAgentCollectionSchemas() {
 			questionPolicy: agentQuestionPolicySchema.optional(),
 			branchPolicy: agentBranchPolicySchema,
 			execution: agentActivityExecutionSchema.optional(),
-		}).passthrough();
+	}).passthrough();
+	const agentChatProfileSchema = z.object({
+		foundation: z.literal('discussion-v1'),
+		responseStyle: z.string().optional(),
+		promptTask: z.string().optional(),
+		providerPreference: z.array(z.string()).optional(),
+		maxRuntimeSeconds: z.number().int().positive().optional(),
+		maxTotalTokens: z.number().int().positive().optional(),
+		warningTokens: z.number().int().positive().optional(),
+		maxCostAmount: z.number().nonnegative().optional(),
+		costCurrency: z.string().length(3).optional(),
+		toolAdditions: z.array(z.string()).optional(),
+		contextModels: z.array(z.string()).optional(),
+	}).strict();
 
 	const peopleSchema = z.object({
 			name: z.string(),
@@ -227,6 +247,7 @@ export function createAgentCollectionSchemas() {
 			activityProfiles: z.record(agentActivityProfileSchema).refine((profiles) => Object.keys(profiles).length > 0, {
 				message: 'activityProfiles must define at least one activity profile',
 			}),
+			chatProfile: agentChatProfileSchema.optional(),
 		}).strict());
 
 	const agentTestSchema = z.object({
