@@ -40,7 +40,7 @@ const knowledge = federation.available || unavailable ? [] : publishedRuntime
 				summary: book.data.summary,
 				status: book.data.status,
 				visibility: book.data.visibility,
-				topics: book.data.topics,
+				topics: book.data.groupIds,
 				audience: book.data.audience,
 				pageCount: Number(book.data.pageCount ?? knowledge.filter((page: any) => page.data.bookId === book.data.id).length),
 				teamSlug: book.data.source?.teamSlug ?? 'treeseed',

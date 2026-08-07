@@ -131,7 +131,7 @@ function resolveDocsCollectionProvider(
 					visibility: z.enum(KNOWLEDGE_VISIBILITIES),
 					order: z.number().int().nonnegative().default(0),
 					parentId: z.string().optional(),
-					tags: z.array(z.string()).default(MODEL_DEFAULTS.tags ?? []),
+					groupIds: z.array(z.string()).default(MODEL_DEFAULTS.groupIds ?? []),
 					contributors: z.array(z.string()).default([]),
 					relatedBookIds: z.array(z.string()).default([]),
 					relatedKnowledgeIds: z.array(z.string()).default([]),
@@ -176,6 +176,7 @@ import { createAgentCollectionSchemas } from './agent-schemas.ts';
 import { createCatalogCollectionSchemas } from './catalog-schemas.ts';
 import { createWorkdayCollectionSchemas } from './workday-schemas.ts';
 import { createDiscussionCollectionSchemas } from './discussion-schemas.ts';
+import { createGroupCollectionSchemas } from './group-schemas.ts';
 export function createCollections(tenantConfig: TenantConfig, { docsLoader, docsSchema }: DocsDependencies) {
 	const publishedRuntime = getContentServingMode() === 'published_runtime';
 	const { pageSchema, noteSchema, questionSchema, objectiveSchema, proposalSchema, decisionSchema } = createGovernanceCollectionSchemas();
@@ -183,6 +184,7 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 	const { bookSchema, templateProductSchema } = createCatalogCollectionSchemas();
 	const { workdaySchema } = createWorkdayCollectionSchemas();
 	const { discussionSchema, discussionMessageSchema, discussionEventSchema } = createDiscussionCollectionSchemas();
+	const { groupSchema, groupEdgeSchema } = createGroupCollectionSchemas();
 	const docsCollectionProvider = resolveDocsCollectionProvider(tenantConfig, { docsLoader, docsSchema });
 	const markdownLoader = (base: string) => publishedRuntime
 		? optionalMarkdownGlob(base)
@@ -199,6 +201,8 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 		discussions: defineCollection({ loader: markdownLoader(tenantConfig.content.discussions ?? resolve(dirname(tenantConfig.content.agents), 'discussions')), schema: discussionSchema }),
 		discussion_messages: defineCollection({ loader: markdownLoader(tenantConfig.content.discussion_messages ?? resolve(dirname(tenantConfig.content.agents), 'discussion-messages')), schema: discussionMessageSchema }),
 		discussion_events: defineCollection({ loader: markdownLoader(tenantConfig.content.discussion_events ?? resolve(dirname(tenantConfig.content.agents), 'discussion-events')), schema: discussionEventSchema }),
+		groups: defineCollection({ loader: markdownLoader(tenantConfig.content.groups ?? resolve(dirname(tenantConfig.content.agents), 'groups')), schema: groupSchema }),
+		group_edges: defineCollection({ loader: markdownLoader(tenantConfig.content.group_edges ?? resolve(dirname(tenantConfig.content.agents), 'group-edges')), schema: groupEdgeSchema }),
 		books: defineCollection({ loader: markdownLoader(tenantConfig.content.books), schema: bookSchema }),
 		docs: defineCollection({
 			loader: (publishedRuntime ? optionalMarkdownGlob(tenantConfig.content.docs) : docsCollectionProvider.loader) as any,

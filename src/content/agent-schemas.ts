@@ -210,6 +210,14 @@ export function createAgentCollectionSchemas() {
 		toolAdditions: z.array(z.string()).optional(),
 		contextModels: z.array(z.string()).optional(),
 	}).strict();
+	const agentGroupSubscriptionSchema = z.object({
+		groupIds: z.array(z.string()).min(1),
+		includeDescendants: z.boolean().default(true),
+		models: z.array(z.string()).min(1),
+		events: z.array(z.string()).min(1),
+		activityProfile: z.string().min(1),
+		intent: z.enum(['discuss', 'propose', 'act']).optional(),
+	}).strict();
 
 	const peopleSchema = z.object({
 			name: z.string(),
@@ -218,7 +226,7 @@ export function createAgentCollectionSchemas() {
 			role: z.string(),
 			affiliation: z.string(),
 			status: withOptionalDefault(z.enum(statusValues), PEOPLE_MODEL_DEFAULTS.status),
-			tags: z.array(z.string()).default(PEOPLE_MODEL_DEFAULTS.tags ?? []),
+			groupIds: z.array(z.string()).default([]),
 			links: z.array(profileLinkSchema).default([]),
 			relatedQuestions: z.array(reference('questions')).default([]),
 			relatedObjectives: z.array(reference('objectives')).default([]),
@@ -241,7 +249,8 @@ export function createAgentCollectionSchemas() {
 			designMaturity: z.enum(['draft', 'validated', 'simulated', 'proven']).default('draft'),
 			capabilities: z.array(agentCapabilitySchema).default([]),
 			permissionPolicy: agentPermissionPolicySchema.optional(),
-			tags: z.array(z.string()).default(AGENT_MODEL_DEFAULTS.tags ?? []),
+			groupIds: z.array(z.string()).default([]),
+			groupSubscriptions: z.array(agentGroupSubscriptionSchema).default([]),
 			links: z.array(profileLinkSchema).default([]),
 			relatedQuestions: z.array(reference('questions')).default([]),
 			relatedObjectives: z.array(reference('objectives')).default([]),
@@ -258,7 +267,7 @@ export function createAgentCollectionSchemas() {
 			fixture: z.string().optional(),
 			trigger: z.record(z.any()).default({}),
 			expect: z.record(z.any()).default({}),
-			tags: z.array(z.string()).default([]),
+			groupIds: z.array(z.string()).default([]),
 		});
 
 	return { profileLinkSchema, agentWorktreeSchema, agentExecutionSchema, agentCapabilitySchema, agentIdentitySchema, agentPromptSchema, agentToolPolicySchema, agentContentScopeSchema, agentContentAccessSchema, agentBranchPolicySchema, agentQuestionPolicySchema, agentContentPermissionSchema, agentModePermissionPolicySchema, agentPermissionPolicySchema, agentOutputsSchema, agentActivityExecutionSchema, agentActivityProfileSchema, peopleSchema, agentSchema, agentTestSchema };

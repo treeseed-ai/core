@@ -18,6 +18,7 @@ export function createDiscussionCollectionSchemas() {
 		visibility: z.enum(['team', 'private']).default('team'),
 		participantIds: z.array(z.string()).default([]),
 		agentIds: z.array(z.string()).default([]),
+		groupIds: z.array(z.string()).default([]),
 		trackedBranch: z.string().optional(),
 		createdAt: z.coerce.date(),
 		updatedAt: z.coerce.date(),
@@ -30,6 +31,7 @@ export function createDiscussionCollectionSchemas() {
 		intent: z.enum(['discuss', 'propose', 'act']).default('discuss'),
 		replyTo: z.string().optional(),
 		mentionedAgents: z.array(z.string()).default([]),
+		groupIds: z.array(z.string()).default([]),
 		fileRefs: z.array(fileReferenceSchema).default([]),
 		createdAt: z.coerce.date(),
 	});
@@ -43,6 +45,7 @@ export function createDiscussionCollectionSchemas() {
 		assignmentId: z.string().optional(),
 		modeRunId: z.string().optional(),
 		providerId: z.string().optional(),
+		groupIds: z.array(z.string()).default([]),
 		occurredAt: z.coerce.date(),
 		metrics: z.record(z.any()).default({}),
 		refs: z.array(z.string()).default([]),

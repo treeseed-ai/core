@@ -26,7 +26,7 @@ const agents = publishedRuntime
 				name: agent.data.name,
 				summary: agent.data.summary,
 				meta: `${agent.data.operator} · ${agent.data.runtimeStatus}`,
-				tags: agent.data.tags,
+				tags: agent.data.groupIds,
 			}))}
 		/>
 	</div>
