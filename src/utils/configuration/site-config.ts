@@ -67,111 +67,111 @@ export function applyNoteModelDefaults<
 	T extends Partial<{
 		author: string;
 		draft: boolean;
-		tags: string[];
+		groupIds: string[];
 		status: string;
 	}>,
 >(value: T) {
 	return {
 		...NOTE_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? NOTE_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? NOTE_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyQuestionModelDefaults<
 	T extends Partial<{
 		draft: boolean;
-		tags: string[];
+		groupIds: string[];
 		status: string;
 	}>,
 >(value: T) {
 	return {
 		...QUESTION_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? QUESTION_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? QUESTION_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyObjectiveModelDefaults<
 	T extends Partial<{
 		draft: boolean;
-		tags: string[];
+		groupIds: string[];
 		status: string;
 	}>,
 >(value: T) {
 	return {
 		...OBJECTIVE_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? OBJECTIVE_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? OBJECTIVE_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyProposalModelDefaults<
 	T extends Partial<{
 		draft: boolean;
-		tags: string[];
+		groupIds: string[];
 		status: string;
 	}>,
 >(value: T) {
 	return {
 		...PROPOSAL_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? PROPOSAL_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? PROPOSAL_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyDecisionModelDefaults<
 	T extends Partial<{
 		draft: boolean;
-		tags: string[];
+		groupIds: string[];
 		status: string;
 	}>,
 >(value: T) {
 	return {
 		...DECISION_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? DECISION_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? DECISION_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyPeopleModelDefaults<
 	T extends Partial<{
 		status: string;
-		tags: string[];
+		groupIds: string[];
 	}>,
 >(value: T) {
 	return {
 		...PEOPLE_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? PEOPLE_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? PEOPLE_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
 export function applyAgentModelDefaults<
 	T extends Partial<{
 		runtimeStatus: string;
-		tags: string[];
+		groupIds: string[];
 	}>,
 >(value: T) {
 	return {
 		...AGENT_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? AGENT_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? AGENT_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
-export function applyBookModelDefaults<T extends Partial<{ tags: string[] }>>(value: T) {
+export function applyBookModelDefaults<T extends Partial<{ groupIds: string[] }>>(value: T) {
 	return {
 		...BOOK_MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? BOOK_MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? BOOK_MODEL_DEFAULTS.groupIds ?? [],
 	};
 }
 
-export function applyDocsModelDefaults<T extends Partial<{ tags: string[] }>>(value: T) {
+export function applyDocsModelDefaults<T extends Partial<{ groupIds: string[] }>>(value: T) {
 	return {
 		...MODEL_DEFAULTS,
 		...value,
-		tags: value.tags ?? MODEL_DEFAULTS.tags ?? [],
+		groupIds: value.groupIds ?? MODEL_DEFAULTS.groupIds ?? [],
 	};
 }

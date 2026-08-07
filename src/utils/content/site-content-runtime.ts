@@ -79,7 +79,7 @@ function dateValue(value: unknown) {
 	return null;
 }
 
-function normalizeTags(value: unknown) {
+function normalizeGroupIds(value: unknown) {
 	return Array.isArray(value)
 		? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
 		: [];
@@ -110,7 +110,7 @@ export function normalizePublishedEntry<T = Record<string, unknown>>(
 		summary: typeof frontmatter.summary === 'string' ? frontmatter.summary : entry.summary,
 		status: typeof frontmatter.status === 'string' ? frontmatter.status : entry.status,
 		slug: typeof frontmatter.slug === 'string' ? frontmatter.slug : entry.slug,
-		tags: normalizeTags(frontmatter.tags),
+		groupIds: normalizeGroupIds(frontmatter.groupIds),
 		links: normalizeLinks(frontmatter.links),
 	};
 

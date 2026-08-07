@@ -43,7 +43,7 @@ const contributors = publishedRuntime
 				status: question.data.status,
 				date: question.data.date,
 				meta: contributors.get(question.id)?.data.name,
-				tags: question.data.tags,
+				tags: question.data.groupIds,
 			}))}
 		/>
 	</div>

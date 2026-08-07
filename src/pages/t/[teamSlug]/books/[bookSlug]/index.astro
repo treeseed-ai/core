@@ -18,10 +18,10 @@ else if (!book || (!federated?.book && teamSlug !== 'treeseed')) Astro.response.
 const overview = book ? {
 	schemaVersion: 'treeseed.knowledge-page/v1', id: `${book.data.id}.overview`, bookId: book.data.id,
 	slug: 'overview', title: book.data.title, summary: book.data.summary, status: 'published',
-	visibility: book.data.visibility, order: 0, tags: book.data.topics ?? [], contributors: [],
+	visibility: book.data.visibility, order: 0, groupIds: book.data.groupIds ?? [], contributors: [],
 	relatedBookIds: book.data.relatedBookIds ?? [], relatedKnowledgeIds: [], capabilityIds: [],
 	guaranteeIds: [],
-	routePatterns: [], resourceTypes: ['book'], actionIds: [], keywords: book.data.topics ?? [], documentationUrls: [],
+	routePatterns: [], resourceTypes: ['book'], actionIds: [], keywords: book.data.groupIds ?? [], documentationUrls: [],
 } : null;
 ---
 
