@@ -74,7 +74,7 @@
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
     "@treeseed/sdk": "github:treeseed-ai/sdk#e364486a48f332795b48c98b68b6188467f251cf",
-    "@treeseed/ui": "github:treeseed-ai/ui#c64f2908a167383d057b83104b41dc03ea196757",
+    "@treeseed/ui": "github:treeseed-ai/ui#a1793dd77ed94ca5495a855892bb5569c8179aed",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
     "katex": "^0.16.22",
