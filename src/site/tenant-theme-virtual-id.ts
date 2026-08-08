@@ -129,14 +129,12 @@ export function collectLocalPageRouteEntries(tenantConfig: TenantConfig, project
 }
 
 export function tenantPageRouteExists(projectRoot: string, pattern: string) {
-	if (pattern.includes('[') || pattern.includes(']')) return false;
 	const cleanPattern = pattern.replace(/\/+$/u, '') || '/';
-	const routePath = cleanPattern === '/'
-		? 'index'
-		: cleanPattern.replace(/^\/+/u, '').replace(/\/$/u, '/index');
-	return ['astro', 'mdx', 'md', 'ts', 'js'].some((extension) =>
-		existsSync(resolve(projectRoot, 'src', 'pages', `${routePath}.${extension}`)),
-	);
+	const routePath = cleanPattern === '/' ? 'index' : cleanPattern.replace(/^\/+/u, '');
+	const candidates = cleanPattern === '/' ? [routePath] : [routePath, `${routePath}/index`];
+	return candidates.some((candidate) => ['astro', 'mdx', 'md', 'ts', 'js'].some((extension) =>
+		existsSync(resolve(projectRoot, 'src', 'pages', `${candidate}.${extension}`)),
+	));
 }
 
 export function createRoutesIntegration(tenantConfig: TenantConfig, projectRoot: string, routes: SiteRoute[] = []) {

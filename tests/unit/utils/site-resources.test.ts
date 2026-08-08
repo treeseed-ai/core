@@ -10,6 +10,7 @@ import {
 	resolveSiteResource,
 	resolveStyleEntrypoint,
 } from '../../../src/support/site-resources';
+import { tenantPageRouteExists } from '../../../src/site/tenant-theme-virtual-id';
 
 const tempRoots: string[] = [];
 
@@ -163,5 +164,17 @@ describe('site resources', () => {
 		expect(resolveSiteResource(layers, 'pages', 'pages/contact.astro')).toBeNull();
 		expect(() => resolvePageEntrypoint(layers, 'pages/contact.astro')).toThrow(/pages\/contact\.astro/);
 		expect(() => resolveStyleEntrypoint(layers, 'styles/tokens.css')).toThrow(/styles\/tokens\.css/);
+	});
+
+	it('recognizes tenant index and dynamic routes before plugin injection', async () => {
+		const tenantRoot = await createFixtureRoot('treeseed-site-routes-');
+		await writeFixtureFile(tenantRoot, 'src/pages/app/account/index.astro', 'account');
+		await writeFixtureFile(tenantRoot, 'src/pages/app/projects/[projectId]/index.astro', 'project');
+		await writeFixtureFile(tenantRoot, 'src/pages/v1/[...all].ts', 'api');
+
+		expect(tenantPageRouteExists(tenantRoot, '/app/account')).toBe(true);
+		expect(tenantPageRouteExists(tenantRoot, '/app/projects/[projectId]')).toBe(true);
+		expect(tenantPageRouteExists(tenantRoot, '/v1/[...all]')).toBe(true);
+		expect(tenantPageRouteExists(tenantRoot, '/app/missing')).toBe(false);
 	});
 });
