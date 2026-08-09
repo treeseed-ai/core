@@ -112,7 +112,8 @@ export function createAgentCollectionSchemas() {
 				teamId: z.string().optional(),
 				requiredRoles: z.array(z.string()).default([]),
 				allowedRoles: z.array(z.string()).default([]),
-				allowedAgentClasses: z.array(z.string()).default([]),
+				allowedAgentIds: z.array(z.string()).default([]),
+				allowedActivityProfiles: z.array(z.string()).default([]),
 				teamMemberId: z.string().optional(),
 				projectId: z.string().optional(),
 				agentSlug: z.string().optional(),
@@ -172,6 +173,7 @@ export function createAgentCollectionSchemas() {
 
 	const agentActivityExecutionSchema = agentExecutionSchema.partial().extend({
 			providerPreference: z.array(z.string()).default([]),
+			requiredCapabilities: z.array(z.string()).default([]),
 			maxRuntimeSeconds: z.number().int().positive().optional(),
 			maxRetries: z.number().int().nonnegative().optional(),
 		verificationRequired: z.boolean().optional(),
@@ -202,6 +204,7 @@ export function createAgentCollectionSchemas() {
 		responseStyle: z.string().optional(),
 		promptTask: z.string().optional(),
 		providerPreference: z.array(z.string()).optional(),
+		requiredCapabilities: z.array(z.string()).optional(),
 		maxRuntimeSeconds: z.number().int().positive().optional(),
 		maxTotalTokens: z.number().int().positive().optional(),
 		warningTokens: z.number().int().positive().optional(),
