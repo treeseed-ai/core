@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resetDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
 import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
 import { loadHostedDocsTree } from '../../../src/utils/packages/published-content';
+import { loadPublishedCollection } from '../../../src/utils/content/site-content-runtime';
 
 const originalCwd = process.cwd();
 const originalDeployConfig = (globalThis as { DEPLOY_CONFIG?: unknown }).DEPLOY_CONFIG;
@@ -67,8 +68,8 @@ cloudflare:
   r2:
     binding: TREESEED_CONTENT_BUCKET
     bucketName: example-site-content
-    manifestKeyTemplate: teams/{teamId}/published/common.json
-    previewRootTemplate: teams/{teamId}/previews
+    manifestKeyTemplate: content/{teamId}/{projectId}/{environment}/channels/current.json
+    previewRootTemplate: content/{teamId}/{projectId}/previews
     previewTtlHours: 168
 plugins:
   - package: '@treeseed/sdk/plugin-default'
@@ -83,6 +84,7 @@ providers:
     research: project_graph
   deploy: cloudflare
   content:
+    serving: published_runtime
     runtime: team_scoped_r2_overlay
     publish: team_scoped_r2_overlay
     docs: default
@@ -97,22 +99,35 @@ turnstile:
 }
 
 describe('published content helpers', () => {
-	it('loads the canonical published knowledge tree without a duplicate book runtime', async () => {
+	it('loads the exact project-scoped R2 publication without a local content directory', async () => {
 		const tenantRoot = await createTenantFixture();
 		const bucket = new MemoryR2Bucket();
-		bucket.set('teams/example-site/published/common.json', {
+		const manifestKey = 'content/example-site/admin/staging/channels/current.json';
+		bucket.set(manifestKey, {
+			contract: 'treeseed.content-publication/v3',
 			schemaVersion: 2,
-			siteSlug: 'example-site',
+			siteSlug: 'admin',
 			teamId: 'example-site',
+			projectId: 'admin',
 			revision: 'rev-1',
 			generatedAt: '2026-04-15T00:00:00.000Z',
-			entries: [],
+			entries: [{
+				id: 'runtime-note',
+				model: 'notes',
+				slug: 'runtime-note',
+				title: 'Runtime note',
+				content: { objectKey: 'content/example-site/admin/runtime-note.json', sha256: 'note-sha' },
+			}],
 			runtime: {
 				docsTree: {
 					objectKey: 'teams/example-site/objects/docs-tree.json',
 					sha256: 'docs-tree-sha',
 				},
 			},
+		});
+		bucket.set('content/example-site/admin/runtime-note.json', {
+			model: 'notes', id: 'runtime-note', slug: 'runtime-note', title: 'Runtime note',
+			frontmatter: { title: 'Runtime note' }, body: 'R2 only.\n',
 		});
 		bucket.set('teams/example-site/objects/docs-tree.json', [{
 			id: 'operations.start', slug: 'operations/start', title: 'Start', summary: 'Begin here.',
@@ -129,11 +144,21 @@ describe('published content helpers', () => {
 				env: {
 					TREESEED_CONTENT_BUCKET: bucket,
 					TREESEED_CONTENT_DEFAULT_TEAM_ID: 'example-site',
+					TREESEED_CONTENT_MANIFEST_KEY: manifestKey,
 				},
 			},
 		} as App.Locals);
 		expect(tree).toEqual([{ id: 'operations.start', slug: 'operations/start', title: 'Start',
 			summary: 'Begin here.', path: '/t/example-site/books/operations/start' }]);
+		const notes = await loadPublishedCollection({
+			runtime: { env: {
+				TREESEED_CONTENT_BUCKET: bucket,
+				TREESEED_CONTENT_DEFAULT_TEAM_ID: 'example-site',
+				TREESEED_CONTENT_MANIFEST_KEY: manifestKey,
+			} },
+		} as App.Locals, 'notes');
+		expect(notes).toHaveLength(1);
+		expect(notes[0]).toMatchObject({ id: 'runtime-note', data: { title: 'Runtime note' } });
 
 		await rm(tenantRoot, { recursive: true, force: true });
 	});

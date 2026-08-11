@@ -18,6 +18,11 @@ function previewFromLocals(locals: App.Locals | Record<string, unknown> | undefi
 	return ((locals as App.Locals | undefined)?.contentPreview ?? null) as EditorialPreviewTokenPayload | null;
 }
 
+function runtimeText(runtime: CloudflareRuntime | null, key: string) {
+	const value = runtime?.env?.[key];
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 function defaultTeamIdForRuntime(locals: App.Locals | Record<string, unknown> | undefined | null) {
 	const runtime = runtimeFromLocals(locals);
 	const configured = typeof runtime?.env?.TREESEED_CONTENT_DEFAULT_TEAM_ID === 'string'
@@ -51,10 +56,19 @@ export function resolveHostedContentRuntimeProvider(
 		defaultTeamId,
 		preview?.teamId === defaultTeamId ? preview.previewId : undefined,
 	);
+	const manifestKey = runtimeText(runtime, 'TREESEED_CONTENT_MANIFEST_KEY');
+	const previewRoot = runtimeText(runtime, 'TREESEED_EDITORIAL_PREVIEW_ROOT');
 
 	return createTeamScopedR2OverlayContentRuntimeProvider({
 		bucket,
-		locator,
+		locator: {
+			...locator,
+			...(manifestKey ? { manifestKey } : {}),
+			...(previewRoot ? {
+				previewRoot,
+				overlayKey: preview?.previewId ? `${previewRoot}/${preview.previewId}/overlay.json` : undefined,
+			} : {}),
+		},
 	});
 }
 

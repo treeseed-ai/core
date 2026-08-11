@@ -62,7 +62,7 @@ export function createSite(
 	const serverRendered =
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
 	const allowedDomains = deriveAstroAllowedDomains(deployConfig, { siteUrl: siteConfig.site.siteUrl });
-	const publishedRuntime = getContentServingMode() === 'published_runtime';
+	const publishedRuntime = getContentServingMode(deployConfig) === 'published_runtime';
 	const pageRoutes = publishedRuntime ? [DYNAMIC_PAGE_ROUTE_ENTRY] : collectLocalPageRouteEntries(tenantConfig, projectRoot);
 	const packageRoutes = [
 		...PACKAGE_ROUTE_ENTRIES,
@@ -137,6 +137,7 @@ export function createSite(
 				TREESEED_EDITORIAL_PREVIEW_TTL_HOURS: envField.number({ context: 'server', access: 'secret', optional: true }),
 				CONTENT_BUCKET_NAME: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_DEFAULT_TEAM_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+				TREESEED_CONTENT_MANIFEST_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_MANIFEST_KEY_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_PREVIEW_ROOT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare'], context: 'server', access: 'secret', optional: true }),
@@ -150,7 +151,7 @@ export function createSite(
 				...packageRoutes.map((route) => resolveRouteEntry(route, siteLayers)),
 				...siteExtensions.routes.map((route) => resolveRouteEntry(route, siteLayers)),
 			]),
-			...(docsRendered && !publishedRuntime ? [starlight({
+			...(docsRendered ? [starlight({
 				prerender: !serverRendered,
 				pagefind: !serverRendered,
 				disable404Route: true,
