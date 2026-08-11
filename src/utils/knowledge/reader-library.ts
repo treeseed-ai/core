@@ -13,8 +13,8 @@ const PUBLIC_KNOWLEDGE_CACHE_MAX_ENTRIES = 128;
 
 function apiBaseUrl(locals: App.Locals | Record<string, any>) {
 	const runtime = (locals as any)?.runtime?.env ?? {};
-	return String(runtime.TREESEED_MARKET_API_BASE_URL ?? runtime.TREESEED_CENTRAL_MARKET_API_BASE_URL
-		?? process.env.TREESEED_MARKET_API_BASE_URL ?? process.env.TREESEED_CENTRAL_MARKET_API_BASE_URL ?? '').replace(/\/+$/u, '');
+	return String(runtime.TREESEED_MARKET_API_BASE_URL
+		?? process.env.TREESEED_MARKET_API_BASE_URL ?? '').replace(/\/+$/u, '');
 }
 
 async function fetchKnowledge(baseUrl: string, path: string, headers: Headers, cached?: PublicKnowledgeCacheEntry) {
