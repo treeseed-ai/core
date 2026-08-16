@@ -3,7 +3,9 @@ import { z } from 'astro/zod';
 import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { AGENT_ACTIVITY_TYPES } from '@treeseed/sdk/types/agents';
+import { agentTestContentSchema } from '@treeseed/sdk/content-validation';
 import { AGENT_MODEL_DEFAULTS, PEOPLE_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
+import { withPortableContentValidation } from './portable-content-schema.ts';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const runtimeStatusValues = ['active', 'experimental', 'dormant'] as const;
@@ -31,8 +33,6 @@ export function createAgentCollectionSchemas() {
 		});
 
 	const agentExecutionSchema = z.object({
-			provider: z.string().optional(),
-			model: z.string().optional(),
 			approvalPolicy: z.string().optional(),
 			sandboxMode: z.string().optional(),
 			reasoningEffort: z.string().optional(),
@@ -45,7 +45,6 @@ export function createAgentCollectionSchemas() {
 			leaseSeconds: z.number().int().positive().default(300),
 			retryLimit: z.number().int().nonnegative().default(3),
 			branchPrefix: z.string().default('agent'),
-			providerProfile: z.record(z.unknown()).optional(),
 		});
 
 	const agentCapabilitySchema = z.union([
@@ -80,18 +79,12 @@ export function createAgentCollectionSchemas() {
 			denied: z.array(z.string()).default([]),
 		}).passthrough();
 
-	const agentContentScopeSchema = z.object({
-			models: z.array(z.string()).default([]),
-			actions: z.array(z.string()).default([]),
-			books: z.array(z.string()).default([]),
-			paths: z.array(z.string()).default([]),
-			relations: z.array(z.string()).default([]),
-		}).passthrough();
-
-	const agentContentAccessSchema = z.object({
-			read: agentContentScopeSchema.optional(),
-			write: agentContentScopeSchema.optional(),
+	const agentPermissionsSchema = z.object({
+			content:z.record(z.object({ operations:z.array(z.string().min(1)).min(1),filters:z.record(z.unknown()).optional() }).strict()).optional(),
 			commit: z.object({ allowed: z.boolean() }).optional(),
+			repository: z.object({ readPaths:z.array(z.string()).optional(),writePaths:z.array(z.string()).optional(),allowCodeMutation:z.boolean().optional() }).strict().optional(),
+			network: z.object({ allowWeb:z.boolean().optional(),allowedDomains:z.array(z.string()).optional() }).strict().optional(),
+			shell: z.object({ allowCommands:z.boolean().optional(),allowedCommands:z.array(z.string()).optional(),deniedCommands:z.array(z.string()).optional() }).strict().optional(),
 		}).passthrough();
 
 	const agentBranchPolicySchema = z.object({
@@ -119,40 +112,6 @@ export function createAgentCollectionSchemas() {
 				agentSlug: z.string().optional(),
 			}).passthrough().optional(),
 		}).passthrough();
-
-	const agentContentPermissionSchema = z.object({
-			model: z.string(),
-			operations: z.array(z.string()).default([]),
-			filters: z.record(z.unknown()).optional(),
-		}).strict();
-
-	const agentModePermissionPolicySchema = z.object({
-			content: z.object({
-				read: z.array(agentContentPermissionSchema).optional(),
-				write: z.array(agentContentPermissionSchema).optional(),
-			}).strict().optional(),
-			repository: z.object({
-				readPaths: z.array(z.string()).optional(),
-				writePaths: z.array(z.string()).optional(),
-				allowCodeMutation: z.boolean().optional(),
-			}).strict().optional(),
-			network: z.object({
-				allowWeb: z.boolean().optional(),
-				allowedDomains: z.array(z.string()).optional(),
-			}).strict().optional(),
-			shell: z.object({
-				allowCommands: z.boolean().optional(),
-				allowedCommands: z.array(z.string()).optional(),
-				deniedCommands: z.array(z.string()).optional(),
-			}).strict().optional(),
-		}).strict();
-
-	const agentPermissionPolicySchema = z.object({
-			modes: z.object({
-				planning: agentModePermissionPolicySchema.optional(),
-				acting: agentModePermissionPolicySchema.optional(),
-			}).strict().optional(),
-		}).strict();
 
 	const agentOutputsSchema = z.object({
 			messageTypes: z.array(z.string()).default([]),
@@ -190,7 +149,12 @@ export function createAgentCollectionSchemas() {
 			activityType: z.enum(agentActivityTypeValues),
 			handler: z.enum(agentHandlerValues),
 			prompt: agentPromptSchema,
-			contentAccess: agentContentAccessSchema.optional(),
+			contextQueryRefs: z.array(z.string()).default([]),
+			instructionTemplateRefs: z.array(z.string()).default([]),
+			permissions: agentPermissionsSchema.optional(),
+			artifactTriggers: z.array(z.object({ event:z.string().min(1),artifactKind:z.string().min(1),model:z.string().min(1).optional(),required:z.boolean().optional() }).strict()).default([]),
+			closeoutPolicy: z.object({ warningSeconds:z.number().int().positive().optional(),summaryRequired:z.boolean().optional(),requiredArtifactKinds:z.array(z.string()).optional(),blockOnOpenQuestions:z.boolean().optional() }).strict().optional(),
+			providerOverrides:z.object({ requiredCapabilities:z.array(z.string()).optional(),disallowedProviderIds:z.array(z.string()).optional(),promptRef:z.string().min(1).optional(),instructionTemplateRefs:z.array(z.string()).optional(),maxRuntimeSeconds:z.number().int().positive().optional(),maxTotalTokens:z.number().int().positive().optional(),maxCostAmount:z.number().nonnegative().optional() }).strict().optional(),
 			tools: agentToolPolicySchema.default({ allowed: [] }),
 			signals: agentSignalsSchema.optional(),
 			outputs: agentOutputsSchema.default({}),
@@ -249,8 +213,10 @@ export function createAgentCollectionSchemas() {
 			runtimeStatus: withOptionalDefault(z.enum(runtimeStatusValues), AGENT_MODEL_DEFAULTS.runtimeStatus),
 			designMaturity: z.enum(['draft', 'validated', 'simulated', 'proven']).default('draft'),
 			capabilities: z.array(agentCapabilitySchema).default([]),
-			permissionPolicy: agentPermissionPolicySchema.optional(),
-			groupIds: z.array(z.string()).default([]),
+			groupIds: z.array(z.string()).min(1),
+			topicIds: z.array(z.string()).default([]),
+			contextQueryRefs: z.array(z.string()).default([]),
+			instructionTemplateRefs: z.array(z.string()).default([]),
 			groupSubscriptions: z.array(agentGroupSubscriptionSchema).default([]),
 			links: z.array(profileLinkSchema).default([]),
 			relatedQuestions: z.array(reference('questions')).default([]),
@@ -261,15 +227,9 @@ export function createAgentCollectionSchemas() {
 			chatProfile: agentChatProfileSchema.optional(),
 		}).strict());
 
-	const agentTestSchema = z.object({
-			id: z.string(),
-			agent: z.string(),
-			kind: z.enum(['spec', 'handler', 'message_chain', 'manager_worker', 'workday', 'api', 'ui']),
-			fixture: z.string().optional(),
-			trigger: z.record(z.any()).default({}),
-			expect: z.record(z.any()).default({}),
-			groupIds: z.array(z.string()).default([]),
-		});
+	const agentTestSchema = agentTestContentSchema;
 
-	return { profileLinkSchema, agentWorktreeSchema, agentExecutionSchema, agentCapabilitySchema, agentIdentitySchema, agentPromptSchema, agentToolPolicySchema, agentContentScopeSchema, agentContentAccessSchema, agentBranchPolicySchema, agentQuestionPolicySchema, agentContentPermissionSchema, agentModePermissionPolicySchema, agentPermissionPolicySchema, agentOutputsSchema, agentActivityExecutionSchema, agentActivityProfileSchema, peopleSchema, agentSchema, agentTestSchema };
+	return { profileLinkSchema,agentWorktreeSchema,agentExecutionSchema,agentCapabilitySchema,agentIdentitySchema,agentPromptSchema,agentToolPolicySchema,agentPermissionsSchema,agentBranchPolicySchema,agentQuestionPolicySchema,agentOutputsSchema,agentActivityExecutionSchema,agentActivityProfileSchema,
+		peopleSchema: withPortableContentValidation('person', peopleSchema),
+		agentSchema: withPortableContentValidation('agent', agentSchema), agentTestSchema };
 }

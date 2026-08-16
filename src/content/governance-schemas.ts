@@ -3,11 +3,12 @@ import { z } from 'astro/zod';
 import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { DECISION_MODEL_DEFAULTS, NOTE_MODEL_DEFAULTS, OBJECTIVE_MODEL_DEFAULTS, PAGE_MODEL_DEFAULTS, PROPOSAL_MODEL_DEFAULTS, QUESTION_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
+import { PROPOSAL_TYPE_ID_PATTERN } from '@treeseed/sdk/agent-capacity';
+import { withPortableContentValidation } from './portable-content-schema.ts';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
-const questionTypeValues = ['research', 'implementation', 'strategy', 'evaluation'] as const;
-const proposalTypeValues = ['strategy', 'policy', 'implementation', 'research', 'editorial', 'structural'] as const;
+const questionTypeValues = ['research', 'implementation', 'strategy', 'evaluation', 'knowledge-gap'] as const;
 const decisionTypeValues = ['approved', 'rejected', 'deferred', 'request_changes', 'superseded'] as const;
 const governanceStatusValues = ['draft', 'open', 'voting', 'accepted', 'rejected', 'no_decision_quorum_failed', 'withdrawn', 'superseded'] as const;
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;
@@ -58,6 +59,7 @@ export function createGovernanceCollectionSchemas() {
 			canonicalRoute: { key: 'canonicalRoute', aliases: ['canonical_route'] },
 			evidenceRefs: { key: 'evidenceRefs', aliases: ['evidence_refs'] },
 			contentProvenance: { key: 'contentProvenance', aliases: ['content_provenance'] },
+			decisionDependencies: { key: 'decisionDependencies', aliases: ['decision_dependencies'] },
 		};
 
 	const decisionFieldAliases: FieldAliasRegistry = {
@@ -165,7 +167,7 @@ export function createGovernanceCollectionSchemas() {
 			groupIds: z.array(z.string()).default([]),
 			summary: z.string(),
 			draft: z.boolean().default(PROPOSAL_MODEL_DEFAULTS.draft ?? false),
-			proposalType: z.enum(proposalTypeValues),
+			proposalType: z.string().min(1).regex(PROPOSAL_TYPE_ID_PATTERN, 'Proposal type must use lowercase kebab-case.'),
 			motivation: z.string(),
 			primaryContributor: contributorReference,
 			relatedObjectives: z.array(reference('objectives')).default([]),
@@ -182,6 +184,7 @@ export function createGovernanceCollectionSchemas() {
 				alternatives: z.array(z.string()), verification: z.array(z.string()), openQuestions: z.array(z.string()).default([]),
 			}).optional(),
 			contentProvenance: z.object({ contentPath: z.string(), commitSha: z.string(), digest: z.string(), repositoryId: z.string().optional() }).optional(),
+			decisionDependencies: z.array(z.object({ projectId: z.string(), decisionId: z.string() }).strict()).default([]),
 			governanceId: z.string().optional(),
 			governanceProviderId: z.string().optional(),
 			governancePolicyId: z.string().optional(),
@@ -232,5 +235,12 @@ export function createGovernanceCollectionSchemas() {
 			canonicalRoute: z.string().optional(),
 		}));
 
-	return { pageSchema, noteSchema, questionSchema, objectiveSchema, proposalSchema, decisionSchema };
+	return {
+		pageSchema: withPortableContentValidation('page', pageSchema),
+		noteSchema: withPortableContentValidation('note', noteSchema),
+		questionSchema: withPortableContentValidation('question', questionSchema),
+		objectiveSchema: withPortableContentValidation('objective', objectiveSchema),
+		proposalSchema: withPortableContentValidation('proposal', proposalSchema),
+		decisionSchema: withPortableContentValidation('decision', decisionSchema),
+	};
 }

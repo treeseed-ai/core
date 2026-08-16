@@ -41,11 +41,11 @@ import { z } from 'astro/zod';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { DECISION_MODEL_DEFAULTS, NOTE_MODEL_DEFAULTS, OBJECTIVE_MODEL_DEFAULTS, PAGE_MODEL_DEFAULTS, PROPOSAL_MODEL_DEFAULTS, QUESTION_MODEL_DEFAULTS } from '../utils/site-config.ts';
+import { PROPOSAL_TYPE_ID_PATTERN } from '@treeseed/sdk/agent-capacity';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
 const questionTypeValues = ['research', 'implementation', 'strategy', 'evaluation'] as const;
-const proposalTypeValues = ['strategy', 'policy', 'implementation', 'research'] as const;
 const decisionTypeValues = ['approved', 'rejected', 'deferred', 'request_changes', 'superseded'] as const;
 const governanceStatusValues = ['draft', 'open', 'voting', 'accepted', 'rejected', 'no_decision_quorum_failed', 'withdrawn', 'superseded'] as const;
 const timeHorizonValues = ['near-term', 'mid-term', 'long-term'] as const;

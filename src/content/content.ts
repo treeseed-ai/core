@@ -24,6 +24,7 @@ import {
 } from '../utils/configuration/site-config';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { KNOWLEDGE_PAGE_SCHEMA_VERSION, KNOWLEDGE_STATUSES, KNOWLEDGE_VISIBILITIES } from '@treeseed/sdk/knowledge';
+import { withPortableContentValidation } from './portable-content-schema.ts';
 
 const statusValues = ['live', 'in progress', 'exploratory', 'planned', 'speculative'] as const;
 const pageLayoutValues = ['article', 'bridge'] as const;
@@ -131,7 +132,7 @@ function resolveDocsCollectionProvider(
 				generateId: createKnowledgeDocId,
 			}),
 			schema: dependencies.docsSchema({
-				extend: z.object({
+				extend: withPortableContentValidation('knowledge', z.object({
 					schemaVersion: z.literal(KNOWLEDGE_PAGE_SCHEMA_VERSION),
 					id: z.string(),
 					bookId: z.string(),
@@ -157,7 +158,7 @@ function resolveDocsCollectionProvider(
 					actionIds: z.array(z.string()).default([]),
 					keywords: z.array(z.string()).default([]),
 					documentationUrls: z.array(z.string()).default([]),
-				}),
+				})),
 			}),
 		};
 	}
@@ -220,6 +221,22 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 			schema: docsCollectionProvider.schema as any,
 		}),
 	};
+	const operationalCollections = {
+		agent_context_queries: ['agent_context_query','agent-context-queries'],
+		agent_context_query_sets: ['agent_context_query_set','agent-context-query-sets'],
+		agent_instruction_templates: ['agent_instruction_template','agent-instruction-templates'],
+		discussion_topics: ['discussion_topic','discussion-topics'],
+		assignment_plans: ['assignment_plan','assignment-plans'],
+		assignment_statuses: ['assignment_status','assignment-statuses'],
+		assignment_summaries: ['assignment_summary','assignment-summaries'],
+		agent_evaluations: ['agent_evaluation','agent-evaluations'],
+	} as const;
+	for (const [collection,[model,directory]] of Object.entries(operationalCollections)) {
+		const base = resolve(dirname(tenantConfig.content.agents),directory);
+		if (existsSync(base)) collections[collection] = defineCollection({
+			loader: optionalMarkdownGlob(base),schema: withPortableContentValidation(model,z.object({}).passthrough()),
+		});
+	}
 
 	const agentTestsRoot = resolve(dirname(tenantConfig.content.agents), 'agent-tests');
 	if (existsSync(agentTestsRoot)) {

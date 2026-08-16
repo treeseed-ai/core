@@ -1,4 +1,5 @@
 import { z } from 'astro/zod';
+import { withPortableContentValidation } from './portable-content-schema.ts';
 
 export function createGroupCollectionSchemas() {
 	const groupSchema = z.object({
@@ -19,5 +20,8 @@ export function createGroupCollectionSchemas() {
 		predicate: z.string().min(1),
 		propagatesMembership: z.boolean().default(false),
 	});
-	return { groupSchema, groupEdgeSchema };
+	return {
+		groupSchema: withPortableContentValidation('group', groupSchema),
+		groupEdgeSchema: withPortableContentValidation('group_edge', groupEdgeSchema),
+	};
 }
