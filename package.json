@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.60-dev.fix-platform-guarantee-ownership.20260818T035019Z",
+  "version": "0.12.60-dev.fix-platform-machine-identity.20260818T062230Z",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "Apache-2.0",
   "repository": {
@@ -73,7 +73,7 @@
     "@astrojs/sitemap": "3.7.0",
     "@astrojs/starlight": "0.37.6",
     "@tailwindcss/vite": "^4.1.4",
-    "@treeseed/sdk": "github:treeseed-ai/sdk#76a6b6864d7e152b86d598a40d8f6d5203d566bc",
+    "@treeseed/sdk": "github:treeseed-ai/sdk#6b2a5b14fd42ab63f1150b15658966a6715979f3",
     "@treeseed/ui": "github:treeseed-ai/ui#d622525826d4222ced78e7748880750f6c1377bb",
     "astro": "^5.6.1",
     "esbuild": "^0.28.0",
