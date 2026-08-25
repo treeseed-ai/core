@@ -17,23 +17,24 @@ function frontmatter(path: string) {
 
 describe('portable auxiliary content schemas', () => {
 	it('validates live template and agent-test content through SDK-owned Zod schemas', () => {
-		const root = resolve('../..');
+		const root = resolve('tests/fixtures/library');
 		expect(createCatalogCollectionSchemas().templateProductSchema.safeParse(
-			frontmatter(resolve(root, 'src/content/templates/engineering.mdx')),
+			frontmatter(resolve(root, 'templates/engineering.mdx')),
 		).success).toBe(true);
 		expect(createAgentCollectionSchemas().agentTestSchema.safeParse(
-			frontmatter(resolve(root, 'src/content/agent-tests/docs-reviewer-basic.mdx')),
+			frontmatter(resolve(root, 'agent-tests/docs-reviewer-basic.mdx')),
 		).success).toBe(true);
 	});
 
 	it('validates the canonical agent permission matrix through Core and SDK schemas',() => {
-		const root = resolve('../..');
-		const definition=frontmatter(resolve(root,'src/content/agents/engineer.mdx'));
+		const root = resolve('docs/src/content');
+		const definition=frontmatter(resolve(root,'agents/engineer.mdx'));
 		definition.contextQueryRefs=[{id:'current-project-context',revision:1}];
 		definition.contextQuerySetRefs=[{id:'engineering-context',revision:2}];
 		definition.instructionTemplateRefs=[{id:'assignment-plan-standard',revision:1}];
 		definition.activityProfiles.planning.instructionTemplateRefs=[{id:'assignment-plan-standard',revision:1}];
-		expect(createAgentCollectionSchemas().agentSchema.safeParse(definition).success).toBe(true);
+		const parsed = createAgentCollectionSchemas().agentSchema.safeParse(definition);
+		expect(parsed.success, parsed.success ? undefined : parsed.error.message).toBe(true);
 	});
 
 	it('preserves the Astro workday collection contract with portable field diagnostics', () => {
