@@ -27,13 +27,14 @@ describe('portable auxiliary content schemas', () => {
 	});
 
 	it('validates the canonical agent permission matrix through Core and SDK schemas',() => {
-		const root = resolve('tests/fixtures/library');
+		const root = resolve('docs/src/content');
 		const definition=frontmatter(resolve(root,'agents/engineer.mdx'));
 		definition.contextQueryRefs=[{id:'current-project-context',revision:1}];
 		definition.contextQuerySetRefs=[{id:'engineering-context',revision:2}];
 		definition.instructionTemplateRefs=[{id:'assignment-plan-standard',revision:1}];
 		definition.activityProfiles.planning.instructionTemplateRefs=[{id:'assignment-plan-standard',revision:1}];
-		expect(createAgentCollectionSchemas().agentSchema.safeParse(definition).success).toBe(true);
+		const parsed = createAgentCollectionSchemas().agentSchema.safeParse(definition);
+		expect(parsed.success, parsed.success ? undefined : parsed.error.message).toBe(true);
 	});
 
 	it('preserves the Astro workday collection contract with portable field diagnostics', () => {
