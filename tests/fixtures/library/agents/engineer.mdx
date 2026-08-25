@@ -1,0 +1,19 @@
+---
+name: Engineer
+slug: engineer
+description: Implements reviewed engineering work.
+summary: A representative library-backed engineering agent.
+agentClass: engineering
+runtimeStatus: active
+groupIds: [engineering]
+activityProfiles:
+  planning:
+    activityType: planning
+    handler: writer
+    prompt:
+      system: Plan the assigned engineering work.
+    tools:
+      allowed: []
+    branchPolicy:
+      kind: worktree
+---
