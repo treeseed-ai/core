@@ -1,77 +1,13 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 
-const require = createRequire(import.meta.url);
+if (process.env.TREESEED_VERIFY_ENTRYPOINT_CHECK === 'true') process.exit(0);
 
-function hasSourceRunnerDependencies() {
-	try {
-		require.resolve('esbuild');
-		return true;
-	} catch {
-		return false;
-	}
-}
+const result = spawnSync('npm', ['run', 'verify:direct'], {
+	cwd: process.cwd(),
+	env: process.env,
+	stdio: 'inherit',
+});
 
-function ensureSourceRunnerDependencies() {
-	if (hasSourceRunnerDependencies()) {
-		return;
-	}
-	const result = spawnSync('npm', ['install'], {
-		cwd: process.cwd(),
-		env: { ...process.env, npm_config_ignore_scripts: 'true' },
-		stdio: 'inherit',
-	});
-	if (result.status !== 0) {
-		process.exit(result.status ?? 1);
-	}
-}
-
-function runDirectVerify() {
-	ensureSourceRunnerDependencies();
-	const result = spawnSync('npm', ['run', 'verify:direct'], {
-		cwd: process.cwd(),
-		env: process.env,
-		stdio: 'inherit',
-	});
-	process.exit(result.status ?? 1);
-}
-
-const entrypointCheckOnly = process.env.TREESEED_VERIFY_ENTRYPOINT_CHECK === 'true';
-
-async function importSdkVerifier() {
-	const siblingSdkVerifier = resolve(process.cwd(), '..', 'sdk', 'src', 'verification.ts');
-	if (existsSync(siblingSdkVerifier)) {
-		return import(pathToFileURL(siblingSdkVerifier).href);
-	}
-	return import('@treeseed/sdk/verification');
-}
-
-try {
-	ensureSourceRunnerDependencies();
-	const { runVerifyDriver } = await importSdkVerifier();
-	if (entrypointCheckOnly) {
-		process.exit(0);
-	}
-	process.exit(runVerifyDriver({
-		packageRoot: process.cwd(),
-		localExtraSiblingDependencies: ['@treeseed/agent'],
-	}));
-} catch (error) {
-	if (error && typeof error === 'object' && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND') {
-		if (entrypointCheckOnly) {
-			process.stderr.write('Treeseed core verify: @treeseed/sdk is required for verify entrypoint resolution.\n');
-			process.exit(1);
-		}
-		if (process.env.TREESEED_VERIFY_DRIVER === 'act') {
-			process.stderr.write('Treeseed core verify: `act` mode requires @treeseed/sdk to be installed.\n');
-			process.exit(1);
-		}
-		runDirectVerify();
-	}
-	throw error;
-}
+process.exit(result.status ?? 1);

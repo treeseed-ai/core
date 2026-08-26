@@ -2,7 +2,7 @@ import type {
 	ColorSchemeId,
 	SchemeTokens,
 	SemanticColorTokens,
-} from '@treeseed/sdk/platform/contracts';
+} from '@treeseed/sdk/site-contracts/platform';
 
 export type RequiredSchemeTokenInput = Pick<SemanticColorTokens,
 	| 'canvas'

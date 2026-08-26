@@ -1,4 +1,4 @@
-import type { DeployConfig, ManagedServiceEnvironmentConfig } from '@treeseed/sdk/platform/contracts';
+import type { DeployConfig, ManagedServiceEnvironmentConfig } from '@treeseed/sdk/site-contracts/platform';
 
 export interface AstroAllowedDomain {
 	hostname: string;

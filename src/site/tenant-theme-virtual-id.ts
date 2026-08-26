@@ -3,10 +3,10 @@ import { createRequire } from 'node:module';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
-import type { SiteExtensionContribution, SiteRouteContribution } from '@treeseed/sdk/platform/plugin';
-import { getTenantContentRoot } from '@treeseed/sdk/platform/tenant-config';
-import type { ContentCollection } from '@treeseed/sdk/platform/contracts';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
+import type { SiteExtensionContribution, SiteRouteContribution } from '@treeseed/sdk/site-contracts/plugin';
+import { getTenantContentRoot } from '../runtime/platform/tenant-config.ts';
+import type { ContentCollection } from '@treeseed/sdk/site-contracts/platform';
 import { buildSiteLayers, resolvePageEntrypoint, resolveSiteResource } from "../support/site-resources";
 import { isSiteRenderedModel } from "../utils/support/site-models";
 
@@ -224,8 +224,24 @@ export function resolveUiDistRoot(projectRoot: string) {
 export function createUiPackageAliases(projectRoot: string) {
 	const uiDistRoot = resolveUiDistRoot(projectRoot);
 	if (!uiDistRoot) return [];
+	const uiPackageRoot = resolve(uiDistRoot, '..');
+	const uiPackage = JSON.parse(readFileSync(resolve(uiPackageRoot, 'package.json'), 'utf8')) as {
+		exports?: Record<string, string | { default?: string; import?: string }>;
+	};
+	const componentExports = Object.entries(uiPackage.exports ?? {}).flatMap(([key, target]) => {
+		if (!key.startsWith('./components/astro/')) return [];
+		const relativeTarget = typeof target === 'string' ? target : target.default ?? target.import;
+		if (!relativeTarget) return [];
+		return [{
+			find: `@treeseed/ui/${key.slice(2)}`,
+			replacement: resolve(uiPackageRoot, relativeTarget),
+		}];
+	});
 
 	return [
+		// Exact public exports win when stable paths differ from dist internals;
+		// the regex retains compatibility for nested component entrypoints.
+		...componentExports,
 		{ find: /^@treeseed\/ui\/components\/astro\/(.*)$/, replacement: `${uiDistRoot}/astro/$1` },
 		{ find: /^@treeseed\/ui\/styles\/(.*)$/, replacement: `${uiDistRoot}/styles/$1` },
 		{ find: /^@treeseed\/ui\/lib\/(.*)$/, replacement: `${uiDistRoot}/lib/$1` },

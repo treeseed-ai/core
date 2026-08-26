@@ -1,6 +1,7 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import RouteNotFound from '@treeseed/ui/components/astro/site/navigation/RouteNotFound.astro';
+import RouteNotFound from '@treeseed/ui/components/astro/site/RouteNotFound.astro';
+import CoreStyleScope from '../../../../../layouts/CoreStyleScope.astro';
 import { bookSidebar, canReadKnowledge, loadFederatedReader, loadReaderLibrary, pagesForBook, starlightKnowledgeFrontmatter } from '../../../../../utils/knowledge/reader-library.ts';
 
 export const prerender = false;
@@ -25,6 +26,8 @@ const overview = book ? {
 } : null;
 ---
 
+
+<CoreStyleScope>
 {!book || !overview ? (
 	<RouteNotFound title={(federated as any)?.unavailable ? 'Knowledge unavailable' : 'Book not found'} description={(federated as any)?.unavailable ? 'The published knowledge runtime could not be loaded. Retry after it recovers.' : 'This book is unavailable or you do not have access to it.'} currentPath="/books/" />
 ) : (
@@ -38,3 +41,4 @@ const overview = book ? {
 		) : <p>This book does not have any published pages yet.</p>}
 	</StarlightPage>
 )}
+</CoreStyleScope>

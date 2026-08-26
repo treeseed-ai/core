@@ -42,8 +42,8 @@ export function rewriteRuntimeSpecifiers(contents) {
 		.replace(/(['"`])(\.[^'"`\n]+)\.(mjs|ts)\1/g, '$1$2.js$1')
 		.replaceAll('../../../../sdk/src/sdk.js', '@treeseed/sdk/sdk')
 		.replaceAll('../../../../sdk/src/sdk.ts', '@treeseed/sdk/sdk')
-		.replaceAll('../../../../sdk/src/sdk-types.js', '@treeseed/sdk/types')
-		.replaceAll('../../../../sdk/src/sdk-types.ts', '@treeseed/sdk/types')
+		.replaceAll('../../../../sdk/src/sdk-types.js', '@treeseed/sdk/site-contracts/catalog')
+		.replaceAll('../../../../sdk/src/sdk-types.ts', '@treeseed/sdk/site-contracts/catalog')
 		.replaceAll('../../../../sdk/src/model-registry.js', '@treeseed/sdk/models')
 		.replaceAll('../../../../sdk/src/model-registry.ts', '@treeseed/sdk/models')
 		.replaceAll('../../../../sdk/src/d1-store.js', '@treeseed/sdk/d1-store')
@@ -74,12 +74,12 @@ export function rewriteRuntimeSpecifiers(contents) {
 		.replaceAll('../../../../sdk/src/types/agents.ts', '@treeseed/sdk/types/agents')
 		.replaceAll('../../../sdk/src/types/agents.js', '@treeseed/sdk/types/agents')
 		.replaceAll('../../../sdk/src/types/agents.ts', '@treeseed/sdk/types/agents')
-		.replaceAll('../../../../sdk/src/types/cloudflare.js', '@treeseed/sdk/types/cloudflare')
-		.replaceAll('../../../../sdk/src/types/cloudflare.ts', '@treeseed/sdk/types/cloudflare')
-		.replaceAll('../../../../sdk/src/types/cloudflare', '@treeseed/sdk/types/cloudflare')
-		.replaceAll('../../../sdk/src/types/cloudflare.js', '@treeseed/sdk/types/cloudflare')
-		.replaceAll('../../../sdk/src/types/cloudflare.ts', '@treeseed/sdk/types/cloudflare')
-		.replaceAll('../../../sdk/src/types/cloudflare', '@treeseed/sdk/types/cloudflare');
+		.replaceAll('../../../../sdk/src/types/cloudflare.js', '@treeseed/sdk/site-contracts/cloudflare')
+		.replaceAll('../../../../sdk/src/types/cloudflare.ts', '@treeseed/sdk/site-contracts/cloudflare')
+		.replaceAll('../../../../sdk/src/types/cloudflare', '@treeseed/sdk/site-contracts/cloudflare')
+		.replaceAll('../../../sdk/src/types/cloudflare.js', '@treeseed/sdk/site-contracts/cloudflare')
+		.replaceAll('../../../sdk/src/types/cloudflare.ts', '@treeseed/sdk/site-contracts/cloudflare')
+		.replaceAll('../../../sdk/src/types/cloudflare', '@treeseed/sdk/site-contracts/cloudflare');
 }
 
 export function rewriteVendorImportSpecifiers(contents, importerFile) {

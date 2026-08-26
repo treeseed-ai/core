@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { resolveToolBinary } from '@treeseed/sdk/workflow-support';
+import { resolveToolBinary } from '../../runtime/platform/workflow-support.ts';
 import { DEV_RELOAD_FILE, DEFAULT_MARKET_POSTGRES_PORT, type IntegratedDevCommandId, type IntegratedDevOptions, type IntegratedDevResetAction, type IntegratedDevResetPlan, type IntegratedDevSurface, type LocalRuntimeSelection } from '../configuration/runtime-configuration.ts';
 import { CANONICAL_COMMAND_IDS, isMarketWorkspace, surfaceCommandIds } from '../runtime/integrated-dev-dependencies.ts';
 

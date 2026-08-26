@@ -1,4 +1,4 @@
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
 import { parseSiteConfig } from '../utils/configuration/site-config-schema.js';
 
 declare const TENANT_CONFIG: TenantConfig | undefined;

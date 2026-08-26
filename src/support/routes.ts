@@ -1,4 +1,4 @@
-import { defineRoute, validateRouteCapabilities, type RouteCapability, type SiteRouteContribution } from '@treeseed/sdk/platform/plugin';
+import { defineRoute, validateRouteCapabilities, type RouteCapability, type SiteRouteContribution } from '@treeseed/sdk/site-contracts/plugin';
 
 type CapabilityInput = Pick<RouteCapability, 'id' | 'description'> & Partial<RouteCapability>;
 

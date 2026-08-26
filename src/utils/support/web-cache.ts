@@ -1,5 +1,5 @@
-import { EDITORIAL_PREVIEW_COOKIE } from '@treeseed/sdk/platform/published-content';
-import { getDeployConfig } from '@treeseed/sdk/platform/plugins';
+import { EDITORIAL_PREVIEW_COOKIE } from '../../runtime/platform/published-content.ts';
+import { getDeployConfig } from '../../runtime/platform/plugins.ts';
 
 const STATIC_FILE_PATTERN = /\.[a-z0-9]+$/i;
 const PRIVATE_PATH_PREFIXES = ['/api', '/auth', '/admin', '/app', '/internal'];

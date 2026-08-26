@@ -2,8 +2,8 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resetDeployConfigForTests } from '@treeseed/sdk/platform/plugins';
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { resetDeployConfigForTests } from '../../../src/runtime/platform/plugins.ts';
+import { loadDeployConfig } from '../../../src/runtime/platform/deploy-config.ts';
 import { loadHostedDocsTree } from '../../../src/utils/packages/published-content';
 import { loadPublishedCollection } from '../../../src/utils/content/site-content-runtime';
 

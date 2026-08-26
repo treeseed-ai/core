@@ -2,6 +2,7 @@
 
 import {
 	runIntegratedDev,
+	runManagedDev,
 	type IntegratedDevFeedbackMode,
 	type LocalRuntimeMode,
 	type IntegratedDevOpenMode,
@@ -9,7 +10,6 @@ import {
 	type IntegratedDevSurface,
 	type ManagedDevAction,
 } from '../../src/runtime/dev.ts';
-import { runManagedDev } from '@treeseed/sdk';
 
 const rawArgs = process.argv.slice(2);
 const managedActions = new Set(['start', 'status', 'logs', 'stop', 'restart']);

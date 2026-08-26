@@ -9,12 +9,12 @@ import { fileURLToPath } from 'node:url';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 import tailwindcss from '@tailwindcss/vite';
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
 import { parseSiteConfig } from "../utils/configuration/site-config-schema.js";
 import { buildThemeCss } from "../utils/support/theme.ts";
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { getContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
-import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import { loadDeployConfig } from '../runtime/platform/deploy-config.ts';
+import { getContentServingMode } from '../runtime/platform/deploy-runtime.ts';
+import { loadPluginRuntime } from '../runtime/platform/plugins.ts';
 import { buildSiteLayers, resolveStyleEntrypoint } from "../support/site-resources";
 import { deriveAstroAllowedDomains } from "../utils/support/astro-security";
 import { isSiteRenderedModel } from "../utils/support/site-models";
@@ -109,7 +109,6 @@ export function createSite(
 				DEPLOY_CONFIG: injectedDeployConfig,
 			},
 			optimizeDeps: {
-				include: ['libsodium-wrappers-sumo'],
 				exclude: ['@treeseed/sdk', '@treeseed/ui', '@treeseed/core', '@treeseed/admin'],
 			},
 			plugins: [

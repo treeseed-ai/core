@@ -1,6 +1,6 @@
 import starlight from '@astrojs/starlight';
 import { createSite } from '../support/site';
-import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadManifest } from '../runtime/platform/tenant-config.ts';
 
 export function createTenantSite(manifestPath?: string) {
 	const tenant = loadManifest(manifestPath);

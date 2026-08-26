@@ -1,6 +1,6 @@
-import type { DeployConfig, TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { DeployConfig, TenantConfig } from '@treeseed/sdk/site-contracts/platform';
 import { parseSiteConfig } from "../utils/configuration/site-config-schema.js";
-import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import { loadPluginRuntime } from '../runtime/platform/plugins.ts';
 import {
 	RESOLVED_TENANT_THEME_VIRTUAL_ID,
 	TENANT_THEME_VIRTUAL_ID,

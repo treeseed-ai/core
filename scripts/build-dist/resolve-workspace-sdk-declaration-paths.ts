@@ -10,8 +10,7 @@ export function resolveWorkspaceSdkDeclarationPaths() {
 	}
 	return {
 		'@treeseed/sdk': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'index.d.ts'))],
-		'@treeseed/sdk/hosting': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'hosting', 'index.d.ts'))],
-		'@treeseed/sdk/types': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'sdk-types.d.ts'))],
+		'@treeseed/sdk/site-contracts/catalog': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'sdk-types.d.ts'))],
 		'@treeseed/sdk/types/*': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, 'types', '*.d.ts'))],
 		'@treeseed/sdk/*/index': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, '*', 'index.d.ts'))],
 		'@treeseed/sdk/*': [relativePathForTsconfig(packageRoot, resolve(workspaceSdkDistRoot, '*.d.ts'))],
@@ -136,6 +135,13 @@ export function writeCompatibilityEntrypoint(outputFile, contents) {
 }
 
 export function patchVendoredStarlight(distVendorRoot) {
+	const virtualConfigFile = resolve(distVendorRoot, 'integrations', 'virtual-user-config.js');
+	if (existsSync(virtualConfigFile)) {
+		const virtualConfig = readFileSync(virtualConfigFile, 'utf8')
+			.replaceAll('"./content/config.js"', '"./content/config.ts"')
+			.replaceAll('"./content.config.js"', '"./content.config.ts"');
+		writeFileSync(virtualConfigFile, virtualConfig, 'utf8');
+	}
 	const indexFile = resolve(distVendorRoot, 'index.js');
 	if (readdirSync(dirname(indexFile)).includes('index.js')) {
 		let source = readFileSync(indexFile, 'utf8')

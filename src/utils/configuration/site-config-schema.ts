@@ -1,2 +1,2 @@
-// @ts-nocheck
-export { parseSiteConfig } from '@treeseed/sdk/platform/site-config-schema';
+export * from './site-config-schema/is-record.ts';
+export * from './site-config-schema/parse-access-policies.ts';

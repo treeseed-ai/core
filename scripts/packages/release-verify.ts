@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { extname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { packageRoot } from './package-tools.ts';
 
@@ -21,56 +21,8 @@ function run(command: string, args: string[], cwd = packageRoot) {
 	}
 }
 
-function runtimeDependencyNames() {
-	const packageJson = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as {
-		dependencies?: Record<string, string>;
-	};
-	return Object.keys(packageJson.dependencies ?? {});
-}
-
 function isPackedTarballSpecifier(value: string): boolean {
 	return /^file:/u.test(value) && /\.tgz(?:[?#].*)?$/u.test(value);
-}
-
-function ensureWorkspaceRuntimePackageLinks() {
-	for (const packageName of runtimeDependencyNames()) {
-		if (!packageName.startsWith('@treeseed/')) {
-			continue;
-		}
-		const runtimePackageRoot = resolve(packageRoot, '..', packageName.slice('@treeseed/'.length));
-		if (!existsSync(resolve(runtimePackageRoot, 'package.json'))) {
-			continue;
-		}
-		const linkPath = resolve(packageRoot, 'node_modules', ...packageName.split('/'));
-		if (existsSync(linkPath)) {
-			continue;
-		}
-		mkdirSync(dirname(linkPath), { recursive: true });
-		symlinkSync(runtimePackageRoot, linkPath, 'dir');
-	}
-}
-
-function prepareWorkspaceRuntimePackageBuilds() {
-	for (const packageName of runtimeDependencyNames()) {
-		if (!packageName.startsWith('@treeseed/')) {
-			continue;
-		}
-		const runtimePackageRoot = resolve(packageRoot, '..', packageName.slice('@treeseed/'.length));
-		const packageJsonPath = resolve(runtimePackageRoot, 'package.json');
-		if (!existsSync(packageJsonPath)) {
-			continue;
-		}
-		const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
-			scripts?: Record<string, string>;
-		};
-		if (packageJson.scripts?.['build:dist']) {
-			run('npm', ['run', 'build:dist'], runtimePackageRoot);
-			continue;
-		}
-		if (packageJson.scripts?.build) {
-			run('npm', ['run', 'build'], runtimePackageRoot);
-		}
-	}
 }
 
 function assertNoLocalDependencyLinks() {
@@ -131,8 +83,6 @@ function scanDirectory(root: string) {
 }
 
 assertNoLocalDependencyLinks();
-ensureWorkspaceRuntimePackageLinks();
-prepareWorkspaceRuntimePackageBuilds();
 run('npm', ['run', 'lint']);
 scanDirectory(resolve(packageRoot, 'dist'));
 run('npm', ['run', 'test:unit']);

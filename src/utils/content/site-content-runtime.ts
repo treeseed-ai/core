@@ -1,9 +1,9 @@
 import { createMarkdownProcessor, type MarkdownProcessor } from '@astrojs/markdown-remark';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
-import type { ContentCollection } from '@treeseed/sdk/platform/contracts';
-import { getContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
-import type { ContentRuntimeProvider, PublishedContentEntry } from '@treeseed/sdk/platform/published-content';
+import type { ContentCollection } from '@treeseed/sdk/site-contracts/platform';
+import { getContentServingMode } from '../../runtime/platform/deploy-runtime.ts';
+import type { ContentRuntimeProvider, PublishedContentEntry } from '../../runtime/platform/published-content.ts';
 import { resolveHostedContentRuntimeProvider } from '../packages/published-content.ts';
 
 export type PublishedContentSourcePayload = {

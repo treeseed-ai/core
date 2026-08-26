@@ -4,7 +4,7 @@ import type {
 	SemanticColorTokens,
 	ThemeConfig,
 	ThemeMode,
-} from '@treeseed/sdk/platform/contracts';
+} from '@treeseed/sdk/site-contracts/platform';
 import { BUILT_IN_COLOR_SCHEMES } from '../color-schemes/index.ts';
 
 export type ThemePreference = {

@@ -113,7 +113,7 @@
     },
     "./config": {
       "types": "./dist/config.d.ts",
-      "default": "./dist/configuration/config.js"
+      "default": "./dist/config.js"
     },
     "./platform": {
       "types": "./dist/platform.d.ts",
@@ -133,7 +133,7 @@
     },
     "./content-config": {
       "types": "./dist/content-config.d.ts",
-      "default": "./dist/configuration/content-config.js"
+      "default": "./dist/content-config.js"
     },
     "./templates": {
       "types": "./dist/templates.d.ts",
@@ -144,6 +144,26 @@
       "default": "./dist/middleware/editorial-preview.js"
     },
     "./tenant": "./dist/tenant/bridge.js",
+    "./tenant-config": {
+      "types": "./dist/runtime/platform/tenant-config.d.ts",
+      "default": "./dist/runtime/platform/tenant-config.js"
+    },
+    "./deploy-config": {
+      "types": "./dist/runtime/platform/deploy-config.d.ts",
+      "default": "./dist/runtime/platform/deploy-config.js"
+    },
+    "./deploy-runtime": {
+      "types": "./dist/runtime/platform/deploy-runtime.d.ts",
+      "default": "./dist/runtime/platform/deploy-runtime.js"
+    },
+    "./plugins": {
+      "types": "./dist/runtime/platform/plugins.d.ts",
+      "default": "./dist/runtime/platform/plugins.js"
+    },
+    "./published-content": {
+      "types": "./dist/runtime/platform/published-content.d.ts",
+      "default": "./dist/runtime/platform/published-content.js"
+    },
     "./scripts/runtime/dev-platform": "./dist/scripts/runtime/dev-platform.js",
     "./scripts/treedx/workspaces/workspace-bootstrap": "./dist/scripts/treedx/workspaces/workspace-bootstrap.js",
     "./launch": {

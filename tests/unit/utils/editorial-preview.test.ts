@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signEditorialPreviewToken } from '@treeseed/sdk/platform/published-content';
+import { signEditorialPreviewToken } from '../../../src/runtime/platform/published-content.ts';
 import { resolveEditorialPreview } from '../../../src/middleware/editorial-preview.ts';
 
 function createContext(url: string) {
