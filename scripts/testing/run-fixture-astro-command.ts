@@ -18,6 +18,7 @@ prepareFixturePackages({
 	declarations: [
 		{
 			packageName: '@treeseed/sdk',
+			entrySpecifier: '@treeseed/sdk/operator-contracts',
 			workspaceDirName: 'sdk',
 			modes: ['workspace-link', 'installed-link'],
 		},
