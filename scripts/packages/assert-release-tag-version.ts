@@ -14,8 +14,8 @@ if (!tagName) {
 	process.exit(1);
 }
 
-if (!/^\d+\.\d+\.\d+$/.test(tagName)) {
-	console.error(`Release tag "${tagName}" must use plain semver format "x.y.z".`);
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(tagName)) {
+	console.error(`Release tag "${tagName}" must use semantic version format.`);
 	process.exit(1);
 }
 
