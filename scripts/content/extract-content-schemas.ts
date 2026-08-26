@@ -69,7 +69,7 @@ function withOptionalDefault<TSchema extends { default: (value: unknown) => TSch
 	catalog: `import { z } from 'astro/zod';
 import type { TreeseedFieldAliasRegistry } from '@treeseed/sdk/field-aliases';
 import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
-import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
+import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/site-contracts/catalog';
 import { BOOK_MODEL_DEFAULTS } from '../utils/site-config.ts';
 
 const commerceOfferModeValues = [...COMMERCE_OFFER_MODES] as [CommerceOfferMode, ...CommerceOfferMode[]];`,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@treeseed/sdk/platform/plugins', () => ({
+vi.mock('../../../src/runtime/platform/plugins.ts', () => ({
 	getDeployConfig() {
 		return {
 			name: 'Test Site',

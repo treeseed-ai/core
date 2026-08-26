@@ -1,5 +1,5 @@
 import type { APIContext } from 'astro';
-import { getFormsProvider } from '@treeseed/sdk/platform/deploy-runtime';
+import { getFormsProvider } from '../../../runtime/platform/deploy-runtime.ts';
 import { resolveBuiltinFormsProvider } from '../capacity/providers/provider-core';
 import {
 	getContactRoutingMap,

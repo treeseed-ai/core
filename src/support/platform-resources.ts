@@ -6,8 +6,8 @@ import type {
 	PlatformResourceKind,
 	PlatformSurfaceName,
 	TenantConfig,
-} from '@treeseed/sdk/platform/contracts';
-import type { LoadedPluginRegistration } from '@treeseed/sdk/platform/plugins';
+} from '@treeseed/sdk/site-contracts/platform';
+import type { LoadedPluginRegistration } from '../runtime/platform/plugins.ts';
 
 export const PLATFORM_RESOURCE_KINDS = [
 	'pages',

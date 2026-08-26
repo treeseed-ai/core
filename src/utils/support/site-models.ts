@@ -1,4 +1,4 @@
-import type { ContentCollection, TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { ContentCollection, TenantConfig } from '@treeseed/sdk/site-contracts/platform';
 import { RUNTIME_TENANT } from '../../tenant/runtime-config.ts';
 
 const MODEL_FEATURE_MAP: Partial<Record<ContentCollection, keyof NonNullable<TenantConfig['features']>>> = {

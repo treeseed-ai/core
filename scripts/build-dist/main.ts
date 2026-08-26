@@ -50,7 +50,7 @@ export async function main() {
 
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'config.js'),
-		"import starlight from './vendor/starlight/index.js';\nimport { loadManifest } from '@treeseed/sdk/platform/tenant-config';\nimport { createSite } from './site.js';\n\nexport function createTenantSite(manifestPath) {\n\tconst tenant = loadManifest(manifestPath);\n\treturn createSite(tenant, { starlight });\n}"
+		"import starlight from './vendor/starlight/index.js';\nimport { loadManifest } from './runtime/platform/tenant-config.js';\nimport { createSite } from './support/site.js';\n\nexport function createTenantSite(manifestPath) {\n\tconst tenant = loadManifest(manifestPath);\n\treturn createSite(tenant, { starlight });\n}"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'config.d.ts'),
@@ -64,7 +64,7 @@ export async function main() {
 
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.js'),
-		"import { loadManifest } from '@treeseed/sdk/platform/tenant-config';\nimport { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createCollections } from './content.js';\n\nexport function createTenantCollections(manifestPath) {\n\tconst tenant = loadManifest(manifestPath);\n\treturn createCollections(tenant, { docsLoader, docsSchema });\n}"
+		"import { loadManifest } from './runtime/platform/tenant-config.js';\nimport { docsLoader } from './vendor/starlight/loaders.js';\nimport { docsSchema } from './vendor/starlight/schema.js';\nimport { createCollections } from './content/content.js';\n\nexport function createTenantCollections(manifestPath) {\n\tconst tenant = loadManifest(manifestPath);\n\treturn createCollections(tenant, { docsLoader, docsSchema });\n}"
 	);
 	writeCompatibilityEntrypoint(
 		resolve(distRoot, 'content-config.d.ts'),

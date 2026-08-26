@@ -1,1 +1,1 @@
-export { default } from '@treeseed/sdk/plugin-default';
+export { default } from '../runtime/platform/plugin-default.ts';

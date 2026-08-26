@@ -1,8 +1,8 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
-import type { LoadedPluginRegistration } from '@treeseed/sdk/platform/plugins';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
+import type { LoadedPluginRegistration } from '../../../src/runtime/platform/plugins.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	buildSiteLayers,

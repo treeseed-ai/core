@@ -4,12 +4,12 @@ import { glob, type Loader } from 'astro/loaders';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
-import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/types';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
+import { COMMERCE_OFFER_MODES, type CommerceOfferMode } from '@treeseed/sdk/site-contracts/catalog';
 import { AGENT_ACTIVITY_TYPES } from '@treeseed/sdk/types/agents';
-import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { getContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
+import { loadPluginRuntime } from '../runtime/platform/plugins.ts';
+import { loadDeployConfig } from '../runtime/platform/deploy-config.ts';
+import { getContentServingMode } from '../runtime/platform/deploy-runtime.ts';
 import {
 	AGENT_MODEL_DEFAULTS,
 	BOOK_MODEL_DEFAULTS,

@@ -1,5 +1,5 @@
 import { getCollection } from 'astro:content';
-import type { CatalogItem, CommerceOfferMode } from '@treeseed/sdk/types';
+import type { CatalogItem, CommerceOfferMode } from '@treeseed/sdk/site-contracts/catalog';
 import { RUNTIME_TENANT } from '../tenant/runtime-config.ts';
 import { siteModelRendered } from '../utils/support/site-models.ts';
 

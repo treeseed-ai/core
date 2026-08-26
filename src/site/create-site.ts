@@ -1,6 +1,7 @@
 import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -8,12 +9,12 @@ import { fileURLToPath } from 'node:url';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 import tailwindcss from '@tailwindcss/vite';
-import type { TenantConfig } from '@treeseed/sdk/platform/contracts';
+import type { TenantConfig } from '@treeseed/sdk/site-contracts/platform';
 import { parseSiteConfig } from "../utils/configuration/site-config-schema.js";
 import { buildThemeCss } from "../utils/support/theme.ts";
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { getContentServingMode } from '@treeseed/sdk/platform/deploy-runtime';
-import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import { loadDeployConfig } from '../runtime/platform/deploy-config.ts';
+import { getContentServingMode } from '../runtime/platform/deploy-runtime.ts';
+import { loadPluginRuntime } from '../runtime/platform/plugins.ts';
 import { buildSiteLayers, resolveStyleEntrypoint } from "../support/site-resources";
 import { deriveAstroAllowedDomains } from "../utils/support/astro-security";
 import { isSiteRenderedModel } from "../utils/support/site-models";
@@ -59,7 +60,12 @@ export function createSite(
 	const injectedSiteConfig = JSON.stringify(siteConfig);
 	const injectedDeployConfig = JSON.stringify(deployConfig);
 	const resolvedGlobalCss = resolveStyleEntrypoint(siteLayers, 'styles/global.css');
-	const serverRendered =
+	const runtimeTarget = process.env.TREESEED_WEB_RUNTIME_TARGET;
+	if (runtimeTarget && !['managed-node', 'cloudflare'].includes(runtimeTarget)) {
+		throw new Error(`Unsupported TREESEED_WEB_RUNTIME_TARGET ${runtimeTarget}.`);
+	}
+	const managedNode = runtimeTarget === 'managed-node';
+	const serverRendered = managedNode ||
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
 	const allowedDomains = deriveAstroAllowedDomains(deployConfig, { siteUrl: siteConfig.site.siteUrl });
 	const publishedRuntime = getContentServingMode(deployConfig) === 'published_runtime';
@@ -71,8 +77,9 @@ export function createSite(
 
 	return defineConfig({
 		legacy: { collections: false },
-		adapter: serverRendered
-			? cloudflare({ imageService: 'compile' })
+		adapter: managedNode
+			? node({ mode: 'standalone' })
+			: serverRendered ? cloudflare({ imageService: 'compile' })
 			: undefined,
 		output: serverRendered
 			? 'server'
@@ -102,7 +109,6 @@ export function createSite(
 				DEPLOY_CONFIG: injectedDeployConfig,
 			},
 			optimizeDeps: {
-				include: ['libsodium-wrappers-sumo'],
 				exclude: ['@treeseed/sdk', '@treeseed/ui', '@treeseed/core', '@treeseed/admin'],
 			},
 			plugins: [
@@ -140,7 +146,7 @@ export function createSite(
 				TREESEED_CONTENT_MANIFEST_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_MANIFEST_KEY_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_PREVIEW_ROOT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
-				LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare'], context: 'server', access: 'secret', optional: true }),
+				LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare', 'managed-node'], context: 'server', access: 'secret', optional: true }),
 				FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS: envField.boolean({ context: 'server', access: 'secret', optional: true }),
 				...siteExtensions.envSchema,
 			},

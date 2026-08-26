@@ -1,5 +1,5 @@
-import { getFormsProvider } from '@treeseed/sdk/platform/deploy-runtime';
-import { loadPluginRuntime } from '@treeseed/sdk/platform/plugins';
+import { getFormsProvider } from '../../../../runtime/platform/deploy-runtime.ts';
+import { loadPluginRuntime } from '../../../../runtime/platform/plugins.ts';
 import type { FormsProvider } from './provider-core';
 import { BUILTIN_FORMS_PROVIDERS, finalizeFormsProvider } from './provider-core';
 

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
-import { createPersistentDeployTarget, ensureGeneratedWranglerConfig, ensureLocalWorkspaceLinks, findNearestWorkspaceRoot, resolveToolBinary } from '@treeseed/sdk/workflow-support';
+import { createPersistentDeployTarget, ensureGeneratedWranglerConfig, ensureLocalWorkspaceLinks, findNearestWorkspaceRoot, resolveToolBinary } from '../../runtime/platform/workflow-support.ts';
 import type { FetchLike, IntegratedDevOptions, IntegratedDevPlan, IntegratedDevSetupStep } from '../configuration/runtime-configuration.ts';
 import type { IntegratedDevDependencies } from './integrated-dev-dependencies.ts';
 import { emitEvent } from './prepare-dev-runtime-slots.ts';

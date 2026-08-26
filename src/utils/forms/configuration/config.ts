@@ -16,7 +16,7 @@ import {
 	getFormsProvider,
 	isSmtpEnabled,
 	isTurnstileEnabled,
-} from '@treeseed/sdk/platform/deploy-runtime';
+} from '../../../runtime/platform/deploy-runtime.ts';
 
 export function getFormSecret() {
 	return FORM_TOKEN_SECRET ?? '';

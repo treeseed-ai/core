@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { loadManifest } from '../../src/runtime/platform/tenant-config.ts';
+import { loadDeployConfig } from '../../src/runtime/platform/deploy-config.ts';
 import { parseSiteConfig } from '../../src/utils/configuration/site-config-schema.js';
 
 const fixtureRoot = resolve(process.cwd(), '.fixtures/treeseed-fixtures/sites/working-site');

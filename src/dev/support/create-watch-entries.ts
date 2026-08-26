@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
-import { packageScriptPath, resolveToolBinary } from '@treeseed/sdk/workflow-support';
-import { discoverApplications } from '@treeseed/sdk/hosting';
+import { packageScriptPath, resolveToolBinary } from '../../runtime/platform/workflow-support.ts';
+import { discoverApplications } from '../../runtime/platform/hosting.ts';
 import { packageRoot, type IntegratedDevCommand, type IntegratedDevCommandId, type IntegratedDevPlan, type IntegratedDevSetupMode, type IntegratedDevSetupStep, type IntegratedDevWatchEntry } from '../configuration/runtime-configuration.ts';
 import { dockerIsAvailable, nodeLocalRuntime } from './parse-surface-value.ts';
 import { generatedLocalWranglerPath, resolveNodeEntrypoint, resolveOptionalScriptEntrypoint } from '../runtime/integrated-dev-dependencies.ts';

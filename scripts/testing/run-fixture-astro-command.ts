@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { prepareFixturePackages } from '@treeseed/sdk/fixture-support';
+import { prepareFixturePackages } from './fixture-support.ts';
 import { fixtureRoot, packageRoot } from '../support/paths.ts';
 import { astroBin } from '../packages/package-tools.ts';
 
@@ -18,6 +18,7 @@ prepareFixturePackages({
 	declarations: [
 		{
 			packageName: '@treeseed/sdk',
+			entrySpecifier: '@treeseed/sdk/operator-contracts',
 			workspaceDirName: 'sdk',
 			modes: ['workspace-link', 'installed-link'],
 		},

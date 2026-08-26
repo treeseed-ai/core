@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
+import { loadDeployConfig } from '../../runtime/platform/deploy-config.ts';
 import { packageRoot, require, type FetchLike, type ProcessKiller, type ProcessStatusChecker, type SignalRegistrar, type SpawnLike, type SpawnSyncLike, type IntegratedDevCommandId, type IntegratedDevFeedbackMode, type IntegratedDevOpenMode, type IntegratedDevSetupMode, type IntegratedDevSurface, type LocalRuntimeMode, type LocalRuntimeSelection, type WatchStarter } from '../configuration/runtime-configuration.ts';
 import { resetMarketPostgres, stopMarketPostgres } from '../support/attach-prefixed-log-reader.ts';
 
@@ -58,9 +58,14 @@ export type DevEvent = {
 };
 
 export function resolvePackageRoot(packageName: string, tenantRoot: string) {
-	const resolvedPath = require.resolve(packageName, {
-		paths: [tenantRoot, packageRoot, process.cwd()],
-	});
+	const paths = [tenantRoot, packageRoot, process.cwd()];
+	let resolvedPath: string;
+	try {
+		resolvedPath = require.resolve(packageName, { paths });
+	} catch (error) {
+		if (packageName !== '@treeseed/sdk') throw error;
+		resolvedPath = require.resolve('@treeseed/sdk/operator-contracts', { paths });
+	}
 	let currentDir = dirname(resolvedPath);
 	while (!existsSync(resolve(currentDir, 'package.json'))) {
 		const parentDir = dirname(currentDir);

@@ -1,6 +1,6 @@
-import type { ContentCollection } from '@treeseed/sdk/platform/contracts';
-import { createSignedUserAssertion } from '@treeseed/sdk/api/trusted-assertion';
-import { REMOTE_CONTRACT_HEADER, REMOTE_CONTRACT_VERSION } from '@treeseed/sdk/remote';
+import type { ContentCollection } from '@treeseed/sdk/site-contracts/platform';
+import { createSignedUserAssertion } from '../../runtime/platform/trusted-assertion.ts';
+import { REMOTE_CONTRACT_HEADER, REMOTE_CONTRACT_VERSION } from '@treeseed/sdk/site-contracts/catalog';
 import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../content/site-content-runtime.ts';
 
 export type RuntimeBookEntry = { id: string; data: Record<string, any> };

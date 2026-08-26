@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { packageRoot } from '../packages/package-tools.ts';
 
 const require = createRequire(import.meta.url);
-const sdkPackageRoot = resolve(dirname(require.resolve('@treeseed/sdk')), '..');
+const sdkPackageRoot = resolve(dirname(require.resolve('@treeseed/sdk/operator-contracts')), '../..');
 const npmCacheDir = resolve(tmpdir(), 'treeseed-npm-cache');
 
 function run(command: string, args: string[], cwd = packageRoot, capture = false) {
@@ -78,11 +78,6 @@ function resolveRuntimeDependencyRoot(packageName: string, searchRoots: string[]
 	if (!packageName.startsWith('@treeseed/')) {
 		return null;
 	}
-	const folderName = packageName.slice('@treeseed/'.length);
-	const workspaceCandidateRoot = resolve(packageRoot, '..', folderName);
-	if (existsSync(resolve(workspaceCandidateRoot, 'package.json'))) {
-		return workspaceCandidateRoot;
-	}
 	try {
 		return resolveInstalledPackageRoot(packageName, searchRoots);
 	} catch {
@@ -129,18 +124,14 @@ function mirrorDependencies(tempRoot: string, excludedPackages = new Set<string>
 		...resolveWorkspaceRuntimePackageRoots().values(),
 	];
 	const sharedNodeModules = (() => {
-		let lastCandidate: string | null = null;
 		let current = packageRoot;
 		while (true) {
 			const candidate = resolve(current, 'node_modules');
 			if (existsSync(candidate)) {
-				lastCandidate = candidate;
+				return candidate;
 			}
 			const parent = dirname(current);
 			if (parent === current) {
-				if (lastCandidate) {
-					return lastCandidate;
-				}
 				throw new Error(`Unable to locate shared node_modules from ${packageRoot}.`);
 			}
 			current = parent;
@@ -242,8 +233,6 @@ try {
 	mkdirSync(packRoot, { recursive: true });
 	mkdirSync(extractRoot, { recursive: true });
 	const coreTarball = pack(packageRoot, packRoot, 'treeseed-core.tgz');
-	const workspaceRuntimePackageRoots = resolveWorkspaceRuntimePackageRoots();
-
 	if (existsSync(resolve(sdkPackageRoot, 'scripts', 'build-dist.ts'))) {
 		const sdkTarball = pack(sdkPackageRoot, packRoot, 'treeseed-sdk.tgz');
 		installPackagedPackage(extractRoot, installRoot, sdkTarball, 'sdk');
@@ -251,7 +240,7 @@ try {
 		installPackageDirectory(installRoot, sdkPackageRoot, 'sdk');
 	}
 	installPackagedPackage(extractRoot, installRoot, coreTarball, 'core');
-	mirrorDependencies(installRoot, new Set(workspaceRuntimePackageRoots.keys()));
+	mirrorDependencies(installRoot, new Set(['@treeseed/sdk']));
 	writeFileSync(resolve(installRoot, 'package.json'), `${JSON.stringify({ name: 'treeseed-core-smoke', private: true, type: 'module' }, null, 2)}\n`, 'utf8');
 	run(
 		process.execPath,

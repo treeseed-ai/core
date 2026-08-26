@@ -1,4 +1,4 @@
-import { getDeployConfig } from '@treeseed/sdk/platform/deploy-runtime';
+import { getDeployConfig } from '../../runtime/platform/deploy-runtime.ts';
 import {
 	createTeamScopedR2OverlayContentRuntimeProvider,
 	isTeamScopedR2ContentEnabled,
@@ -7,7 +7,7 @@ import {
 	resolveTeamScopedContentLocator,
 	type ContentRuntimeProvider,
 	type EditorialPreviewTokenPayload,
-} from '@treeseed/sdk/platform/published-content';
+} from '../../runtime/platform/published-content.ts';
 import type { CloudflareRuntime } from '../../types/cloudflare';
 
 function runtimeFromLocals(locals: App.Locals | Record<string, unknown> | undefined | null) {

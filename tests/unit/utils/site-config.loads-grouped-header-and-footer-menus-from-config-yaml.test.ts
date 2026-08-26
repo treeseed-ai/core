@@ -20,9 +20,9 @@ import {
 	applyQuestionModelDefaults,
 } from '../../../src/utils/configuration/site-config';
 
-import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadManifest } from '../../../src/runtime/platform/tenant-config.ts';
 
-import { tenantModelRendered } from '@treeseed/sdk/platform/tenant-config';
+import { tenantModelRendered } from '../../../src/runtime/platform/tenant-config.ts';
 
 import { parseSiteConfig } from '../../../src/utils/configuration/site-config-schema.js';
 

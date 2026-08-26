@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { resolveMachineEnvironmentValues, runRepositoryGit } from '@treeseed/sdk/workflow-support';
+import { resolveMachineEnvironmentValues, runRepositoryGit } from '../../runtime/platform/workflow-support.ts';
 import type { DevPortOwner } from './integrated-dev-dependencies.ts';
 import { resetMarketPostgres, stopMarketPostgres } from '../support/attach-prefixed-log-reader.ts';
 import { DEFAULT_KILL_GRACE_MS, DEV_INSTANCE_DIR, DEV_PID_DIR, DEV_RELOAD_FILE, DEV_REPO_INDEX_RELATIVE_PATH, type ProcessKiller, type ProcessLike, type IntegratedDevCommand, type IntegratedDevPlan } from '../configuration/runtime-configuration.ts';

@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { build } from 'esbuild';
-import { loadDeployConfig } from '@treeseed/sdk/platform/deploy-config';
-import { loadManifest } from '@treeseed/sdk/platform/tenant-config';
+import { loadDeployConfig } from '../../src/runtime/platform/deploy-config.ts';
+import { loadManifest } from '../../src/runtime/platform/tenant-config.ts';
 import { parseSiteConfig } from '../src/utils/site-config-schema.js';
 import { packageRoot } from './package-tools.ts';
 

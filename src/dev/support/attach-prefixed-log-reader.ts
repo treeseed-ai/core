@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { resolveToolBinary } from '@treeseed/sdk/workflow-support';
+import { resolveToolBinary } from '../../runtime/platform/workflow-support.ts';
 import { DEFAULT_SETUP_STEP_TIMEOUT_MS, DEFAULT_MARKET_POSTGRES_CONTAINER, DEFAULT_MARKET_POSTGRES_PORT, DEFAULT_MARKET_POSTGRES_VOLUME, type ProcessLike, type SpawnSyncLike, type IntegratedDevOptions, type IntegratedDevPlan, type IntegratedDevSetupStep } from '../configuration/runtime-configuration.ts';
 import type { IntegratedDevDependencies } from '../runtime/integrated-dev-dependencies.ts';
 import { emitEvent } from '../runtime/prepare-dev-runtime-slots.ts';
