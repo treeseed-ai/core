@@ -1,6 +1,7 @@
 import { defineConfig, envField } from 'astro/config';
 import type { AstroUserConfig } from 'astro';
 import cloudflare from '@astrojs/cloudflare';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -59,7 +60,12 @@ export function createSite(
 	const injectedSiteConfig = JSON.stringify(siteConfig);
 	const injectedDeployConfig = JSON.stringify(deployConfig);
 	const resolvedGlobalCss = resolveStyleEntrypoint(siteLayers, 'styles/global.css');
-	const serverRendered =
+	const runtimeTarget = process.env.TREESEED_WEB_RUNTIME_TARGET;
+	if (runtimeTarget && !['managed-node', 'cloudflare'].includes(runtimeTarget)) {
+		throw new Error(`Unsupported TREESEED_WEB_RUNTIME_TARGET ${runtimeTarget}.`);
+	}
+	const managedNode = runtimeTarget === 'managed-node';
+	const serverRendered = managedNode ||
 		deployConfig.surfaces?.web?.provider === 'cloudflare' || deployConfig.providers.deploy === 'cloudflare';
 	const allowedDomains = deriveAstroAllowedDomains(deployConfig, { siteUrl: siteConfig.site.siteUrl });
 	const publishedRuntime = getContentServingMode(deployConfig) === 'published_runtime';
@@ -71,8 +77,9 @@ export function createSite(
 
 	return defineConfig({
 		legacy: { collections: false },
-		adapter: serverRendered
-			? cloudflare({ imageService: 'compile' })
+		adapter: managedNode
+			? node({ mode: 'standalone' })
+			: serverRendered ? cloudflare({ imageService: 'compile' })
 			: undefined,
 		output: serverRendered
 			? 'server'
@@ -140,7 +147,7 @@ export function createSite(
 				TREESEED_CONTENT_MANIFEST_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_MANIFEST_KEY_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
 				TREESEED_CONTENT_PREVIEW_ROOT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
-				LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare'], context: 'server', access: 'secret', optional: true }),
+				LOCAL_DEV_MODE: envField.enum({ values: ['cloudflare', 'managed-node'], context: 'server', access: 'secret', optional: true }),
 				FORMS_LOCAL_BYPASS_CLOUDFLARE_GUARDS: envField.boolean({ context: 'server', access: 'secret', optional: true }),
 				...siteExtensions.envSchema,
 			},
