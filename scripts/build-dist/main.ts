@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { packageRoot } from "../packages/package-tools.ts";
 import { COPY_EXTENSIONS, JS_SOURCE_EXTENSIONS, compileModule, copyAsset, copyPackageAsset, distRoot, require, rewriteDeclarations, scriptsRoot, srcRoot, transpileScript, walkFiles } from './build-runtime.ts';
@@ -89,6 +89,9 @@ export async function main() {
 	copyPackageAsset('@astrojs/starlight', 'utils/git.ts', 'utils/git.ts');
 	copyPackageAsset('@astrojs/starlight', 'utils/gitInlined.ts', 'utils/gitInlined.ts');
 	rewriteDeclarations();
+	const marker = resolve(distRoot, '.treeseed-build-complete.json'), temporary = `${marker}.new`;
+	writeFileSync(temporary, `${JSON.stringify({ completedAt: new Date().toISOString() })}\n`, 'utf8');
+	renameSync(temporary, marker);
 }
 
 main().catch((error) => {
