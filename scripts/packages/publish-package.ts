@@ -18,7 +18,7 @@ if (extraArgs.some((argument) => argument === '--tag' || argument.startsWith('--
 }
 
 const npmDistTag = tagName?.includes('-') ? 'next' : 'latest';
-const publishTarget = extraArgs.shift() ?? '.';
+const publishTarget = extraArgs.length > 0 ? resolve(packageRoot, extraArgs.shift()!) : '.';
 const npmArgs = ['publish', publishTarget, '--access', 'public', '--tag', npmDistTag];
 
 if (process.env.GITHUB_ACTIONS === 'true') {
