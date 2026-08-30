@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.60-rc.6",
+  "version": "0.12.60-rc.7",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "Apache-2.0",
   "repository": {

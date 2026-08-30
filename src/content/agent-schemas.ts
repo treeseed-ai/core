@@ -147,6 +147,12 @@ export function createAgentCollectionSchemas() {
 		pricingGeneration: z.string().optional(),
 		enforcementConfidence: z.enum(['exact', 'bounded', 'estimated', 'opaque']).optional(),
 		}).passthrough();
+	const capabilityRequirementSchema = z.object({
+		capabilityId: z.string().regex(/^(?:treeseed\.[a-z][a-z0-9.-]*|provider\.[a-f0-9]{16,64}\.[a-z][a-z0-9.-]*)$/u),
+		versionRange: z.string().min(1), requirement: z.enum(['required', 'preferred']), alternativeGroup: z.string().min(1).nullable().optional(),
+		requiredFeatures: z.array(z.string().min(1)).default([]),
+		configuration: z.record(z.object({ value: z.unknown(), requirement: z.enum(['required', 'preferred']) }).strict()).default({}),
+	}).strict();
 
 	const agentActivityProfileSchema = z.object({
 			enabled: z.boolean().default(true),
@@ -159,7 +165,7 @@ export function createAgentCollectionSchemas() {
 			permissions: agentPermissionsSchema.optional(),
 			artifactTriggers: z.array(z.object({ event:z.string().min(1),artifactKind:z.string().min(1),model:z.string().min(1).optional(),required:z.boolean().optional() }).strict()).default([]),
 			closeoutPolicy: z.object({ warningSeconds:z.number().int().positive().optional(),summaryRequired:z.boolean().optional(),requiredArtifactKinds:z.array(z.string()).optional(),blockOnOpenQuestions:z.boolean().optional() }).strict().optional(),
-			providerOverrides:z.object({ requiredCapabilities:z.array(z.string()).optional(),disallowedProviderIds:z.array(z.string()).optional(),promptRef:z.string().min(1).optional(),instructionTemplateRefs:z.array(exactRevisionRefSchema).optional(),maxRuntimeSeconds:z.number().int().positive().optional(),maxTotalTokens:z.number().int().positive().optional(),maxCostAmount:z.number().nonnegative().optional() }).strict().optional(),
+			capabilityRequirements: z.array(capabilityRequirementSchema).default([]),
 			tools: agentToolPolicySchema.default({ allowed: [] }),
 			signals: agentSignalsSchema.optional(),
 			outputs: agentOutputsSchema.default({}),
@@ -171,7 +177,7 @@ export function createAgentCollectionSchemas() {
 		foundation: z.literal('discussion-v1'),
 		responseStyle: z.string().optional(),
 		promptTask: z.string().optional(),
-		requiredCapabilities: z.array(z.string()).optional(),
+		capabilityRequirements: z.array(capabilityRequirementSchema).optional(),
 		maxRuntimeSeconds: z.number().int().positive().optional(),
 		maxTotalTokens: z.number().int().positive().optional(),
 		warningTokens: z.number().int().positive().optional(),
