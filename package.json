@@ -1,6 +1,6 @@
 {
   "name": "@treeseed/core",
-  "version": "0.12.60-rc.7",
+  "version": "0.12.60-rc.8",
   "description": "Treeseed web framework package for Astro/Starlight site runtimes.",
   "license": "Apache-2.0",
   "repository": {
@@ -61,9 +61,9 @@
     "fixtures:check": "node --import tsx ./scripts/agents/fixture-tools.ts check",
     "release:setup": "npm run setup:ci",
     "release:check-tag": "node --import tsx ./scripts/packages/assert-release-tag-version.ts",
-		"release:verify": "npm run check:file-lengths && node --import tsx ./scripts/packages/release-verify.ts",
-		"release:custody": "node --import tsx ./scripts/packages/release-custody.ts",
-		"release:publish": "node --import tsx ./scripts/packages/publish-package.ts"
+    "release:verify": "npm run check:file-lengths && node --import tsx ./scripts/packages/release-verify.ts",
+    "release:custody": "node --import tsx ./scripts/packages/release-custody.ts",
+    "release:publish": "node --import tsx ./scripts/packages/publish-package.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.8",
