@@ -1,7 +1,5 @@
 import { reference } from 'astro:content';
 import { z } from 'astro/zod';
-import type { FieldAliasRegistry } from '@treeseed/sdk/field-aliases';
-import { preprocessAliasedRecord } from '@treeseed/sdk/field-aliases';
 import { AGENT_ACTIVITY_TYPES } from '@treeseed/sdk/types/agents';
 import { agentTestContentSchema } from '@treeseed/sdk/content-validation';
 import { AGENT_MODEL_DEFAULTS, PEOPLE_MODEL_DEFAULTS } from '../utils/configuration/site-config.ts';
@@ -16,14 +14,6 @@ function withOptionalDefault<TSchema extends { default: (value: unknown) => TSch
 }
 
 export function createAgentCollectionSchemas() {
-	const agentFieldAliases: FieldAliasRegistry = {
-			runtimeStatus: { key: 'runtimeStatus', aliases: ['runtime_status'] },
-			agentClass: { key: 'agentClass', aliases: ['agent_class'] },
-			projectAgentClassId: { key: 'projectAgentClassId', aliases: ['project_agent_class_id'] },
-			projectAgentClassSlug: { key: 'projectAgentClassSlug', aliases: ['project_agent_class_slug'] },
-			activityProfiles: { key: 'activityProfiles', aliases: ['activity_profiles'] },
-		};
-
 	const profileLinkSchema = z.object({ label: z.string(), href: z.string() });
 	const exactRevisionRefSchema = z.object({
 		id: z.string().min(1),
@@ -134,9 +124,12 @@ export function createAgentCollectionSchemas() {
 		publishes: z.array(z.string().min(1)).default([]),
 	}).strict();
 
-	const agentActivityExecutionSchema = agentExecutionSchema.partial().extend({
-			requiredCapabilities: z.array(z.string()).default([]),
+	const agentActivityExecutionSchema = z.object({
+		reasoningEffort: z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).optional(),
 			maxRuntimeSeconds: z.number().int().positive().optional(),
+		preparationSeconds: z.number().int().positive().optional(),
+		closeoutSeconds: z.number().int().positive().optional(),
+		closeoutWarningSeconds: z.number().int().positive().optional(),
 			maxRetries: z.number().int().nonnegative().optional(),
 		verificationRequired: z.boolean().optional(),
 		maxTotalTokens: z.number().int().positive().optional(),
@@ -146,7 +139,7 @@ export function createAgentCollectionSchemas() {
 		nativeLimits: z.array(z.object({ unit: z.string().min(1), amount: z.number().nonnegative(), enforceable: z.boolean().optional() }).strict()).optional(),
 		pricingGeneration: z.string().optional(),
 		enforcementConfidence: z.enum(['exact', 'bounded', 'estimated', 'opaque']).optional(),
-		}).passthrough();
+		}).strict();
 	const capabilityRequirementSchema = z.object({
 		capabilityId: z.string().regex(/^(?:treeseed\.[a-z][a-z0-9.-]*|provider\.[a-f0-9]{16,64}\.[a-z][a-z0-9.-]*)$/u),
 		versionRange: z.string().min(1), requirement: z.enum(['required', 'preferred']), alternativeGroup: z.string().min(1).nullable().optional(),
@@ -165,7 +158,7 @@ export function createAgentCollectionSchemas() {
 			permissions: agentPermissionsSchema.optional(),
 			artifactTriggers: z.array(z.object({ event:z.string().min(1),artifactKind:z.string().min(1),model:z.string().min(1).optional(),required:z.boolean().optional() }).strict()).default([]),
 			closeoutPolicy: z.object({ warningSeconds:z.number().int().positive().optional(),summaryRequired:z.boolean().optional(),requiredArtifactKinds:z.array(z.string()).optional(),blockOnOpenQuestions:z.boolean().optional() }).strict().optional(),
-			capabilityRequirements: z.array(capabilityRequirementSchema).default([]),
+			capabilityRequirements: z.array(capabilityRequirementSchema).min(1),
 			tools: agentToolPolicySchema.default({ allowed: [] }),
 			signals: agentSignalsSchema.optional(),
 			outputs: agentOutputsSchema.default({}),
@@ -208,7 +201,7 @@ export function createAgentCollectionSchemas() {
 			relatedObjectives: z.array(reference('objectives')).default([]),
 		});
 
-	const agentSchema = z.preprocess((value) => preprocessAliasedRecord(agentFieldAliases, value), z.object({
+	const agentSchema = z.object({
 			id: z.string().optional(),
 			name: z.string(),
 			slug: z.string(),
@@ -237,7 +230,7 @@ export function createAgentCollectionSchemas() {
 				message: 'activityProfiles must define at least one activity profile',
 			}),
 			chatProfile: agentChatProfileSchema.optional(),
-		}).strict());
+		}).strict();
 
 	const agentTestSchema = agentTestContentSchema;
 
