@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { loadDeployConfig } from '../../runtime/platform/deploy-config.ts';
+import { loadDeployConfigFromPath } from '../../runtime/platform/deploy-config.ts';
 import { packageRoot, require, type FetchLike, type ProcessKiller, type ProcessStatusChecker, type SignalRegistrar, type SpawnLike, type SpawnSyncLike, type IntegratedDevCommandId, type IntegratedDevFeedbackMode, type IntegratedDevOpenMode, type IntegratedDevSetupMode, type IntegratedDevSurface, type LocalRuntimeMode, type LocalRuntimeSelection, type WatchStarter } from '../configuration/runtime-configuration.ts';
 import { resetMarketPostgres, stopMarketPostgres } from '../support/attach-prefixed-log-reader.ts';
 
@@ -204,7 +204,7 @@ export function selectWebLocalRuntime(
 
 export function loadDevDeployConfig(tenantRoot: string) {
 	try {
-		return loadDeployConfig(resolve(tenantRoot, 'treeseed.site.yaml'));
+		return loadDeployConfigFromPath(resolve(tenantRoot, 'treeseed.site.yaml'));
 	} catch {
 		return null;
 	}
