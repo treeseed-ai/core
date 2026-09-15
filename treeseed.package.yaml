@@ -66,13 +66,3 @@ standards:
   deprecations: []
   runtimes: [node>=22, cloudflare-workers]
   rollbackOperations: [remove-prerelease-dist-tag, restore-accepted-composition]
-projectArchitecture:
-  topology: split_site_content
-  rootPath: .
-  sitePath: docs
-  contentPath: src/content
-  contentRuntimeSource: r2_preview_overlay
-  localContentMaterialization: none
-  contentPublishTarget:
-    kind: cloudflare_r2
-    prefix: packages/core
