@@ -3,42 +3,32 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('astro:content', () => ({ reference: () => z.string() }));
 
-function proposal(proposalType: string) {
-	return {
-		title: 'Portable proposal type',
-		description: 'Validates a project-defined proposal type identifier.',
-		date: '2026-08-12',
-		status: 'planned',
-		summary: 'Project proposal types remain portable across SDK and Astro validation.',
-		proposalType,
-		motivation: 'Prevent hard-coded proposal classifications from drifting.',
-		primaryContributor: 'self-hosting-architect',
-	};
-}
+const exactRef = {
+	store: 'treedx', model: 'objective', id: 'sdk-objective', repository: 'treeseed-ai/sdk-library',
+	commit: 'a'.repeat(40), path: 'objectives/sdk-objective.yaml', revision: 1, digest: `sha256:${'b'.repeat(64)}`,
+};
 
 describe('governance content schemas', () => {
-	it('accepts portable kebab-case proposal types and rejects malformed identifiers', async () => {
+	it('uses the canonical SDK proposal contract without a Core-owned compatibility shape', async () => {
 		const { createGovernanceCollectionSchemas } = await import('../../../src/content/governance-schemas.ts');
 		const { proposalSchema } = createGovernanceCollectionSchemas();
-		expect(proposalSchema.safeParse(proposal('customer-defined-review')).success).toBe(true);
-		const invalid = proposalSchema.safeParse(proposal('Customer Defined Review'));
-		expect(invalid.success).toBe(false);
-		if (!invalid.success) expect(invalid.error.issues).toContainEqual(expect.objectContaining({
-			path: ['proposalType'],
-			message: 'Proposal type must use lowercase kebab-case.',
-		}));
+		const proposal = {
+			schemaVersion: 'treeseed.proposal/v1', id: 'portable-proposal', projectId: 'sdk',
+			title: 'Portable proposal', request: 'Use one governed proposal contract.', status: 'draft', objectiveRefs: [exactRef],
+		};
+		expect(proposalSchema.safeParse(proposal).success).toBe(true);
+		expect(proposalSchema.safeParse({ ...proposal, proposalType: 'retired-core-shape' }).success).toBe(false);
 	});
 
-	it('runs the SDK portable contract before Astro reference and default adaptation', async () => {
+	it('reports canonical SDK field diagnostics before Astro consumes content', async () => {
 		const { createGovernanceCollectionSchemas } = await import('../../../src/content/governance-schemas.ts');
 		const invalid = createGovernanceCollectionSchemas().questionSchema.safeParse({
-			title: 'Portable admission', description: 'Core strings alone would accept an empty motivation.', date: '2026-08-12',
-			status: 'planned', summary: 'SDK validation runs before Astro transformations.', questionType: 'implementation',
-			motivation: '', primaryContributor: 'self-hosting-architect',
+			schemaVersion: 'treeseed.question/v1', id: 'portable-question', projectId: 'sdk', subjectRef: exactRef,
+			question: '', status: 'open', askedAt: '2026-09-21T04:00:00.000Z',
 		});
 		expect(invalid.success).toBe(false);
 		if (!invalid.success) expect(invalid.error.issues).toContainEqual(expect.objectContaining({
-			path: ['motivation'], params: expect.objectContaining({ code: 'content_zod_too_small', model: 'question' }),
+			path: ['question'], params: expect.objectContaining({ code: 'content_zod_too_small', model: 'question' }),
 		}));
 	});
 });
