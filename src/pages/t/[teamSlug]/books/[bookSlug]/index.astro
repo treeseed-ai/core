@@ -17,12 +17,7 @@ const pages = federated?.book ? federated.pages : book ? pagesForBook(library.pa
 if ((federated as any)?.unavailable) Astro.response.status = 503;
 else if (!book || (!federated?.book && teamSlug !== 'treeseed')) Astro.response.status = 404;
 const overview = book ? {
-	schemaVersion: 'treeseed.knowledge-page/v1', id: `${book.data.id}.overview`, bookId: book.data.id,
-	slug: 'overview', title: book.data.title, summary: book.data.summary, status: 'published',
-	visibility: book.data.visibility, order: 0, groupIds: book.data.groupIds ?? [], contributors: [],
-	relatedBookIds: book.data.relatedBookIds ?? [], relatedKnowledgeIds: [], capabilityIds: [],
-	guaranteeIds: [],
-	routePatterns: [], resourceTypes: ['book'], actionIds: [], keywords: book.data.groupIds ?? [], documentationUrls: [],
+	title: book.data.title, summary: book.data.summary, description: book.data.description,
 } : null;
 ---
 

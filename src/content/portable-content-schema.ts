@@ -17,7 +17,13 @@ function issuePath(field: string | undefined) {
 
 export function withPortableContentValidation<TSchema extends z.ZodTypeAny>(model: PortableContentModel, schema: TSchema) {
 	return z.any().superRefine((value, context) => {
-		const result = validatePortableContentData(model, value);
+		const record = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+		const { prev: _prev, next: _next, tableOfContents: _tableOfContents, sidebar: _sidebar, ...content } = record;
+		// Astro validates frontmatter before exposing the parsed Markdown body.
+		// The complete body is validated at the TreeDX/API publication boundary.
+		const candidate = model === 'knowledge' && content.body === undefined
+			? { ...content, body: '[parsed Markdown body]' } : content;
+		const result = validatePortableContentData(model, candidate);
 		for (const diagnostic of result.diagnostics) context.addIssue({
 			code: z.ZodIssueCode.custom,
 			path: issuePath(inputField(diagnostic.field, value)),
