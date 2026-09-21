@@ -135,7 +135,17 @@ function resolveDocsCollectionProvider(
 				extend: withPortableContentValidation('knowledge', z.object({
 					schemaVersion: z.literal(KNOWLEDGE_PAGE_SCHEMA_VERSION),
 					id: z.string(),
-					bookId: z.string(),
+					projectId: z.string(),
+					bookRef: z.object({
+						store: z.literal('treedx'),
+						model: z.literal('book'),
+						id: z.string(),
+						revision: z.number().int().positive(),
+						digest: z.string(),
+						repository: z.string(),
+						commit: z.string().optional(),
+						path: z.string(),
+					}).passthrough(),
 					slug: z.string(),
 					summary: z.string(),
 					status: z.enum(KNOWLEDGE_STATUSES),
@@ -158,7 +168,7 @@ function resolveDocsCollectionProvider(
 					actionIds: z.array(z.string()).default([]),
 					keywords: z.array(z.string()).default([]),
 					documentationUrls: z.array(z.string()).default([]),
-				})),
+				}).transform((value) => ({ ...value, bookId: value.bookRef.id }))),
 			}),
 		};
 	}
@@ -226,9 +236,6 @@ export function createCollections(tenantConfig: TenantConfig, { docsLoader, docs
 		agent_context_query_sets: ['agent_context_query_set','agent-context-query-sets'],
 		agent_instruction_templates: ['agent_instruction_template','agent-instruction-templates'],
 		discussion_topics: ['discussion_topic','discussion-topics'],
-		assignment_plans: ['assignment_plan','assignment-plans'],
-		assignment_statuses: ['assignment_status','assignment-statuses'],
-		assignment_summaries: ['assignment_summary','assignment-summaries'],
 		agent_evaluations: ['agent_evaluation','agent-evaluations'],
 	} as const;
 	for (const [collection,[model,directory]] of Object.entries(operationalCollections)) {
