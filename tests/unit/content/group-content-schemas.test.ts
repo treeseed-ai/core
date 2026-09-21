@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
@@ -12,12 +12,11 @@ function frontmatter(path: string) {
 }
 
 describe('group content schemas', () => {
-	it('accepts migrated agents and generated group definitions without legacy tags', () => {
+	it('keeps group definitions while agent authority remains exclusively in TreeDX', () => {
 		const fixture = resolve('.fixtures/treeseed-fixtures/sites/working-site/src/content');
-		const agent = frontmatter(resolve(fixture, 'agents/architect.mdx'));
-		const group = frontmatter(resolve(fixture, `groups/${agent.groupIds[0]}.md`));
-		expect(agent.tags).toBeUndefined();
-		expect(agent.groupIds).toEqual(expect.arrayContaining([expect.any(String)]));
+		const group = frontmatter(resolve(fixture, 'groups/architecture.md'));
+		const agentDirectory = resolve(fixture, 'agents');
+		expect(existsSync(agentDirectory) ? readdirSync(agentDirectory) : []).toEqual([]);
 		expect(createGroupCollectionSchemas().groupSchema.safeParse(group).success).toBe(true);
 	});
 });
