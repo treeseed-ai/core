@@ -9,6 +9,15 @@ const exactRef = {
 };
 
 describe('governance content schemas', () => {
+	it('does not expose retired mode-run authority in parsed discussion events', async () => {
+		const { createDiscussionCollectionSchemas } = await import('../../../src/content/discussion-schemas.ts');
+		const event = createDiscussionCollectionSchemas().discussionEventSchema.parse({
+			title: 'Assignment completed', discussionId: 'discussion-sdk', phase: 'acting', sequence: 1,
+			assignmentId: 'assignment-sdk', occurredAt: '2026-09-30T14:00:00.000Z', modeRunId: 'retired-run',
+		});
+		expect(event.assignmentId).toBe('assignment-sdk');
+		expect(event).not.toHaveProperty('modeRunId');
+	});
 	it('uses the canonical SDK proposal contract without a Core-owned compatibility shape', async () => {
 		const { createGovernanceCollectionSchemas } = await import('../../../src/content/governance-schemas.ts');
 		const { proposalSchema } = createGovernanceCollectionSchemas();
