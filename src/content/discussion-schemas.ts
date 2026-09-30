@@ -52,7 +52,6 @@ export function createDiscussionCollectionSchemas() {
 		sequence: z.number().int().nonnegative(),
 		agentId: z.string().optional(),
 		assignmentId: z.string().optional(),
-		modeRunId: z.string().optional(),
 		providerId: z.string().optional(),
 		groupIds: z.array(z.string()).default([]),
 		occurredAt: z.coerce.date(),
