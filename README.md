@@ -69,7 +69,7 @@ Core should stay reusable as a web runtime package and should not duplicate admi
 
 - `src/`: package source
 - `scripts/`: build, release, and verification scripts
-- `test/`: package tests
+- `tests/`: package tests organized by unit, integration, contract, fixtures, and support responsibilities
 - `.fixtures/treeseed-fixtures/`: shared integrated fixture
 - `.github/workflows/`: package CI and publish workflows
 - `templates/github/deploy-web.workflow.yml`: downstream tenant web deploy workflow template

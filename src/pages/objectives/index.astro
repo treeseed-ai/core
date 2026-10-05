@@ -3,8 +3,8 @@ import CoreStyleScope from '../../layouts/CoreStyleScope.astro';
 import MainLayout from '@treeseed/ui/components/astro/layouts/MainLayout.astro';
 import SectionIntro from '@treeseed/ui/components/astro/site/SectionIntro.astro';
 import ChronicleList from '@treeseed/ui/components/astro/site/ChronicleList.astro';
-import { getPublishedObjectives, resolveContributorsForEntries } from '../../utils/hub-content';
-import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/site-content-runtime';
+import { getPublishedObjectives, resolveContributorsForEntries } from '../../utils/content/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection, resolvePublishedContributor, metadataFromPublishedContent, loadPublishedEntry } from '../../utils/content/site-content-runtime';
 
 const publishedRuntime = isPublishedRuntimeContentMode();
 const objectives = publishedRuntime
@@ -43,7 +43,7 @@ const contributors = publishedRuntime
 				status: objective.data.status,
 				date: objective.data.date,
 				meta: contributors.get(objective.id)?.data.name,
-				tags: objective.data.tags,
+				tags: objective.data.groupIds,
 			}))}
 		/>
 	</div>

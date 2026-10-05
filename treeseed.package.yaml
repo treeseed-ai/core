@@ -19,13 +19,50 @@ artifacts:
     name: "@treeseed/core"
 releaseGate:
   workflow: verify.yml
-projectArchitecture:
-  topology: single_repository_site
-  rootPath: .
-  sitePath: docs
-  contentPath: docs/src/content
-  contentRuntimeSource: r2_published_manifest
-  localContentMaterialization: existing_path
-  contentPublishTarget:
-    kind: cloudflare_r2
-    prefix: packages/core
+development:
+  schemaVersion: treeseed.development-runtime/v1
+  project: { id: core, repository: treeseed-ai/core }
+  defaults: { leaseSeconds: 14400, restoreOnFailure: true }
+  targets:
+    - id: package
+      kind: package-watch
+      platforms: [linux-amd64, linux-arm64, darwin-arm64, darwin-amd64]
+      runtimeRequirements: [node>=22]
+      sourceRoots: [src, scripts]
+      ignoredPaths: [dist, node_modules]
+      operations:
+        watch: { command: node, args: [--watch-path=src, --watch-path=package.json, --import, tsx, scripts/development/build-watch.ts], environment: {}, timeoutSeconds: 86400 }
+        build: { command: npm, args: [run, build:dist], environment: {}, timeoutSeconds: 900 }
+        verify: { command: npm, args: [run, test:unit], environment: {}, timeoutSeconds: 900 }
+      ready: { kind: marker, path: dist/.treeseed-build-complete.json, timeoutSeconds: 120 }
+      outputs: [{ path: dist, mediaType: application/vnd.treeseed.node-package, completionMarker: dist/.treeseed-build-complete.json, digestAlgorithm: sha256 }]
+      endpoints: []
+      dependencies:
+        - { id: sdk, target: package, locality: local, reaction: rebuild }
+        - { id: ui, target: package, locality: local, reaction: rebuild }
+      statePolicy: stateless
+      migrationPolicy: none
+      secretRefs: {}
+      shutdown: { graceSeconds: 10, activeWorkPolicy: block }
+      resources: {}
+      logs: [.treeseed/development/package.log]
+      forbiddenOperations: [publish, production-tag]
+      freeze:
+        kind: npm-package
+        operation: { command: npm, args: [pack, --json], environment: {}, timeoutSeconds: 900 }
+        artifacts: [treeseed-core-*.tgz]
+        contractOperations: []
+      promotion: { liveAdmissible: false, candidateRequiresVerification: true }
+standards:
+  schemaVersion: 1
+  workflow: { enabled: true }
+  acceptedBaseline: { packageName: "@treeseed/core", packageVersion: "0.12.59" }
+  produced:
+    - { id: "@treeseed/core/site-plugin-runtime", family: behavioral, version: "1.0.0", semanticRange: "^1.0.0", source: dist, artifact: .treeseed/standards/site-plugin-runtime.json, verifier: scripts/packages/release-verify.ts }
+  consumed:
+    - { id: "@treeseed/sdk/typescript-public-api", family: typescript, version: "1.0.0", semanticRange: "^1.0.0", source: node_modules/@treeseed/sdk, verifier: scripts/packages/release-verify.ts }
+    - { id: "@treeseed/ui/presentation-catalog", family: behavioral, version: "1.0.0", semanticRange: "^1.0.0", source: node_modules/@treeseed/ui, verifier: scripts/packages/release-verify.ts }
+  guarantees: [managed-node-fail-closed, hosted-cloudflare-retained, packaged-route-composition]
+  deprecations: []
+  runtimes: [node>=22, cloudflare-workers]
+  rollbackOperations: [remove-prerelease-dist-tag, restore-accepted-composition]

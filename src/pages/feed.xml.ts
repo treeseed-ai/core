@@ -1,7 +1,7 @@
 import type { APIContext } from 'astro';
-import { getPublishedNotes } from '../utils/hub-content';
-import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../utils/site-content-runtime';
-import { siteModelRendered } from '../utils/site-models.ts';
+import { getPublishedNotes } from '../utils/content/hub-content';
+import { isPublishedRuntimeContentMode, loadPublishedCollection } from '../utils/content/site-content-runtime';
+import { siteModelRendered } from '../utils/support/site-models.ts';
 
 export async function GET(context: APIContext) {
 	if (!siteModelRendered('notes')) {

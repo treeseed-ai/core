@@ -20,7 +20,7 @@ import ActionList from '@treeseed/ui/components/astro/data/ActionList.astro';
 import KeyValueList from '@treeseed/ui/components/astro/data/KeyValueList.astro';
 import DataTable from '@treeseed/ui/components/astro/data/DataTable.astro';
 import PageHeader from '@treeseed/ui/components/astro/layout/PageHeader.astro';
-import { getBuiltInColorSchemes, normalizeThemePreference } from '../../utils/theme.ts';
+import { getBuiltInColorSchemes, normalizeThemePreference } from '../../utils/support/theme.ts';
 
 const selected = normalizeThemePreference({
 	scheme: Astro.url.searchParams.get('scheme'),
